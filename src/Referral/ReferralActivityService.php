@@ -205,6 +205,42 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that a care visit was scheduled.
+     */
+    public function log_visit_created(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'visit_created',
+            __('Care visit scheduled', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a care visit was updated.
+     */
+    public function log_visit_updated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'visit_updated',
+            __('Care visit updated', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a care visit was completed.
+     */
+    public function log_visit_completed(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'visit_completed',
+            __('Care visit completed', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void

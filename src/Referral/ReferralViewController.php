@@ -16,6 +16,8 @@ use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Services\ServiceTypeService;
 use JMReferral\Users\UserProvider;
+use JMReferral\Visits\CareVisitController;
+use JMReferral\Visits\CareVisitService;
 use JMReferral\Workflow\WorkflowStageService;
 
 class ReferralViewController
@@ -32,7 +34,8 @@ class ReferralViewController
         private ReferralDocumentRepository $document_repository,
         private ReferralAssessmentRepository $assessment_repository,
         private ReferralCarePlanRepository $care_plan_repository,
-        private ReferralCarePlanReviewService $care_plan_review_service
+        private ReferralCarePlanReviewService $care_plan_review_service,
+        private CareVisitService $care_visit_service
     ) {
     }
 
@@ -219,6 +222,38 @@ class ReferralViewController
                     absint($version_row['id'] ?? 0)
                 );
                 $care_plan_versions[] = $version_row;
+            }
+        }
+
+        $can_view_visits = Capabilities::current_user_can(Capabilities::VIEW_VISITS)
+            && $this->access_policy->can_view_referral($referral);
+        $can_manage_visits = Capabilities::current_user_can(Capabilities::MANAGE_VISITS)
+            && $this->access_policy->can_edit_referral($referral);
+
+        $care_visit_statuses = CareVisitService::status_labels();
+        $care_visit_form_state = CareVisitController::get_form_state($referral_id);
+        $care_visit_errors     = $care_visit_form_state['errors'];
+        $care_visit_data       = ! empty($care_visit_form_state['data']) && absint($care_visit_form_state['visit_id'] ?? 0) === 0
+            ? array_merge(CareVisitService::empty_form_data(), $care_visit_form_state['data'])
+            : CareVisitService::empty_form_data();
+
+        if (null !== $care_plan) {
+            $care_visit_data['care_plan_id'] = (string) absint($care_plan['id'] ?? 0);
+        }
+
+        $assignable_users = $can_manage_visits
+            ? $this->user_provider->get_assignable_users()
+            : [];
+
+        $care_visits = [];
+        if ($can_view_visits) {
+            foreach ($this->care_visit_service->get_visits_for_referral($referral_id) as $visit_row) {
+                $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
+                $visit_row['assigned_staff_name'] = $assigned_id > 0
+                    ? $this->user_provider->get_display_name($assigned_id)
+                    : '';
+                $visit_row['edit_url'] = CareVisitController::get_edit_url(absint($visit_row['id'] ?? 0));
+                $care_visits[] = $visit_row;
             }
         }
 

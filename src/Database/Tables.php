@@ -105,6 +105,16 @@ class Tables
     }
 
     /**
+     * Returns the care visits table name with the WordPress prefix.
+     */
+    public static function care_visits_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_care_visits';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -125,6 +135,7 @@ class Tables
         self::create_referral_care_plans_table($charset);
         self::create_care_plan_versions_table($charset);
         self::create_care_plan_reviews_table($charset);
+        self::create_care_visits_table($charset);
     }
 
     /**
@@ -414,6 +425,40 @@ class Tables
             KEY reviewed_by (reviewed_by),
             KEY review_date (review_date),
             KEY outcome (outcome)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the care visits table.
+     */
+    private static function create_care_visits_table(string $charset): void
+    {
+        $table = self::care_visits_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            care_plan_id BIGINT UNSIGNED NULL,
+            assigned_user_id BIGINT UNSIGNED NULL,
+            visit_date DATE NOT NULL,
+            start_time TIME NOT NULL,
+            end_time TIME NOT NULL,
+            visit_status VARCHAR(50) NOT NULL DEFAULT 'scheduled',
+            visit_type VARCHAR(100) NULL,
+            tasks LONGTEXT NULL,
+            notes LONGTEXT NULL,
+            completed_at DATETIME NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY care_plan_id (care_plan_id),
+            KEY assigned_user_id (assigned_user_id),
+            KEY visit_date (visit_date),
+            KEY visit_status (visit_status)
         ) {$charset};";
 
         dbDelta($sql);

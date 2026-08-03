@@ -14,6 +14,9 @@
  * @var array<int, array{id: int, name: string, stage_order: int, count: int}> $pipeline Workflow pipeline counts.
  * @var array<int, array<string, mixed>> $recent Recent referral rows.
  * @var bool $scoped_to_assigned Whether results are limited to the current user's assignments.
+ * @var bool $can_view_visits Whether the user may view care visits.
+ * @var array<int, array<string, mixed>> $upcoming_visits Upcoming care visits.
+ * @var array<string, string> $visit_status_labels Visit status labels.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -24,6 +27,9 @@ $stats              = is_array( $stats ?? null ) ? $stats : array();
 $pipeline           = is_array( $pipeline ?? null ) ? $pipeline : array();
 $recent             = is_array( $recent ?? null ) ? $recent : array();
 $scoped_to_assigned = ! empty( $scoped_to_assigned );
+$can_view_visits    = ! empty( $can_view_visits );
+$upcoming_visits    = is_array( $upcoming_visits ?? null ) ? $upcoming_visits : array();
+$visit_status_labels = is_array( $visit_status_labels ?? null ) ? $visit_status_labels : array();
 
 $add_url  = admin_url( 'admin.php?page=jm-referrals-add' );
 $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
@@ -123,6 +129,55 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 			<?php endforeach; ?>
 		<?php endif; ?>
 	</div>
+
+	<?php if ( $can_view_visits ) : ?>
+		<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Upcoming Visits', 'jm-referral-system' ); ?></h2>
+		<table class="wp-list-table widefat fixed striped table-view-list">
+			<thead>
+				<tr>
+					<th scope="col"><?php echo esc_html__( 'Date', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Time', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Assigned Staff', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( empty( $upcoming_visits ) ) : ?>
+					<tr class="no-items">
+						<td colspan="5"><?php echo esc_html__( 'No upcoming visits found.', 'jm-referral-system' ); ?></td>
+					</tr>
+				<?php else : ?>
+					<?php foreach ( $upcoming_visits as $visit_row ) : ?>
+						<?php
+						$visit_date_raw = (string) ( $visit_row['visit_date'] ?? '' );
+						$start_time_raw = (string) ( $visit_row['start_time'] ?? '' );
+						$end_time_raw   = (string) ( $visit_row['end_time'] ?? '' );
+						$client_name    = (string) ( $visit_row['client_name'] ?? '' );
+						$assigned_name  = (string) ( $visit_row['assigned_staff_name'] ?? '' );
+						$status_key     = (string) ( $visit_row['visit_status'] ?? '' );
+						$status_label   = isset( $visit_status_labels[ $status_key ] )
+							? (string) $visit_status_labels[ $status_key ]
+							: ucfirst( str_replace( '_', ' ', $status_key ) );
+						$visit_date_display = '' !== $visit_date_raw
+							? mysql2date( get_option( 'date_format' ), $visit_date_raw )
+							: '';
+						$start_display = '' !== $start_time_raw ? substr( $start_time_raw, 0, 5 ) : '';
+						$end_display   = '' !== $end_time_raw ? substr( $end_time_raw, 0, 5 ) : '';
+						$time_display  = trim( $start_display . ( '' !== $end_display ? ' – ' . $end_display : '' ) );
+						?>
+						<tr>
+							<td><?php echo esc_html( $visit_date_display ); ?></td>
+							<td><?php echo esc_html( $time_display ); ?></td>
+							<td><?php echo '' !== $client_name ? esc_html( $client_name ) : '—'; ?></td>
+							<td><?php echo '' !== $assigned_name ? esc_html( $assigned_name ) : '—'; ?></td>
+							<td><?php echo esc_html( $status_label ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
+	<?php endif; ?>
 
 	<h2 class="jmrs-dashboard-section-title">
 		<?php

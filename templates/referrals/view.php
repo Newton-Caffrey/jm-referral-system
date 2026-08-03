@@ -78,6 +78,13 @@ $care_plan_review_data        = is_array( $care_plan_review_data ?? null ) ? $ca
 $care_plan_review_errors      = is_array( $care_plan_review_errors ?? null ) ? $care_plan_review_errors : array();
 $care_plan_reviews            = is_array( $care_plan_reviews ?? null ) ? $care_plan_reviews : array();
 $care_plan_versions           = is_array( $care_plan_versions ?? null ) ? $care_plan_versions : array();
+$can_view_visits              = ! empty( $can_view_visits );
+$can_manage_visits            = ! empty( $can_manage_visits );
+$care_visits                  = is_array( $care_visits ?? null ) ? $care_visits : array();
+$care_visit_data              = is_array( $care_visit_data ?? null ) ? $care_visit_data : array();
+$care_visit_errors            = is_array( $care_visit_errors ?? null ) ? $care_visit_errors : array();
+$care_visit_statuses          = is_array( $care_visit_statuses ?? null ) ? $care_visit_statuses : array();
+$assignable_users             = is_array( $assignable_users ?? null ) ? $assignable_users : array();
 
 $jmrs_care_plan_value = static function ( string $key ) use ( $care_plan_data ): string {
 	return (string) ( $care_plan_data[ $key ] ?? '' );
@@ -85,6 +92,10 @@ $jmrs_care_plan_value = static function ( string $key ) use ( $care_plan_data ):
 
 $jmrs_care_plan_review_value = static function ( string $key ) use ( $care_plan_review_data ): string {
 	return (string) ( $care_plan_review_data[ $key ] ?? '' );
+};
+
+$jmrs_care_visit_value = static function ( string $key ) use ( $care_visit_data ): string {
+	return (string) ( $care_visit_data[ $key ] ?? '' );
 };
 
 $referral_id      = absint( $referral['id'] ?? 0 );
@@ -1027,6 +1038,210 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 					</tbody>
 				</table>
 			<?php endif; ?>
+		<?php endif; ?>
+	<?php endif; ?>
+
+	<?php if ( $can_view_visits ) : ?>
+		<h2><?php echo esc_html__( 'Care Visits', 'jm-referral-system' ); ?></h2>
+
+		<?php if ( $can_manage_visits ) : ?>
+			<form method="post" action="">
+				<?php wp_nonce_field( 'jmrs_save_care_visit_' . $referral_id, 'jmrs_care_visit_nonce' ); ?>
+				<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+				<input type="hidden" name="jmrs_visit_id" value="0" />
+				<input type="hidden" name="jmrs_visit_care_plan_id" value="<?php echo esc_attr( $jmrs_care_visit_value( 'care_plan_id' ) ); ?>" />
+
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_visit_date"><?php echo esc_html__( 'Visit Date', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="date"
+									class="regular-text"
+									name="jmrs_visit_date"
+									id="jmrs_visit_date"
+									value="<?php echo esc_attr( $jmrs_care_visit_value( 'visit_date' ) ); ?>"
+									required
+								/>
+								<?php if ( isset( $care_visit_errors['visit_date'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_visit_errors['visit_date'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_visit_start_time"><?php echo esc_html__( 'Start Time', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="time"
+									class="regular-text"
+									name="jmrs_visit_start_time"
+									id="jmrs_visit_start_time"
+									value="<?php echo esc_attr( $jmrs_care_visit_value( 'start_time' ) ); ?>"
+									required
+								/>
+								<?php if ( isset( $care_visit_errors['start_time'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_visit_errors['start_time'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_visit_end_time"><?php echo esc_html__( 'End Time', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="time"
+									class="regular-text"
+									name="jmrs_visit_end_time"
+									id="jmrs_visit_end_time"
+									value="<?php echo esc_attr( $jmrs_care_visit_value( 'end_time' ) ); ?>"
+									required
+								/>
+								<?php if ( isset( $care_visit_errors['end_time'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_visit_errors['end_time'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_visit_assigned_user_id"><?php echo esc_html__( 'Assigned Staff', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<select name="jmrs_visit_assigned_user_id" id="jmrs_visit_assigned_user_id">
+									<option value="0"><?php echo esc_html__( '— Unassigned —', 'jm-referral-system' ); ?></option>
+									<?php foreach ( $assignable_users as $user_row ) : ?>
+										<option value="<?php echo esc_attr( (string) ( $user_row['id'] ?? 0 ) ); ?>" <?php selected( $jmrs_care_visit_value( 'assigned_user_id' ), (string) ( $user_row['id'] ?? 0 ) ); ?>>
+											<?php echo esc_html( (string) ( $user_row['display_name'] ?? '' ) ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<?php if ( isset( $care_visit_errors['assigned_user_id'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_visit_errors['assigned_user_id'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_visit_type"><?php echo esc_html__( 'Visit Type', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="text"
+									class="regular-text"
+									name="jmrs_visit_type"
+									id="jmrs_visit_type"
+									value="<?php echo esc_attr( $jmrs_care_visit_value( 'visit_type' ) ); ?>"
+								/>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_visit_status"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<select name="jmrs_visit_status" id="jmrs_visit_status">
+									<?php foreach ( $care_visit_statuses as $status_value => $status_label ) : ?>
+										<option value="<?php echo esc_attr( (string) $status_value ); ?>" <?php selected( $jmrs_care_visit_value( 'visit_status' ), (string) $status_value ); ?>>
+											<?php echo esc_html( (string) $status_label ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<?php if ( isset( $care_visit_errors['visit_status'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_visit_errors['visit_status'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_visit_tasks"><?php echo esc_html__( 'Tasks', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<textarea name="jmrs_visit_tasks" id="jmrs_visit_tasks" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_care_visit_value( 'tasks' ) ); ?></textarea>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_visit_notes"><?php echo esc_html__( 'Notes', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<textarea name="jmrs_visit_notes" id="jmrs_visit_notes" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_care_visit_value( 'notes' ) ); ?></textarea>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<?php
+				submit_button(
+					__( 'Save Visit', 'jm-referral-system' ),
+					'secondary',
+					'jmrs_save_care_visit'
+				);
+				?>
+			</form>
+		<?php endif; ?>
+
+		<?php if ( empty( $care_visits ) ) : ?>
+			<p><?php echo esc_html__( 'No care visits scheduled yet.', 'jm-referral-system' ); ?></p>
+		<?php else : ?>
+			<table class="wp-list-table widefat fixed striped table-view-list">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Date', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Time', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Assigned Staff', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Visit Type', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+						<?php if ( $can_manage_visits ) : ?>
+							<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
+						<?php endif; ?>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $care_visits as $visit_row ) : ?>
+						<?php
+						$visit_date_raw   = (string) ( $visit_row['visit_date'] ?? '' );
+						$start_time_raw   = (string) ( $visit_row['start_time'] ?? '' );
+						$end_time_raw     = (string) ( $visit_row['end_time'] ?? '' );
+						$visit_type       = (string) ( $visit_row['visit_type'] ?? '' );
+						$status_key       = (string) ( $visit_row['visit_status'] ?? '' );
+						$status_label     = isset( $care_visit_statuses[ $status_key ] )
+							? (string) $care_visit_statuses[ $status_key ]
+							: ucfirst( str_replace( '_', ' ', $status_key ) );
+						$assigned_name    = (string) ( $visit_row['assigned_staff_name'] ?? '' );
+						$edit_url         = (string) ( $visit_row['edit_url'] ?? '' );
+						$visit_date_display = '' !== $visit_date_raw
+							? mysql2date( get_option( 'date_format' ), $visit_date_raw )
+							: '';
+						$start_display = '' !== $start_time_raw ? substr( $start_time_raw, 0, 5 ) : '';
+						$end_display   = '' !== $end_time_raw ? substr( $end_time_raw, 0, 5 ) : '';
+						$time_display  = trim( $start_display . ( '' !== $end_display ? ' – ' . $end_display : '' ) );
+						?>
+						<tr>
+							<td><?php echo esc_html( $visit_date_display ); ?></td>
+							<td><?php echo esc_html( $time_display ); ?></td>
+							<td><?php echo '' !== $assigned_name ? esc_html( $assigned_name ) : '—'; ?></td>
+							<td><?php echo '' !== trim( $visit_type ) ? esc_html( $visit_type ) : '—'; ?></td>
+							<td><?php echo esc_html( $status_label ); ?></td>
+							<?php if ( $can_manage_visits ) : ?>
+								<td>
+									<?php if ( '' !== $edit_url ) : ?>
+										<a href="<?php echo esc_url( $edit_url ); ?>">
+											<?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?>
+										</a>
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+							<?php endif; ?>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
 		<?php endif; ?>
 	<?php endif; ?>
 

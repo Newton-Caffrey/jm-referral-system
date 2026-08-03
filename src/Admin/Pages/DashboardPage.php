@@ -3,12 +3,18 @@
 namespace JMReferral\Admin\Pages;
 
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Referral\ReferralRepository;
 use JMReferral\Referral\ReferralService;
+use JMReferral\Users\UserProvider;
+use JMReferral\Visits\CareVisitService;
 
 class DashboardPage
 {
     public function __construct(
-        private ReferralService $service
+        private ReferralService $service,
+        private CareVisitService $visit_service,
+        private UserProvider $user_provider,
+        private ReferralRepository $referral_repository
     ) {
     }
 
@@ -18,11 +24,32 @@ class DashboardPage
             wp_die(esc_html__('You do not have permission to view the dashboard.', 'jm-referral-system'));
         }
 
-        $dashboard           = $this->service->get_dashboard_data(5);
-        $stats               = $dashboard['stats'];
-        $pipeline            = $dashboard['pipeline'] ?? [];
-        $recent              = $dashboard['recent'];
-        $scoped_to_assigned  = ! empty($dashboard['scoped_to_assigned']);
+        $dashboard          = $this->service->get_dashboard_data(5);
+        $stats              = $dashboard['stats'];
+        $pipeline           = $dashboard['pipeline'] ?? [];
+        $recent             = $dashboard['recent'];
+        $scoped_to_assigned = ! empty($dashboard['scoped_to_assigned']);
+
+        $can_view_visits     = Capabilities::current_user_can(Capabilities::VIEW_VISITS);
+        $visit_status_labels = CareVisitService::status_labels();
+        $upcoming_visits     = [];
+
+        if ($can_view_visits) {
+            foreach ($this->visit_service->get_upcoming_for_dashboard(10) as $visit_row) {
+                $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
+                $visit_row['assigned_staff_name'] = $assigned_id > 0
+                    ? $this->user_provider->get_display_name($assigned_id)
+                    : '';
+
+                $referral_id = absint($visit_row['referral_id'] ?? 0);
+                $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
+                $visit_row['client_name'] = is_array($referral)
+                    ? (string) ($referral['client_name'] ?? '')
+                    : '';
+
+                $upcoming_visits[] = $visit_row;
+            }
+        }
 
         include JMRS_PLUGIN_PATH . 'templates/dashboard/index.php';
     }

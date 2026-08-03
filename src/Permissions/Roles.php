@@ -48,6 +48,8 @@ class Roles
                     Capabilities::VIEW_CARE_PLANS,
                     Capabilities::MANAGE_CARE_PLANS,
                     Capabilities::REVIEW_CARE_PLANS,
+                    Capabilities::VIEW_VISITS,
+                    Capabilities::MANAGE_VISITS,
                 ],
             ],
             self::CARE_COORDINATOR => [
@@ -64,6 +66,8 @@ class Roles
                     Capabilities::VIEW_CARE_PLANS,
                     Capabilities::MANAGE_CARE_PLANS,
                     Capabilities::REVIEW_CARE_PLANS,
+                    Capabilities::VIEW_VISITS,
+                    Capabilities::MANAGE_VISITS,
                 ],
             ],
             self::ASSESSOR => [
@@ -77,15 +81,18 @@ class Roles
                     Capabilities::VIEW_CARE_PLANS,
                     Capabilities::MANAGE_CARE_PLANS,
                     Capabilities::REVIEW_CARE_PLANS,
+                    Capabilities::VIEW_VISITS,
                 ],
             ],
             self::SUPPORT_WORKER => [
                 'label'        => __('Support Worker', 'jm-referral-system'),
                 'capabilities' => [
+                    Capabilities::VIEW_DASHBOARD,
                     Capabilities::VIEW_REFERRALS,
                     Capabilities::ADD_NOTES,
                     Capabilities::DOWNLOAD_DOCUMENTS,
                     Capabilities::VIEW_CARE_PLANS,
+                    Capabilities::VIEW_VISITS,
                 ],
             ],
         ];
