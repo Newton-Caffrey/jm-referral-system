@@ -1,0 +1,11 @@
+{
+    "name": "jm/referral-system",
+    "description": "J&M Referral Management System",
+    "type": "wordpress-plugin",
+    "autoload": {
+        "psr-4": {
+            "JMReferral\\": "src/"
+        }
+    },
+    "require": {}
+}
