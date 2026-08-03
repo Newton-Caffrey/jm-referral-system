@@ -65,6 +65,16 @@ class Tables
     }
 
     /**
+     * Returns the referral assessments table name with the WordPress prefix.
+     */
+    public static function referral_assessments_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_assessments';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -81,6 +91,7 @@ class Tables
         self::create_service_types_table($charset);
         self::create_workflow_stages_table($charset);
         self::create_referral_documents_table($charset);
+        self::create_referral_assessments_table($charset);
     }
 
     /**
@@ -235,6 +246,47 @@ class Tables
             KEY referral_id (referral_id),
             KEY attachment_id (attachment_id),
             KEY uploaded_by (uploaded_by)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the referral assessments table.
+     */
+    private static function create_referral_assessments_table(string $charset): void
+    {
+        $table = self::referral_assessments_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            assessor_user_id BIGINT UNSIGNED NOT NULL,
+            assessment_date DATE NULL,
+            outcome VARCHAR(50) NOT NULL DEFAULT 'pending',
+            summary LONGTEXT NULL,
+            recommendations LONGTEXT NULL,
+            next_review_date DATE NULL,
+            mobility_support LONGTEXT NULL,
+            personal_care_support LONGTEXT NULL,
+            medication_support LONGTEXT NULL,
+            nutrition_hydration LONGTEXT NULL,
+            communication_needs LONGTEXT NULL,
+            cognitive_needs LONGTEXT NULL,
+            continence_support LONGTEXT NULL,
+            home_environment LONGTEXT NULL,
+            safeguarding_risks LONGTEXT NULL,
+            equipment_required LONGTEXT NULL,
+            family_support LONGTEXT NULL,
+            visit_frequency VARCHAR(100) NULL,
+            visit_duration VARCHAR(100) NULL,
+            preferred_visit_times LONGTEXT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY referral_id (referral_id),
+            KEY assessor_user_id (assessor_user_id),
+            KEY outcome (outcome)
         ) {$charset};";
 
         dbDelta($sql);

@@ -16,6 +16,12 @@
  * @var array<int, array<string, mixed>> $documents        Document rows for the referral.
  * @var bool                             $can_upload_documents Whether the user may upload documents.
  * @var bool                             $can_download_documents Whether the user may download documents.
+ * @var array<string, mixed>|null        $assessment       Existing assessment row, if any.
+ * @var array<string, string>            $assessment_data  Assessment form values.
+ * @var array<string, string>            $assessment_errors Assessment validation errors.
+ * @var bool                             $can_edit_assessment Whether the user may create/update assessments.
+ * @var string                           $assessor_name    Assessor display name.
+ * @var array<string, string>            $assessment_outcomes Outcome value => label map.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -34,6 +40,27 @@ $note_errors      = is_array( $note_errors ?? null ) ? $note_errors : array();
 $documents        = is_array( $documents ?? null ) ? $documents : array();
 $can_upload_documents   = ! empty( $can_upload_documents );
 $can_download_documents = ! empty( $can_download_documents );
+$assessment             = is_array( $assessment ?? null ) ? $assessment : null;
+$assessment_data        = is_array( $assessment_data ?? null ) ? $assessment_data : array();
+$assessment_errors      = is_array( $assessment_errors ?? null ) ? $assessment_errors : array();
+$can_edit_assessment    = ! empty( $can_edit_assessment );
+$assessor_name          = isset( $assessor_name ) ? (string) $assessor_name : '';
+$assessment_outcomes    = is_array( $assessment_outcomes ?? null ) ? $assessment_outcomes : array();
+
+$assessment_date_value  = (string) ( $assessment_data['assessment_date'] ?? '' );
+$assessment_outcome     = (string) ( $assessment_data['outcome'] ?? 'pending' );
+$assessment_next_review = (string) ( $assessment_data['next_review_date'] ?? '' );
+$outcome_label          = isset( $assessment_outcomes[ $assessment_outcome ] )
+	? (string) $assessment_outcomes[ $assessment_outcome ]
+	: ucfirst( str_replace( '_', ' ', $assessment_outcome ) );
+
+$jmrs_assessment_value = static function ( string $key ) use ( $assessment_data ): string {
+	return (string) ( $assessment_data[ $key ] ?? '' );
+};
+
+$jmrs_assessment_has_value = static function ( string $value ): bool {
+	return '' !== trim( $value );
+};
 
 $referral_id      = absint( $referral['id'] ?? 0 );
 $referral_number  = (string) ( $referral['referral_number'] ?? '' );
@@ -188,6 +215,367 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 			</tr>
 		</tbody>
 	</table>
+
+	<?php
+	$assessment_heading = null !== $assessment
+		? __( 'Assessment', 'jm-referral-system' )
+		: __( 'Create Assessment', 'jm-referral-system' );
+
+	$daily_living_fields = array(
+		'mobility_support'      => __( 'Mobility Support', 'jm-referral-system' ),
+		'personal_care_support' => __( 'Personal Care Support', 'jm-referral-system' ),
+		'continence_support'    => __( 'Continence Support', 'jm-referral-system' ),
+		'nutrition_hydration'   => __( 'Nutrition and Hydration', 'jm-referral-system' ),
+		'medication_support'    => __( 'Medication Support', 'jm-referral-system' ),
+	);
+	$communication_fields = array(
+		'communication_needs' => __( 'Communication Needs', 'jm-referral-system' ),
+		'cognitive_needs'     => __( 'Cognitive Needs', 'jm-referral-system' ),
+	);
+	$home_safety_fields = array(
+		'home_environment'   => __( 'Home Environment', 'jm-referral-system' ),
+		'safeguarding_risks' => __( 'Safeguarding Risks', 'jm-referral-system' ),
+		'equipment_required' => __( 'Equipment Required', 'jm-referral-system' ),
+	);
+	$support_network_fields = array(
+		'family_support' => __( 'Family Support', 'jm-referral-system' ),
+	);
+	$care_package_textareas = array(
+		'preferred_visit_times' => __( 'Preferred Visit Times', 'jm-referral-system' ),
+	);
+	$care_package_text = array(
+		'visit_frequency' => __( 'Visit Frequency', 'jm-referral-system' ),
+		'visit_duration'  => __( 'Visit Duration', 'jm-referral-system' ),
+	);
+	$summary_fields = array(
+		'summary'         => __( 'Summary', 'jm-referral-system' ),
+		'recommendations' => __( 'Recommendations', 'jm-referral-system' ),
+	);
+	?>
+	<h2><?php echo esc_html( $assessment_heading ); ?></h2>
+
+	<?php if ( ! $can_edit_assessment ) : ?>
+		<?php if ( null === $assessment ) : ?>
+			<p><?php echo esc_html__( 'No assessment recorded yet.', 'jm-referral-system' ); ?></p>
+		<?php else : ?>
+			<h3><?php echo esc_html__( 'Assessment Overview', 'jm-referral-system' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tbody>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Assessment Date', 'jm-referral-system' ); ?></th>
+						<td>
+							<?php
+							echo '' !== $assessment_date_value
+								? esc_html( mysql2date( get_option( 'date_format' ), $assessment_date_value ) )
+								: '—';
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Assessor', 'jm-referral-system' ); ?></th>
+						<td><?php echo '' !== $assessor_name ? esc_html( $assessor_name ) : '—'; ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></th>
+						<td><?php echo esc_html( $outcome_label ); ?></td>
+					</tr>
+					<?php if ( $jmrs_assessment_has_value( $assessment_next_review ) ) : ?>
+						<tr>
+							<th scope="row"><?php echo esc_html__( 'Next Review Date', 'jm-referral-system' ); ?></th>
+							<td><?php echo esc_html( mysql2date( get_option( 'date_format' ), $assessment_next_review ) ); ?></td>
+						</tr>
+					<?php endif; ?>
+				</tbody>
+			</table>
+
+			<?php
+			$readonly_sections = array(
+				__( 'Daily Living and Personal Care', 'jm-referral-system' ) => $daily_living_fields,
+				__( 'Communication and Cognition', 'jm-referral-system' )   => $communication_fields,
+				__( 'Home and Safety', 'jm-referral-system' )               => $home_safety_fields,
+				__( 'Support Network', 'jm-referral-system' )               => $support_network_fields,
+			);
+			?>
+			<?php foreach ( $readonly_sections as $section_title => $fields ) : ?>
+				<?php
+				$visible_fields = array();
+				foreach ( $fields as $field_key => $field_label ) {
+					$field_value = $jmrs_assessment_value( $field_key );
+					if ( $jmrs_assessment_has_value( $field_value ) ) {
+						$visible_fields[ $field_key ] = array(
+							'label' => $field_label,
+							'value' => $field_value,
+						);
+					}
+				}
+				?>
+				<?php if ( ! empty( $visible_fields ) ) : ?>
+					<h3><?php echo esc_html( (string) $section_title ); ?></h3>
+					<table class="form-table" role="presentation">
+						<tbody>
+							<?php foreach ( $visible_fields as $visible_field ) : ?>
+								<tr>
+									<th scope="row"><?php echo esc_html( (string) $visible_field['label'] ); ?></th>
+									<td><?php echo nl2br( esc_html( (string) $visible_field['value'] ) ); ?></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php endif; ?>
+			<?php endforeach; ?>
+
+			<?php
+			$package_visible = array();
+			foreach ( $care_package_text as $field_key => $field_label ) {
+				$field_value = $jmrs_assessment_value( $field_key );
+				if ( $jmrs_assessment_has_value( $field_value ) ) {
+					$package_visible[ $field_key ] = array(
+						'label' => $field_label,
+						'value' => $field_value,
+						'nl2br' => false,
+					);
+				}
+			}
+			foreach ( $care_package_textareas as $field_key => $field_label ) {
+				$field_value = $jmrs_assessment_value( $field_key );
+				if ( $jmrs_assessment_has_value( $field_value ) ) {
+					$package_visible[ $field_key ] = array(
+						'label' => $field_label,
+						'value' => $field_value,
+						'nl2br' => true,
+					);
+				}
+			}
+			?>
+			<?php if ( ! empty( $package_visible ) ) : ?>
+				<h3><?php echo esc_html__( 'Proposed Care Package', 'jm-referral-system' ); ?></h3>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<?php foreach ( $package_visible as $package_field ) : ?>
+							<tr>
+								<th scope="row"><?php echo esc_html( (string) $package_field['label'] ); ?></th>
+								<td>
+									<?php
+									if ( ! empty( $package_field['nl2br'] ) ) {
+										echo nl2br( esc_html( (string) $package_field['value'] ) );
+									} else {
+										echo esc_html( (string) $package_field['value'] );
+									}
+									?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+
+			<?php
+			$summary_visible = array();
+			foreach ( $summary_fields as $field_key => $field_label ) {
+				$field_value = $jmrs_assessment_value( $field_key );
+				if ( $jmrs_assessment_has_value( $field_value ) ) {
+					$summary_visible[ $field_key ] = array(
+						'label' => $field_label,
+						'value' => $field_value,
+					);
+				}
+			}
+			?>
+			<?php if ( ! empty( $summary_visible ) ) : ?>
+				<h3><?php echo esc_html__( 'Summary and Recommendations', 'jm-referral-system' ); ?></h3>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<?php foreach ( $summary_visible as $summary_field ) : ?>
+							<tr>
+								<th scope="row"><?php echo esc_html( (string) $summary_field['label'] ); ?></th>
+								<td><?php echo nl2br( esc_html( (string) $summary_field['value'] ) ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+		<?php endif; ?>
+	<?php else : ?>
+		<form method="post" action="">
+			<?php wp_nonce_field( 'jmrs_save_assessment_' . $referral_id, 'jmrs_save_assessment_nonce' ); ?>
+			<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+
+			<h3><?php echo esc_html__( 'Assessment Overview', 'jm-referral-system' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tbody>
+					<tr>
+						<th scope="row">
+							<label for="jmrs_assessment_date"><?php echo esc_html__( 'Assessment Date', 'jm-referral-system' ); ?></label>
+						</th>
+						<td>
+							<input
+								type="date"
+								name="jmrs_assessment_date"
+								id="jmrs_assessment_date"
+								value="<?php echo esc_attr( $assessment_date_value ); ?>"
+								required
+							/>
+							<?php if ( isset( $assessment_errors['assessment_date'] ) ) : ?>
+								<p class="description"><?php echo esc_html( $assessment_errors['assessment_date'] ); ?></p>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Assessor', 'jm-referral-system' ); ?></th>
+						<td>
+							<?php echo '' !== $assessor_name ? esc_html( $assessor_name ) : esc_html__( 'Current user', 'jm-referral-system' ); ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label for="jmrs_assessment_outcome"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></label>
+						</th>
+						<td>
+							<select name="jmrs_assessment_outcome" id="jmrs_assessment_outcome">
+								<?php foreach ( $assessment_outcomes as $outcome_value => $outcome_text ) : ?>
+									<option value="<?php echo esc_attr( (string) $outcome_value ); ?>" <?php selected( $assessment_outcome, (string) $outcome_value ); ?>>
+										<?php echo esc_html( (string) $outcome_text ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+							<?php if ( isset( $assessment_errors['outcome'] ) ) : ?>
+								<p class="description"><?php echo esc_html( $assessment_errors['outcome'] ); ?></p>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label for="jmrs_assessment_next_review_date"><?php echo esc_html__( 'Next Review Date', 'jm-referral-system' ); ?></label>
+						</th>
+						<td>
+							<input
+								type="date"
+								name="jmrs_assessment_next_review_date"
+								id="jmrs_assessment_next_review_date"
+								value="<?php echo esc_attr( $assessment_next_review ); ?>"
+							/>
+							<?php if ( isset( $assessment_errors['next_review_date'] ) ) : ?>
+								<p class="description"><?php echo esc_html( $assessment_errors['next_review_date'] ); ?></p>
+							<?php endif; ?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<?php
+			$editable_textarea_sections = array(
+				__( 'Daily Living and Personal Care', 'jm-referral-system' ) => $daily_living_fields,
+				__( 'Communication and Cognition', 'jm-referral-system' )   => $communication_fields,
+				__( 'Home and Safety', 'jm-referral-system' )               => $home_safety_fields,
+				__( 'Support Network', 'jm-referral-system' )               => $support_network_fields,
+			);
+			?>
+			<?php foreach ( $editable_textarea_sections as $section_title => $fields ) : ?>
+				<h3><?php echo esc_html( (string) $section_title ); ?></h3>
+				<table class="form-table" role="presentation">
+					<tbody>
+						<?php foreach ( $fields as $field_key => $field_label ) : ?>
+							<?php
+							$field_id    = 'jmrs_assessment_' . $field_key;
+							$field_value = $jmrs_assessment_value( $field_key );
+							?>
+							<tr>
+								<th scope="row">
+									<label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( (string) $field_label ); ?></label>
+								</th>
+								<td>
+									<textarea
+										name="<?php echo esc_attr( $field_id ); ?>"
+										id="<?php echo esc_attr( $field_id ); ?>"
+										class="large-text"
+										rows="3"
+									><?php echo esc_textarea( $field_value ); ?></textarea>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endforeach; ?>
+
+			<h3><?php echo esc_html__( 'Proposed Care Package', 'jm-referral-system' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tbody>
+					<?php foreach ( $care_package_text as $field_key => $field_label ) : ?>
+						<?php
+						$field_id    = 'jmrs_assessment_' . $field_key;
+						$field_value = $jmrs_assessment_value( $field_key );
+						?>
+						<tr>
+							<th scope="row">
+								<label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( (string) $field_label ); ?></label>
+							</th>
+							<td>
+								<input
+									type="text"
+									class="regular-text"
+									name="<?php echo esc_attr( $field_id ); ?>"
+									id="<?php echo esc_attr( $field_id ); ?>"
+									value="<?php echo esc_attr( $field_value ); ?>"
+								/>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+					<?php foreach ( $care_package_textareas as $field_key => $field_label ) : ?>
+						<?php
+						$field_id    = 'jmrs_assessment_' . $field_key;
+						$field_value = $jmrs_assessment_value( $field_key );
+						?>
+						<tr>
+							<th scope="row">
+								<label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( (string) $field_label ); ?></label>
+							</th>
+							<td>
+								<textarea
+									name="<?php echo esc_attr( $field_id ); ?>"
+									id="<?php echo esc_attr( $field_id ); ?>"
+									class="large-text"
+									rows="3"
+								><?php echo esc_textarea( $field_value ); ?></textarea>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+
+			<h3><?php echo esc_html__( 'Summary and Recommendations', 'jm-referral-system' ); ?></h3>
+			<table class="form-table" role="presentation">
+				<tbody>
+					<?php foreach ( $summary_fields as $field_key => $field_label ) : ?>
+						<?php
+						$field_id    = 'jmrs_assessment_' . $field_key;
+						$field_value = $jmrs_assessment_value( $field_key );
+						?>
+						<tr>
+							<th scope="row">
+								<label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( (string) $field_label ); ?></label>
+							</th>
+							<td>
+								<textarea
+									name="<?php echo esc_attr( $field_id ); ?>"
+									id="<?php echo esc_attr( $field_id ); ?>"
+									class="large-text"
+									rows="4"
+								><?php echo esc_textarea( $field_value ); ?></textarea>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+
+			<?php
+			submit_button(
+				__( 'Save Assessment', 'jm-referral-system' ),
+				'primary',
+				'jmrs_save_assessment'
+			);
+			?>
+		</form>
+	<?php endif; ?>
 
 	<h2><?php echo esc_html__( 'Internal Notes', 'jm-referral-system' ); ?></h2>
 

@@ -10,7 +10,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.0.0';
+    public const DB_VERSION = '2.2.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -61,6 +61,9 @@ class Migrator
             Capabilities::grant_to_administrators();
             Roles::register();
         }
+
+        // 2.1.0: referral assessments table (created via Tables::create()).
+        // 2.2.0: structured domiciliary care assessment columns (added via Tables::create()).
     }
 
     /**

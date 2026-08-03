@@ -119,6 +119,30 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that an assessment was created.
+     */
+    public function log_assessment_created(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'assessment_created',
+            __('Assessment created', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that an assessment was updated.
+     */
+    public function log_assessment_updated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'assessment_updated',
+            __('Assessment updated', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void

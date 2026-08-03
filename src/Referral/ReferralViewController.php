@@ -2,9 +2,11 @@
 
 namespace JMReferral\Referral;
 
+use JMReferral\Assessment\ReferralAssessmentController;
+use JMReferral\Assessment\ReferralAssessmentRepository;
+use JMReferral\Assessment\ReferralAssessmentService;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
-use JMReferral\Documents\ReferralDocumentService;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Services\ServiceTypeService;
@@ -22,7 +24,8 @@ class ReferralViewController
         private WorkflowStageService $workflow_stage_service,
         private ReferralService $referral_service,
         private AccessPolicy $access_policy,
-        private ReferralDocumentRepository $document_repository
+        private ReferralDocumentRepository $document_repository,
+        private ReferralAssessmentRepository $assessment_repository
     ) {
     }
 
@@ -112,6 +115,29 @@ class ReferralViewController
         }
 
         $document_errors = ReferralDocumentController::get_errors($referral_id);
+
+        $can_edit_assessment = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral);
+
+        $assessment           = $this->assessment_repository->find_by_referral($referral_id);
+        $assessment_form_state = ReferralAssessmentController::get_form_state($referral_id);
+        $assessment_errors    = $assessment_form_state['errors'];
+        $assessment_data      = ! empty($assessment_form_state['data'])
+            ? array_merge(
+                ReferralAssessmentService::empty_form_data(),
+                $assessment_form_state['data']
+            )
+            : ReferralAssessmentService::map_to_form_data($assessment);
+
+        $assessor_user_id = absint($assessment['assessor_user_id'] ?? 0);
+        if ($assessor_user_id <= 0) {
+            $assessor_user_id = get_current_user_id();
+        }
+        $assessor_name = $assessor_user_id > 0
+            ? $this->user_provider->get_display_name($assessor_user_id)
+            : '';
+
+        $assessment_outcomes = ReferralAssessmentService::outcome_labels();
 
         include JMRS_PLUGIN_PATH . 'templates/referrals/view.php';
     }

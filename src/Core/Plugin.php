@@ -3,6 +3,9 @@
 namespace JMReferral\Core;
 
 use JMReferral\Admin\Menu;
+use JMReferral\Assessment\ReferralAssessmentController;
+use JMReferral\Assessment\ReferralAssessmentRepository;
+use JMReferral\Assessment\ReferralAssessmentService;
 use JMReferral\Database\Migrator;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
@@ -98,6 +101,14 @@ class Plugin
             $this->access_policy
         );
 
+        $assessment_repository = new ReferralAssessmentRepository();
+        $assessment_service    = new ReferralAssessmentService(
+            $assessment_repository,
+            $repository,
+            $activity_service,
+            $this->access_policy
+        );
+
         $service_type_repository       = new ServiceTypeRepository();
         $this->service_type_service    = new ServiceTypeService($service_type_repository, $repository);
         $this->service_type_controller = new ServiceTypeController($this->service_type_service);
@@ -164,11 +175,18 @@ class Plugin
             $this->workflow_stage_service,
             $this->service,
             $this->access_policy,
-            $document_repository
+            $document_repository,
+            $assessment_repository
         );
 
         $document_controller = new ReferralDocumentController(
             $document_service,
+            $repository,
+            $this->access_policy
+        );
+
+        $assessment_controller = new ReferralAssessmentController(
+            $assessment_service,
             $repository,
             $this->access_policy
         );
@@ -180,6 +198,7 @@ class Plugin
         $note_controller->register();
         $export_controller->register();
         $document_controller->register();
+        $assessment_controller->register();
         $this->service_type_controller->register();
         $this->workflow_stage_controller->register();
     }
