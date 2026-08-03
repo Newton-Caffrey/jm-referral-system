@@ -47,6 +47,7 @@ class Roles
                     Capabilities::DOWNLOAD_DOCUMENTS,
                     Capabilities::VIEW_CARE_PLANS,
                     Capabilities::MANAGE_CARE_PLANS,
+                    Capabilities::REVIEW_CARE_PLANS,
                 ],
             ],
             self::CARE_COORDINATOR => [
@@ -62,6 +63,7 @@ class Roles
                     Capabilities::DOWNLOAD_DOCUMENTS,
                     Capabilities::VIEW_CARE_PLANS,
                     Capabilities::MANAGE_CARE_PLANS,
+                    Capabilities::REVIEW_CARE_PLANS,
                 ],
             ],
             self::ASSESSOR => [
@@ -74,6 +76,7 @@ class Roles
                     Capabilities::DOWNLOAD_DOCUMENTS,
                     Capabilities::VIEW_CARE_PLANS,
                     Capabilities::MANAGE_CARE_PLANS,
+                    Capabilities::REVIEW_CARE_PLANS,
                 ],
             ],
             self::SUPPORT_WORKER => [

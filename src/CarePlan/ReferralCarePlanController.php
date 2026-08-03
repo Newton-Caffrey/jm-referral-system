@@ -216,6 +216,9 @@ class ReferralCarePlanController
             'assessment_id' => isset($input['jmrs_care_plan_assessment_id'])
                 ? (string) absint(wp_unslash($input['jmrs_care_plan_assessment_id']))
                 : '',
+            'change_summary' => isset($input['jmrs_care_plan_change_summary'])
+                ? sanitize_textarea_field(wp_unslash($input['jmrs_care_plan_change_summary']))
+                : '',
         ];
 
         foreach (ReferralCarePlanService::LONGTEXT_FIELDS as $field) {

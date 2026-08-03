@@ -8,7 +8,11 @@ use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\Assessment\ReferralAssessmentService;
 use JMReferral\CarePlan\ReferralCarePlanController;
 use JMReferral\CarePlan\ReferralCarePlanRepository;
+use JMReferral\CarePlan\ReferralCarePlanReviewController;
+use JMReferral\CarePlan\ReferralCarePlanReviewRepository;
+use JMReferral\CarePlan\ReferralCarePlanReviewService;
 use JMReferral\CarePlan\ReferralCarePlanService;
+use JMReferral\CarePlan\ReferralCarePlanVersionRepository;
 use JMReferral\Database\Migrator;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
@@ -52,6 +56,7 @@ class Plugin
     private ?ServiceTypeService $service_type_service = null;
     private ?WorkflowStageController $workflow_stage_controller = null;
     private ?WorkflowStageService $workflow_stage_service = null;
+    private ?ReferralCarePlanReviewController $care_plan_review_controller = null;
 
     public function run(): void
     {
@@ -74,7 +79,8 @@ class Plugin
             $this->service_type_service,
             $this->workflow_stage_controller,
             $this->workflow_stage_service,
-            $this->access_policy
+            $this->access_policy,
+            $this->care_plan_review_controller
         );
         $menu->register();
     }
@@ -112,13 +118,24 @@ class Plugin
             $this->access_policy
         );
 
-        $care_plan_repository = new ReferralCarePlanRepository();
-        $care_plan_service    = new ReferralCarePlanService(
+        $care_plan_repository         = new ReferralCarePlanRepository();
+        $care_plan_version_repository = new ReferralCarePlanVersionRepository();
+        $care_plan_review_repository  = new ReferralCarePlanReviewRepository();
+        $care_plan_review_service     = new ReferralCarePlanReviewService(
+            $care_plan_review_repository,
+            $care_plan_version_repository,
+            $care_plan_repository,
+            $repository,
+            $activity_service,
+            $this->access_policy
+        );
+        $care_plan_service = new ReferralCarePlanService(
             $care_plan_repository,
             $repository,
             $assessment_repository,
             $activity_service,
-            $this->access_policy
+            $this->access_policy,
+            $care_plan_review_service
         );
 
         $service_type_repository       = new ServiceTypeRepository();
@@ -189,7 +206,8 @@ class Plugin
             $this->access_policy,
             $document_repository,
             $assessment_repository,
-            $care_plan_repository
+            $care_plan_repository,
+            $care_plan_review_service
         );
 
         $document_controller = new ReferralDocumentController(
@@ -210,6 +228,13 @@ class Plugin
             $this->access_policy
         );
 
+        $this->care_plan_review_controller = new ReferralCarePlanReviewController(
+            $care_plan_review_service,
+            $repository,
+            $this->access_policy,
+            $this->user_provider
+        );
+
         $create_controller->register();
         $this->list_controller->register();
         $this->edit_controller->register();
@@ -219,6 +244,7 @@ class Plugin
         $document_controller->register();
         $assessment_controller->register();
         $care_plan_controller->register();
+        $this->care_plan_review_controller->register();
         $this->service_type_controller->register();
         $this->workflow_stage_controller->register();
     }

@@ -7,6 +7,8 @@ use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\Assessment\ReferralAssessmentService;
 use JMReferral\CarePlan\ReferralCarePlanController;
 use JMReferral\CarePlan\ReferralCarePlanRepository;
+use JMReferral\CarePlan\ReferralCarePlanReviewController;
+use JMReferral\CarePlan\ReferralCarePlanReviewService;
 use JMReferral\CarePlan\ReferralCarePlanService;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
@@ -29,7 +31,8 @@ class ReferralViewController
         private AccessPolicy $access_policy,
         private ReferralDocumentRepository $document_repository,
         private ReferralAssessmentRepository $assessment_repository,
-        private ReferralCarePlanRepository $care_plan_repository
+        private ReferralCarePlanRepository $care_plan_repository,
+        private ReferralCarePlanReviewService $care_plan_review_service
     ) {
     }
 
@@ -147,6 +150,8 @@ class ReferralViewController
             && $this->access_policy->can_view_referral($referral);
         $can_manage_care_plan = Capabilities::current_user_can(Capabilities::MANAGE_CARE_PLANS)
             && $this->access_policy->can_edit_referral($referral);
+        $can_review_care_plan = Capabilities::current_user_can(Capabilities::REVIEW_CARE_PLANS)
+            && $this->access_policy->can_edit_referral($referral);
 
         $care_plan            = $this->care_plan_repository->find_by_referral($referral_id);
         $care_plan_form_state = ReferralCarePlanController::get_form_state($referral_id);
@@ -180,6 +185,42 @@ class ReferralViewController
 
         $care_plan_statuses = ReferralCarePlanService::status_labels();
         $has_assessment     = null !== $assessment;
+
+        $care_plan_review_outcomes = ReferralCarePlanReviewService::outcome_labels();
+        $care_plan_review_form_state = ReferralCarePlanReviewController::get_form_state($referral_id);
+        $care_plan_review_errors     = $care_plan_review_form_state['errors'];
+        $care_plan_review_data       = array_merge(
+            [
+                'review_date'      => '',
+                'outcome'          => '',
+                'notes'            => '',
+                'next_review_date' => '',
+            ],
+            $care_plan_review_form_state['data']
+        );
+
+        $care_plan_reviews = [];
+        $care_plan_versions = [];
+        if ($can_view_care_plan && null !== $care_plan) {
+            foreach ($this->care_plan_review_service->get_reviews_for_referral($referral_id) as $review_row) {
+                $reviewed_by_id = absint($review_row['reviewed_by'] ?? 0);
+                $review_row['reviewed_by_name'] = $reviewed_by_id > 0
+                    ? $this->user_provider->get_display_name($reviewed_by_id)
+                    : '';
+                $care_plan_reviews[] = $review_row;
+            }
+
+            foreach ($this->care_plan_review_service->get_versions_for_referral($referral_id) as $version_row) {
+                $version_created_by = absint($version_row['created_by'] ?? 0);
+                $version_row['created_by_name'] = $version_created_by > 0
+                    ? $this->user_provider->get_display_name($version_created_by)
+                    : '';
+                $version_row['view_url'] = ReferralCarePlanReviewController::get_version_url(
+                    absint($version_row['id'] ?? 0)
+                );
+                $care_plan_versions[] = $version_row;
+            }
+        }
 
         include JMRS_PLUGIN_PATH . 'templates/referrals/view.php';
     }

@@ -8,6 +8,10 @@ use JMReferral\Admin\Pages\ReferralsPage;
 use JMReferral\Admin\Pages\SettingsPage;
 use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\CarePlan\ReferralCarePlanRepository;
+use JMReferral\CarePlan\ReferralCarePlanReviewController;
+use JMReferral\CarePlan\ReferralCarePlanReviewRepository;
+use JMReferral\CarePlan\ReferralCarePlanReviewService;
+use JMReferral\CarePlan\ReferralCarePlanVersionRepository;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
@@ -42,6 +46,7 @@ class Menu
     private ReferralViewController $view_controller;
     private ServiceTypeController $service_type_controller;
     private WorkflowStageController $workflow_stage_controller;
+    private ?ReferralCarePlanReviewController $care_plan_review_controller;
 
     public function __construct(
         ?ReferralListController $list_controller = null,
@@ -54,7 +59,8 @@ class Menu
         ?ServiceTypeService $service_type_service = null,
         ?WorkflowStageController $workflow_stage_controller = null,
         ?WorkflowStageService $workflow_stage_service = null,
-        ?AccessPolicy $access_policy = null
+        ?AccessPolicy $access_policy = null,
+        ?ReferralCarePlanReviewController $care_plan_review_controller = null
     ) {
         $repository      = new ReferralRepository();
         $access_policy ??= new AccessPolicy();
@@ -112,6 +118,16 @@ class Menu
             );
         }
 
+        $care_plan_repository         = new ReferralCarePlanRepository();
+        $care_plan_review_service     = new ReferralCarePlanReviewService(
+            new ReferralCarePlanReviewRepository(),
+            new ReferralCarePlanVersionRepository(),
+            $care_plan_repository,
+            $repository,
+            $activity_service,
+            $access_policy
+        );
+
         $view_controller ??= new ReferralViewController(
             $repository,
             $activity_repository,
@@ -123,7 +139,8 @@ class Menu
             $access_policy,
             new ReferralDocumentRepository(),
             new ReferralAssessmentRepository(),
-            new ReferralCarePlanRepository()
+            $care_plan_repository,
+            $care_plan_review_service
         );
 
         $this->dashboard_page            = new DashboardPage($service);
@@ -134,6 +151,12 @@ class Menu
         $this->view_controller           = $view_controller;
         $this->service_type_controller   = $service_type_controller;
         $this->workflow_stage_controller = $workflow_stage_controller;
+        $this->care_plan_review_controller = $care_plan_review_controller ?? new ReferralCarePlanReviewController(
+            $care_plan_review_service,
+            $repository,
+            $access_policy,
+            $user_provider
+        );
     }
 
     public function register(): void
@@ -245,6 +268,15 @@ class Menu
             Capabilities::VIEW_REFERRALS,
             'jm-referrals-view',
             [$this->view_controller, 'render']
+        );
+
+        add_submenu_page(
+            null,
+            __('Care Plan Version', 'jm-referral-system'),
+            __('Care Plan Version', 'jm-referral-system'),
+            Capabilities::VIEW_CARE_PLANS,
+            'jm-referrals-care-plan-version',
+            [$this->care_plan_review_controller, 'render_version']
         );
 
         add_submenu_page(

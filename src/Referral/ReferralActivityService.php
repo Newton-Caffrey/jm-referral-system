@@ -179,6 +179,32 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that a care plan was reviewed.
+     */
+    public function log_care_plan_reviewed(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'care_plan_reviewed',
+            __('Care plan reviewed', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a care plan version snapshot was created.
+     */
+    public function log_care_plan_version_created(int $referral_id, int $version_number): void
+    {
+        $description = sprintf(
+            /* translators: %d: care plan version number */
+            __('Care plan version %d created', 'jm-referral-system'),
+            $version_number
+        );
+
+        $this->log($referral_id, 'care_plan_version_created', $description);
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void

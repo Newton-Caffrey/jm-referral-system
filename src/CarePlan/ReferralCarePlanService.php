@@ -98,10 +98,11 @@ class ReferralCarePlanService
     public static function empty_form_data(): array
     {
         $data = [
-            'plan_status'   => self::STATUS_DRAFT,
-            'start_date'    => '',
-            'review_date'   => '',
-            'assessment_id' => '',
+            'plan_status'     => self::STATUS_DRAFT,
+            'start_date'      => '',
+            'review_date'     => '',
+            'assessment_id'   => '',
+            'change_summary'  => '',
         ];
 
         foreach (array_merge(self::LONGTEXT_FIELDS, self::SHORTTEXT_FIELDS) as $field) {
@@ -140,7 +141,8 @@ class ReferralCarePlanService
         private ReferralRepository $referral_repository,
         private ReferralAssessmentRepository $assessment_repository,
         private ReferralActivityService $activity_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private ReferralCarePlanReviewService $review_service
     ) {
     }
 
@@ -284,6 +286,14 @@ class ReferralCarePlanService
                 'created' => true,
             ];
         }
+
+        $change_summary = (string) ($input['change_summary'] ?? '');
+        $this->review_service->create_version_if_changed(
+            $existing,
+            $payload,
+            $change_summary,
+            $referral_id
+        );
 
         $updated = $this->care_plan_repository->update(
             absint($existing['id'] ?? 0),

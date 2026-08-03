@@ -85,6 +85,26 @@ class Tables
     }
 
     /**
+     * Returns the care plan versions table name with the WordPress prefix.
+     */
+    public static function care_plan_versions_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_care_plan_versions';
+    }
+
+    /**
+     * Returns the care plan reviews table name with the WordPress prefix.
+     */
+    public static function care_plan_reviews_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_care_plan_reviews';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -103,6 +123,8 @@ class Tables
         self::create_referral_documents_table($charset);
         self::create_referral_assessments_table($charset);
         self::create_referral_care_plans_table($charset);
+        self::create_care_plan_versions_table($charset);
+        self::create_care_plan_reviews_table($charset);
     }
 
     /**
@@ -341,6 +363,57 @@ class Tables
             KEY created_by (created_by),
             KEY approved_by (approved_by),
             KEY plan_status (plan_status)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the care plan versions table.
+     */
+    private static function create_care_plan_versions_table(string $charset): void
+    {
+        $table = self::care_plan_versions_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            care_plan_id BIGINT UNSIGNED NOT NULL,
+            version_number INT UNSIGNED NOT NULL,
+            snapshot LONGTEXT NOT NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            change_summary TEXT NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY care_plan_version (care_plan_id, version_number),
+            KEY care_plan_id (care_plan_id),
+            KEY created_by (created_by),
+            KEY created_at (created_at)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the care plan reviews table.
+     */
+    private static function create_care_plan_reviews_table(string $charset): void
+    {
+        $table = self::care_plan_reviews_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            care_plan_id BIGINT UNSIGNED NOT NULL,
+            reviewed_by BIGINT UNSIGNED NOT NULL,
+            review_date DATE NOT NULL,
+            outcome VARCHAR(50) NOT NULL,
+            notes LONGTEXT NULL,
+            next_review_date DATE NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY care_plan_id (care_plan_id),
+            KEY reviewed_by (reviewed_by),
+            KEY review_date (review_date),
+            KEY outcome (outcome)
         ) {$charset};";
 
         dbDelta($sql);

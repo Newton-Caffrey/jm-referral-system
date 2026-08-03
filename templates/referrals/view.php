@@ -64,6 +64,7 @@ $jmrs_assessment_has_value = static function ( string $value ): bool {
 
 $can_view_care_plan           = ! empty( $can_view_care_plan );
 $can_manage_care_plan         = ! empty( $can_manage_care_plan );
+$can_review_care_plan         = ! empty( $can_review_care_plan );
 $care_plan                    = is_array( $care_plan ?? null ) ? $care_plan : null;
 $care_plan_data               = is_array( $care_plan_data ?? null ) ? $care_plan_data : array();
 $care_plan_errors             = is_array( $care_plan_errors ?? null ) ? $care_plan_errors : array();
@@ -72,9 +73,18 @@ $has_assessment               = ! empty( $has_assessment );
 $care_plan_statuses           = is_array( $care_plan_statuses ?? null ) ? $care_plan_statuses : array();
 $care_plan_created_by_name    = isset( $care_plan_created_by_name ) ? (string) $care_plan_created_by_name : '';
 $care_plan_approved_by_name   = isset( $care_plan_approved_by_name ) ? (string) $care_plan_approved_by_name : '';
+$care_plan_review_outcomes    = is_array( $care_plan_review_outcomes ?? null ) ? $care_plan_review_outcomes : array();
+$care_plan_review_data        = is_array( $care_plan_review_data ?? null ) ? $care_plan_review_data : array();
+$care_plan_review_errors      = is_array( $care_plan_review_errors ?? null ) ? $care_plan_review_errors : array();
+$care_plan_reviews            = is_array( $care_plan_reviews ?? null ) ? $care_plan_reviews : array();
+$care_plan_versions           = is_array( $care_plan_versions ?? null ) ? $care_plan_versions : array();
 
 $jmrs_care_plan_value = static function ( string $key ) use ( $care_plan_data ): string {
 	return (string) ( $care_plan_data[ $key ] ?? '' );
+};
+
+$jmrs_care_plan_review_value = static function ( string $key ) use ( $care_plan_review_data ): string {
+	return (string) ( $care_plan_review_data[ $key ] ?? '' );
 };
 
 $referral_id      = absint( $referral['id'] ?? 0 );
@@ -716,6 +726,23 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 								</td>
 							</tr>
 						<?php endforeach; ?>
+						<?php if ( null !== $care_plan ) : ?>
+							<tr>
+								<th scope="row">
+									<label for="jmrs_care_plan_change_summary"><?php echo esc_html__( 'Change Summary', 'jm-referral-system' ); ?></label>
+								</th>
+								<td>
+									<textarea
+										name="jmrs_care_plan_change_summary"
+										id="jmrs_care_plan_change_summary"
+										class="large-text"
+										rows="2"
+										placeholder="<?php echo esc_attr__( 'Updated medication support and visit frequency after review.', 'jm-referral-system' ); ?>"
+									><?php echo esc_textarea( $jmrs_care_plan_value( 'change_summary' ) ); ?></textarea>
+									<p class="description"><?php echo esc_html__( 'Optional. Stored with the previous version when this care plan is updated.', 'jm-referral-system' ); ?></p>
+								</td>
+							</tr>
+						<?php endif; ?>
 					</tbody>
 				</table>
 
@@ -817,6 +844,189 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 			</div>
 		<?php else : ?>
 			<p><?php echo esc_html__( 'No care plan available.', 'jm-referral-system' ); ?></p>
+		<?php endif; ?>
+
+		<?php if ( null !== $care_plan && $can_review_care_plan ) : ?>
+			<h2><?php echo esc_html__( 'Care Plan Review', 'jm-referral-system' ); ?></h2>
+			<form method="post" action="">
+				<?php wp_nonce_field( 'jmrs_care_plan_review_' . $referral_id, 'jmrs_care_plan_review_nonce' ); ?>
+				<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_plan_review_date"><?php echo esc_html__( 'Review Date', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="date"
+									class="regular-text"
+									name="jmrs_care_plan_review_date"
+									id="jmrs_care_plan_review_date"
+									value="<?php echo esc_attr( $jmrs_care_plan_review_value( 'review_date' ) ); ?>"
+									required
+								/>
+								<?php if ( isset( $care_plan_review_errors['review_date'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_plan_review_errors['review_date'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_plan_review_outcome"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<select name="jmrs_care_plan_review_outcome" id="jmrs_care_plan_review_outcome" required>
+									<option value=""><?php echo esc_html__( 'Select outcome', 'jm-referral-system' ); ?></option>
+									<?php foreach ( $care_plan_review_outcomes as $outcome_value => $outcome_label ) : ?>
+										<option value="<?php echo esc_attr( (string) $outcome_value ); ?>" <?php selected( $jmrs_care_plan_review_value( 'outcome' ), (string) $outcome_value ); ?>>
+											<?php echo esc_html( (string) $outcome_label ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<?php if ( isset( $care_plan_review_errors['outcome'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_plan_review_errors['outcome'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_plan_review_notes"><?php echo esc_html__( 'Review Notes', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<textarea
+									name="jmrs_care_plan_review_notes"
+									id="jmrs_care_plan_review_notes"
+									class="large-text"
+									rows="4"
+								><?php echo esc_textarea( $jmrs_care_plan_review_value( 'notes' ) ); ?></textarea>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_plan_review_next_date"><?php echo esc_html__( 'Next Review Date', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="date"
+									class="regular-text"
+									name="jmrs_care_plan_review_next_date"
+									id="jmrs_care_plan_review_next_date"
+									value="<?php echo esc_attr( $jmrs_care_plan_review_value( 'next_review_date' ) ); ?>"
+								/>
+								<?php if ( isset( $care_plan_review_errors['next_review_date'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_plan_review_errors['next_review_date'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<?php
+				submit_button(
+					__( 'Add Review', 'jm-referral-system' ),
+					'secondary',
+					'jmrs_submit_care_plan_review'
+				);
+				?>
+			</form>
+		<?php endif; ?>
+
+		<?php if ( null !== $care_plan && $can_view_care_plan ) : ?>
+			<h2><?php echo esc_html__( 'Care Plan Reviews', 'jm-referral-system' ); ?></h2>
+			<?php if ( empty( $care_plan_reviews ) ) : ?>
+				<p><?php echo esc_html__( 'No care plan reviews recorded yet.', 'jm-referral-system' ); ?></p>
+			<?php else : ?>
+				<table class="wp-list-table widefat fixed striped table-view-list">
+					<thead>
+						<tr>
+							<th scope="col"><?php echo esc_html__( 'Review Date', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Reviewed By', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Notes', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Next Review Date', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Created Date', 'jm-referral-system' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $care_plan_reviews as $review_row ) : ?>
+							<?php
+							$review_date_raw      = (string) ( $review_row['review_date'] ?? '' );
+							$next_review_raw      = (string) ( $review_row['next_review_date'] ?? '' );
+							$created_at_raw       = (string) ( $review_row['created_at'] ?? '' );
+							$outcome_key          = (string) ( $review_row['outcome'] ?? '' );
+							$outcome_label        = isset( $care_plan_review_outcomes[ $outcome_key ] )
+								? (string) $care_plan_review_outcomes[ $outcome_key ]
+								: ucfirst( str_replace( '_', ' ', $outcome_key ) );
+							$reviewed_by_name     = (string) ( $review_row['reviewed_by_name'] ?? '' );
+							$review_notes         = (string) ( $review_row['notes'] ?? '' );
+							$review_date_display  = '' !== $review_date_raw
+								? mysql2date( get_option( 'date_format' ), $review_date_raw )
+								: '';
+							$next_review_display  = '' !== $next_review_raw
+								? mysql2date( get_option( 'date_format' ), $next_review_raw )
+								: '—';
+							$created_display      = '' !== $created_at_raw
+								? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $created_at_raw )
+								: '';
+							?>
+							<tr>
+								<td><?php echo esc_html( $review_date_display ); ?></td>
+								<td><?php echo esc_html( $outcome_label ); ?></td>
+								<td><?php echo '' !== $reviewed_by_name ? esc_html( $reviewed_by_name ) : esc_html__( 'Unknown', 'jm-referral-system' ); ?></td>
+								<td><?php echo '' !== trim( $review_notes ) ? nl2br( esc_html( $review_notes ) ) : '—'; ?></td>
+								<td><?php echo esc_html( $next_review_display ); ?></td>
+								<td><?php echo esc_html( $created_display ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+
+			<h2><?php echo esc_html__( 'Care Plan Version History', 'jm-referral-system' ); ?></h2>
+			<?php if ( empty( $care_plan_versions ) ) : ?>
+				<p><?php echo esc_html__( 'No previous versions yet. A snapshot is created when the care plan is updated.', 'jm-referral-system' ); ?></p>
+			<?php else : ?>
+				<table class="wp-list-table widefat fixed striped table-view-list">
+					<thead>
+						<tr>
+							<th scope="col"><?php echo esc_html__( 'Version', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Created By', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Created Date', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Change Summary', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'View Snapshot', 'jm-referral-system' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $care_plan_versions as $version_row ) : ?>
+							<?php
+							$version_number     = absint( $version_row['version_number'] ?? 0 );
+							$version_created_by = (string) ( $version_row['created_by_name'] ?? '' );
+							$version_created_at = (string) ( $version_row['created_at'] ?? '' );
+							$version_summary    = (string) ( $version_row['change_summary'] ?? '' );
+							$version_view_url   = (string) ( $version_row['view_url'] ?? '' );
+							$version_created_display = '' !== $version_created_at
+								? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $version_created_at )
+								: '';
+							?>
+							<tr>
+								<td><?php echo esc_html( (string) $version_number ); ?></td>
+								<td><?php echo '' !== $version_created_by ? esc_html( $version_created_by ) : esc_html__( 'Unknown', 'jm-referral-system' ); ?></td>
+								<td><?php echo esc_html( $version_created_display ); ?></td>
+								<td><?php echo '' !== trim( $version_summary ) ? esc_html( $version_summary ) : '—'; ?></td>
+								<td>
+									<?php if ( '' !== $version_view_url ) : ?>
+										<a href="<?php echo esc_url( $version_view_url ); ?>">
+											<?php echo esc_html__( 'View Snapshot', 'jm-referral-system' ); ?>
+										</a>
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
 		<?php endif; ?>
 	<?php endif; ?>
 

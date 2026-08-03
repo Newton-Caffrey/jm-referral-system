@@ -60,6 +60,35 @@ class ReferralCarePlanRepository
     /**
      * @return array<string, mixed>|null
      */
+    public function find(int $id): ?array
+    {
+        global $wpdb;
+
+        if ($id <= 0) {
+            return null;
+        }
+
+        $table   = Tables::referral_care_plans_table();
+        $columns = self::SELECT_COLUMNS;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT {$columns}
+                FROM {$table}
+                WHERE id = %d
+                LIMIT 1",
+                $id
+            ),
+            ARRAY_A
+        );
+
+        return is_array($row) ? $row : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
     public function find_by_referral(int $referral_id): ?array
     {
         global $wpdb;
