@@ -6,6 +6,7 @@ use JMReferral\Admin\Pages\AddReferralPage;
 use JMReferral\Admin\Pages\DashboardPage;
 use JMReferral\Admin\Pages\ReferralsPage;
 use JMReferral\Admin\Pages\SettingsPage;
+use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
 use JMReferral\Permissions\AccessPolicy;
@@ -117,7 +118,8 @@ class Menu
             $service_type_service,
             $workflow_stage_service,
             $service,
-            $access_policy
+            $access_policy,
+            new ReferralDocumentRepository()
         );
 
         $this->dashboard_page            = new DashboardPage($service);

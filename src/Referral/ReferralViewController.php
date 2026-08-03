@@ -2,6 +2,9 @@
 
 namespace JMReferral\Referral;
 
+use JMReferral\Documents\ReferralDocumentController;
+use JMReferral\Documents\ReferralDocumentRepository;
+use JMReferral\Documents\ReferralDocumentService;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Services\ServiceTypeService;
@@ -18,7 +21,8 @@ class ReferralViewController
         private ServiceTypeService $service_type_service,
         private WorkflowStageService $workflow_stage_service,
         private ReferralService $referral_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private ReferralDocumentRepository $document_repository
     ) {
     }
 
@@ -89,6 +93,25 @@ class ReferralViewController
         $note_form_state = ReferralNoteController::get_form_state($referral_id);
         $note_value      = $note_form_state['note'];
         $note_errors     = $note_form_state['errors'];
+
+        $can_upload_documents   = Capabilities::current_user_can(Capabilities::UPLOAD_DOCUMENTS);
+        $can_download_documents = Capabilities::current_user_can(Capabilities::DOWNLOAD_DOCUMENTS);
+        $documents              = [];
+
+        if ($can_download_documents) {
+            foreach ($this->document_repository->get_by_referral_id($referral_id) as $document_row) {
+                $uploader_id                    = absint($document_row['uploaded_by'] ?? 0);
+                $document_row['uploaded_by_name'] = $uploader_id > 0
+                    ? $this->user_provider->get_display_name($uploader_id)
+                    : '';
+                $document_row['download_url'] = ReferralDocumentController::get_download_url(
+                    absint($document_row['id'] ?? 0)
+                );
+                $documents[] = $document_row;
+            }
+        }
+
+        $document_errors = ReferralDocumentController::get_errors($referral_id);
 
         include JMRS_PLUGIN_PATH . 'templates/referrals/view.php';
     }

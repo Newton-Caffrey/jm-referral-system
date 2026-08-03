@@ -10,7 +10,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '1.9.0';
+    public const DB_VERSION = '2.0.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -53,6 +53,11 @@ class Migrator
         }
 
         if (version_compare($from_version, '1.9.0', '<')) {
+            Capabilities::grant_to_administrators();
+            Roles::register();
+        }
+
+        if (version_compare($from_version, '2.0.0', '<')) {
             Capabilities::grant_to_administrators();
             Roles::register();
         }

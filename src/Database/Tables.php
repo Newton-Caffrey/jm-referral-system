@@ -55,6 +55,16 @@ class Tables
     }
 
     /**
+     * Returns the referral documents table name with the WordPress prefix.
+     */
+    public static function referral_documents_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_documents';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -70,6 +80,7 @@ class Tables
         self::create_referral_notes_table($charset);
         self::create_service_types_table($charset);
         self::create_workflow_stages_table($charset);
+        self::create_referral_documents_table($charset);
     }
 
     /**
@@ -199,6 +210,31 @@ class Tables
             UNIQUE KEY slug (slug),
             KEY status (status),
             KEY stage_order (stage_order)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the referral documents table.
+     */
+    private static function create_referral_documents_table(string $charset): void
+    {
+        $table = self::referral_documents_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            attachment_id BIGINT UNSIGNED NOT NULL,
+            original_name VARCHAR(255) NOT NULL,
+            mime_type VARCHAR(100) NOT NULL,
+            file_size BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            uploaded_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY attachment_id (attachment_id),
+            KEY uploaded_by (uploaded_by)
         ) {$charset};";
 
         dbDelta($sql);

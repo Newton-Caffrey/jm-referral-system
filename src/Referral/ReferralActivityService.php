@@ -105,6 +105,20 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that a document was uploaded.
+     */
+    public function log_document_uploaded(int $referral_id, string $original_filename): void
+    {
+        $description = sprintf(
+            /* translators: %s: original uploaded filename */
+            __('Document uploaded: %s', 'jm-referral-system'),
+            $original_filename
+        );
+
+        $this->log($referral_id, 'document_uploaded', $description);
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void

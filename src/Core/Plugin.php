@@ -4,6 +4,9 @@ namespace JMReferral\Core;
 
 use JMReferral\Admin\Menu;
 use JMReferral\Database\Migrator;
+use JMReferral\Documents\ReferralDocumentController;
+use JMReferral\Documents\ReferralDocumentRepository;
+use JMReferral\Documents\ReferralDocumentService;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
 use JMReferral\Permissions\AccessPolicy;
@@ -87,6 +90,14 @@ class Plugin
         $this->user_provider = new UserProvider();
         $this->filters       = new ReferralFilters($this->user_provider, $this->access_policy);
 
+        $document_repository = new ReferralDocumentRepository();
+        $document_service    = new ReferralDocumentService(
+            $document_repository,
+            $repository,
+            $activity_service,
+            $this->access_policy
+        );
+
         $service_type_repository       = new ServiceTypeRepository();
         $this->service_type_service    = new ServiceTypeService($service_type_repository, $repository);
         $this->service_type_controller = new ServiceTypeController($this->service_type_service);
@@ -152,6 +163,13 @@ class Plugin
             $this->service_type_service,
             $this->workflow_stage_service,
             $this->service,
+            $this->access_policy,
+            $document_repository
+        );
+
+        $document_controller = new ReferralDocumentController(
+            $document_service,
+            $repository,
             $this->access_policy
         );
 
@@ -161,6 +179,7 @@ class Plugin
         $this->view_controller->register();
         $note_controller->register();
         $export_controller->register();
+        $document_controller->register();
         $this->service_type_controller->register();
         $this->workflow_stage_controller->register();
     }

@@ -13,6 +13,9 @@
  * @var array<int, array<string, mixed>> $workflow_stages  Selectable workflow stages.
  * @var string                           $note_value       Sticky note form value.
  * @var array<string, string>            $note_errors      Note form validation errors.
+ * @var array<int, array<string, mixed>> $documents        Document rows for the referral.
+ * @var bool                             $can_upload_documents Whether the user may upload documents.
+ * @var bool                             $can_download_documents Whether the user may download documents.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -28,6 +31,9 @@ $workflow_stage_name = isset( $workflow_stage_name ) ? (string) $workflow_stage_
 $workflow_stages  = is_array( $workflow_stages ?? null ) ? $workflow_stages : array();
 $note_value       = isset( $note_value ) ? (string) $note_value : '';
 $note_errors      = is_array( $note_errors ?? null ) ? $note_errors : array();
+$documents        = is_array( $documents ?? null ) ? $documents : array();
+$can_upload_documents   = ! empty( $can_upload_documents );
+$can_download_documents = ! empty( $can_download_documents );
 
 $referral_id      = absint( $referral['id'] ?? 0 );
 $referral_number  = (string) ( $referral['referral_number'] ?? '' );
@@ -250,6 +256,98 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 		);
 		?>
 	</form>
+
+	<?php if ( ! empty( $can_download_documents ) || ! empty( $can_upload_documents ) ) : ?>
+		<h2><?php echo esc_html__( 'Documents', 'jm-referral-system' ); ?></h2>
+
+		<?php if ( ! empty( $can_download_documents ) ) : ?>
+			<?php if ( empty( $documents ) ) : ?>
+				<p><?php echo esc_html__( 'No documents uploaded yet.', 'jm-referral-system' ); ?></p>
+			<?php else : ?>
+				<table class="wp-list-table widefat fixed striped table-view-list">
+					<thead>
+						<tr>
+							<th scope="col"><?php echo esc_html__( 'Filename', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'File Type', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'File Size', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Uploaded By', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Uploaded Date', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $documents as $document_row ) : ?>
+							<?php
+							$doc_name      = (string) ( $document_row['original_name'] ?? '' );
+							$doc_mime      = (string) ( $document_row['mime_type'] ?? '' );
+							$doc_size      = absint( $document_row['file_size'] ?? 0 );
+							$doc_uploader  = (string) ( $document_row['uploaded_by_name'] ?? '' );
+							$doc_created   = (string) ( $document_row['created_at'] ?? '' );
+							$doc_display   = '' !== $doc_created
+								? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $doc_created )
+								: '';
+							$download_url  = (string) ( $document_row['download_url'] ?? '' );
+							$size_display  = size_format( $doc_size );
+							?>
+							<tr>
+								<td><?php echo esc_html( $doc_name ); ?></td>
+								<td><?php echo esc_html( $doc_mime ); ?></td>
+								<td><?php echo esc_html( is_string( $size_display ) ? $size_display : (string) $doc_size ); ?></td>
+								<td><?php echo '' !== $doc_uploader ? esc_html( $doc_uploader ) : esc_html__( 'Unknown', 'jm-referral-system' ); ?></td>
+								<td><?php echo esc_html( $doc_display ); ?></td>
+								<td>
+									<?php if ( '' !== $download_url ) : ?>
+										<a href="<?php echo esc_url( $download_url ); ?>">
+											<?php echo esc_html__( 'Download', 'jm-referral-system' ); ?>
+										</a>
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+		<?php endif; ?>
+
+		<?php if ( ! empty( $can_upload_documents ) ) : ?>
+			<form method="post" action="" enctype="multipart/form-data">
+				<?php wp_nonce_field( 'jmrs_upload_document_' . $referral_id, 'jmrs_upload_document_nonce' ); ?>
+				<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_document"><?php echo esc_html__( 'Upload Document', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="file"
+									name="jmrs_document"
+									id="jmrs_document"
+									accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
+									required
+								/>
+								<p class="description">
+									<?php echo esc_html__( 'Allowed types: PDF, DOC, DOCX, JPG, JPEG, PNG. Maximum size: 10 MB.', 'jm-referral-system' ); ?>
+								</p>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<?php
+				submit_button(
+					__( 'Upload Document', 'jm-referral-system' ),
+					'secondary',
+					'jmrs_upload_document'
+				);
+				?>
+			</form>
+		<?php endif; ?>
+	<?php endif; ?>
 
 	<h2><?php echo esc_html__( 'Activity Timeline', 'jm-referral-system' ); ?></h2>
 	<table class="wp-list-table widefat fixed striped table-view-list">

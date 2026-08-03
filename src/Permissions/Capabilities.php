@@ -12,6 +12,8 @@ class Capabilities
     public const ASSIGN_REFERRALS = 'jmrs_assign_referrals';
     public const ADD_NOTES = 'jmrs_add_notes';
     public const EXPORT_REFERRALS = 'jmrs_export_referrals';
+    public const UPLOAD_DOCUMENTS = 'jmrs_upload_documents';
+    public const DOWNLOAD_DOCUMENTS = 'jmrs_download_documents';
     public const MANAGE_SERVICE_TYPES = 'jmrs_manage_service_types';
     public const MANAGE_WORKFLOW_STAGES = 'jmrs_manage_workflow_stages';
     public const MANAGE_SETTINGS = 'jmrs_manage_settings';
@@ -32,6 +34,8 @@ class Capabilities
             self::ASSIGN_REFERRALS,
             self::ADD_NOTES,
             self::EXPORT_REFERRALS,
+            self::UPLOAD_DOCUMENTS,
+            self::DOWNLOAD_DOCUMENTS,
             self::MANAGE_SERVICE_TYPES,
             self::MANAGE_WORKFLOW_STAGES,
             self::MANAGE_SETTINGS,
