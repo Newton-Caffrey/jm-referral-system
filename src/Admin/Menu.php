@@ -7,6 +7,7 @@ use JMReferral\Admin\Pages\DashboardPage;
 use JMReferral\Admin\Pages\ReferralsPage;
 use JMReferral\Admin\Pages\SettingsPage;
 use JMReferral\Assessment\ReferralAssessmentRepository;
+use JMReferral\CarePlan\ReferralCarePlanRepository;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
@@ -121,7 +122,8 @@ class Menu
             $service,
             $access_policy,
             new ReferralDocumentRepository(),
-            new ReferralAssessmentRepository()
+            new ReferralAssessmentRepository(),
+            new ReferralCarePlanRepository()
         );
 
         $this->dashboard_page            = new DashboardPage($service);

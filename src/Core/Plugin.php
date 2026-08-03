@@ -6,6 +6,9 @@ use JMReferral\Admin\Menu;
 use JMReferral\Assessment\ReferralAssessmentController;
 use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\Assessment\ReferralAssessmentService;
+use JMReferral\CarePlan\ReferralCarePlanController;
+use JMReferral\CarePlan\ReferralCarePlanRepository;
+use JMReferral\CarePlan\ReferralCarePlanService;
 use JMReferral\Database\Migrator;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
@@ -109,6 +112,15 @@ class Plugin
             $this->access_policy
         );
 
+        $care_plan_repository = new ReferralCarePlanRepository();
+        $care_plan_service    = new ReferralCarePlanService(
+            $care_plan_repository,
+            $repository,
+            $assessment_repository,
+            $activity_service,
+            $this->access_policy
+        );
+
         $service_type_repository       = new ServiceTypeRepository();
         $this->service_type_service    = new ServiceTypeService($service_type_repository, $repository);
         $this->service_type_controller = new ServiceTypeController($this->service_type_service);
@@ -176,7 +188,8 @@ class Plugin
             $this->service,
             $this->access_policy,
             $document_repository,
-            $assessment_repository
+            $assessment_repository,
+            $care_plan_repository
         );
 
         $document_controller = new ReferralDocumentController(
@@ -191,6 +204,12 @@ class Plugin
             $this->access_policy
         );
 
+        $care_plan_controller = new ReferralCarePlanController(
+            $care_plan_service,
+            $repository,
+            $this->access_policy
+        );
+
         $create_controller->register();
         $this->list_controller->register();
         $this->edit_controller->register();
@@ -199,6 +218,7 @@ class Plugin
         $export_controller->register();
         $document_controller->register();
         $assessment_controller->register();
+        $care_plan_controller->register();
         $this->service_type_controller->register();
         $this->workflow_stage_controller->register();
     }

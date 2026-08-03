@@ -75,6 +75,16 @@ class Tables
     }
 
     /**
+     * Returns the referral care plans table name with the WordPress prefix.
+     */
+    public static function referral_care_plans_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_care_plans';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -92,6 +102,7 @@ class Tables
         self::create_workflow_stages_table($charset);
         self::create_referral_documents_table($charset);
         self::create_referral_assessments_table($charset);
+        self::create_referral_care_plans_table($charset);
     }
 
     /**
@@ -287,6 +298,49 @@ class Tables
             UNIQUE KEY referral_id (referral_id),
             KEY assessor_user_id (assessor_user_id),
             KEY outcome (outcome)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the referral care plans table.
+     */
+    private static function create_referral_care_plans_table(string $charset): void
+    {
+        $table = self::referral_care_plans_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            assessment_id BIGINT UNSIGNED NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            approved_by BIGINT UNSIGNED NULL,
+            plan_status VARCHAR(50) NOT NULL DEFAULT 'draft',
+            start_date DATE NULL,
+            review_date DATE NULL,
+            visit_frequency VARCHAR(100) NULL,
+            visit_duration VARCHAR(100) NULL,
+            preferred_visit_times LONGTEXT NULL,
+            personal_care_tasks LONGTEXT NULL,
+            mobility_support LONGTEXT NULL,
+            medication_support LONGTEXT NULL,
+            nutrition_support LONGTEXT NULL,
+            communication_support LONGTEXT NULL,
+            continence_support LONGTEXT NULL,
+            social_support LONGTEXT NULL,
+            equipment_required LONGTEXT NULL,
+            risks_and_safeguards LONGTEXT NULL,
+            goals LONGTEXT NULL,
+            additional_instructions LONGTEXT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY referral_id (referral_id),
+            KEY assessment_id (assessment_id),
+            KEY created_by (created_by),
+            KEY approved_by (approved_by),
+            KEY plan_status (plan_status)
         ) {$charset};";
 
         dbDelta($sql);

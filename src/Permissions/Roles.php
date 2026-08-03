@@ -45,6 +45,8 @@ class Roles
                     Capabilities::EXPORT_REFERRALS,
                     Capabilities::UPLOAD_DOCUMENTS,
                     Capabilities::DOWNLOAD_DOCUMENTS,
+                    Capabilities::VIEW_CARE_PLANS,
+                    Capabilities::MANAGE_CARE_PLANS,
                 ],
             ],
             self::CARE_COORDINATOR => [
@@ -58,6 +60,8 @@ class Roles
                     Capabilities::ADD_NOTES,
                     Capabilities::UPLOAD_DOCUMENTS,
                     Capabilities::DOWNLOAD_DOCUMENTS,
+                    Capabilities::VIEW_CARE_PLANS,
+                    Capabilities::MANAGE_CARE_PLANS,
                 ],
             ],
             self::ASSESSOR => [
@@ -68,6 +72,8 @@ class Roles
                     Capabilities::ADD_NOTES,
                     Capabilities::UPLOAD_DOCUMENTS,
                     Capabilities::DOWNLOAD_DOCUMENTS,
+                    Capabilities::VIEW_CARE_PLANS,
+                    Capabilities::MANAGE_CARE_PLANS,
                 ],
             ],
             self::SUPPORT_WORKER => [
@@ -76,6 +82,7 @@ class Roles
                     Capabilities::VIEW_REFERRALS,
                     Capabilities::ADD_NOTES,
                     Capabilities::DOWNLOAD_DOCUMENTS,
+                    Capabilities::VIEW_CARE_PLANS,
                 ],
             ],
         ];

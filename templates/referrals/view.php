@@ -62,6 +62,21 @@ $jmrs_assessment_has_value = static function ( string $value ): bool {
 	return '' !== trim( $value );
 };
 
+$can_view_care_plan           = ! empty( $can_view_care_plan );
+$can_manage_care_plan         = ! empty( $can_manage_care_plan );
+$care_plan                    = is_array( $care_plan ?? null ) ? $care_plan : null;
+$care_plan_data               = is_array( $care_plan_data ?? null ) ? $care_plan_data : array();
+$care_plan_errors             = is_array( $care_plan_errors ?? null ) ? $care_plan_errors : array();
+$show_care_plan_form          = ! empty( $show_care_plan_form );
+$has_assessment               = ! empty( $has_assessment );
+$care_plan_statuses           = is_array( $care_plan_statuses ?? null ) ? $care_plan_statuses : array();
+$care_plan_created_by_name    = isset( $care_plan_created_by_name ) ? (string) $care_plan_created_by_name : '';
+$care_plan_approved_by_name   = isset( $care_plan_approved_by_name ) ? (string) $care_plan_approved_by_name : '';
+
+$jmrs_care_plan_value = static function ( string $key ) use ( $care_plan_data ): string {
+	return (string) ( $care_plan_data[ $key ] ?? '' );
+};
+
 $referral_id      = absint( $referral['id'] ?? 0 );
 $referral_number  = (string) ( $referral['referral_number'] ?? '' );
 $client_name      = (string) ( $referral['client_name'] ?? '' );
@@ -575,6 +590,234 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 			);
 			?>
 		</form>
+	<?php endif; ?>
+
+	<?php if ( $can_view_care_plan ) : ?>
+		<?php
+		$care_plan_status_value = $jmrs_care_plan_value( 'plan_status' );
+		$care_plan_status_label = isset( $care_plan_statuses[ $care_plan_status_value ] )
+			? (string) $care_plan_statuses[ $care_plan_status_value ]
+			: ucfirst( str_replace( '_', ' ', $care_plan_status_value ) );
+
+		$care_plan_content_fields = array(
+			'visit_frequency'         => __( 'Visit Frequency', 'jm-referral-system' ),
+			'visit_duration'          => __( 'Visit Duration', 'jm-referral-system' ),
+			'preferred_visit_times'   => __( 'Preferred Visit Times', 'jm-referral-system' ),
+			'personal_care_tasks'     => __( 'Personal Care Tasks', 'jm-referral-system' ),
+			'mobility_support'        => __( 'Mobility Support', 'jm-referral-system' ),
+			'medication_support'      => __( 'Medication Support', 'jm-referral-system' ),
+			'nutrition_support'       => __( 'Nutrition Support', 'jm-referral-system' ),
+			'communication_support'   => __( 'Communication Support', 'jm-referral-system' ),
+			'continence_support'      => __( 'Continence Support', 'jm-referral-system' ),
+			'social_support'          => __( 'Social Support', 'jm-referral-system' ),
+			'equipment_required'      => __( 'Equipment Required', 'jm-referral-system' ),
+			'risks_and_safeguards'    => __( 'Risks and Safeguards', 'jm-referral-system' ),
+			'goals'                   => __( 'Goals', 'jm-referral-system' ),
+			'additional_instructions' => __( 'Additional Instructions', 'jm-referral-system' ),
+		);
+		$care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
+		?>
+		<h2><?php echo esc_html__( 'Care Plan', 'jm-referral-system' ); ?></h2>
+
+		<?php if ( $show_care_plan_form ) : ?>
+			<form method="post" action="">
+				<?php wp_nonce_field( 'jmrs_save_care_plan_' . $referral_id, 'jmrs_save_care_plan_nonce' ); ?>
+				<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+				<input type="hidden" name="jmrs_care_plan_assessment_id" value="<?php echo esc_attr( $jmrs_care_plan_value( 'assessment_id' ) ); ?>" />
+
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_plan_status"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<select name="jmrs_care_plan_status" id="jmrs_care_plan_status">
+									<?php foreach ( $care_plan_statuses as $status_value => $status_label ) : ?>
+										<option value="<?php echo esc_attr( (string) $status_value ); ?>" <?php selected( $care_plan_status_value, (string) $status_value ); ?>>
+											<?php echo esc_html( (string) $status_label ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<?php if ( isset( $care_plan_errors['plan_status'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_plan_errors['plan_status'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_plan_start_date"><?php echo esc_html__( 'Start Date', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="date"
+									name="jmrs_care_plan_start_date"
+									id="jmrs_care_plan_start_date"
+									value="<?php echo esc_attr( $jmrs_care_plan_value( 'start_date' ) ); ?>"
+								/>
+								<?php if ( isset( $care_plan_errors['start_date'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_plan_errors['start_date'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_plan_review_date"><?php echo esc_html__( 'Review Date', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="date"
+									name="jmrs_care_plan_review_date"
+									id="jmrs_care_plan_review_date"
+									value="<?php echo esc_attr( $jmrs_care_plan_value( 'review_date' ) ); ?>"
+								/>
+								<?php if ( isset( $care_plan_errors['review_date'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_plan_errors['review_date'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<?php if ( null !== $care_plan ) : ?>
+							<tr>
+								<th scope="row"><?php echo esc_html__( 'Created By', 'jm-referral-system' ); ?></th>
+								<td><?php echo '' !== $care_plan_created_by_name ? esc_html( $care_plan_created_by_name ) : '—'; ?></td>
+							</tr>
+							<tr>
+								<th scope="row"><?php echo esc_html__( 'Approved By', 'jm-referral-system' ); ?></th>
+								<td><?php echo '' !== $care_plan_approved_by_name ? esc_html( $care_plan_approved_by_name ) : '—'; ?></td>
+							</tr>
+						<?php endif; ?>
+						<?php foreach ( $care_plan_content_fields as $field_key => $field_label ) : ?>
+							<?php
+							$field_id    = 'jmrs_care_plan_' . $field_key;
+							$field_value = $jmrs_care_plan_value( $field_key );
+							$is_short    = in_array( $field_key, $care_plan_short_fields, true );
+							?>
+							<tr>
+								<th scope="row">
+									<label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( (string) $field_label ); ?></label>
+								</th>
+								<td>
+									<?php if ( $is_short ) : ?>
+										<input
+											type="text"
+											class="regular-text"
+											name="<?php echo esc_attr( $field_id ); ?>"
+											id="<?php echo esc_attr( $field_id ); ?>"
+											value="<?php echo esc_attr( $field_value ); ?>"
+										/>
+									<?php else : ?>
+										<textarea
+											name="<?php echo esc_attr( $field_id ); ?>"
+											id="<?php echo esc_attr( $field_id ); ?>"
+											class="large-text"
+											rows="3"
+										><?php echo esc_textarea( $field_value ); ?></textarea>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+
+				<?php
+				submit_button(
+					__( 'Save Care Plan', 'jm-referral-system' ),
+					'primary',
+					'jmrs_save_care_plan'
+				);
+				?>
+			</form>
+		<?php elseif ( null !== $care_plan ) : ?>
+			<table class="form-table" role="presentation">
+				<tbody>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+						<td><?php echo esc_html( $care_plan_status_label ); ?></td>
+					</tr>
+					<?php
+					$start_date_value  = $jmrs_care_plan_value( 'start_date' );
+					$review_date_value = $jmrs_care_plan_value( 'review_date' );
+					?>
+					<?php if ( '' !== trim( $start_date_value ) ) : ?>
+						<tr>
+							<th scope="row"><?php echo esc_html__( 'Start Date', 'jm-referral-system' ); ?></th>
+							<td><?php echo esc_html( mysql2date( get_option( 'date_format' ), $start_date_value ) ); ?></td>
+						</tr>
+					<?php endif; ?>
+					<?php if ( '' !== trim( $review_date_value ) ) : ?>
+						<tr>
+							<th scope="row"><?php echo esc_html__( 'Review Date', 'jm-referral-system' ); ?></th>
+							<td><?php echo esc_html( mysql2date( get_option( 'date_format' ), $review_date_value ) ); ?></td>
+						</tr>
+					<?php endif; ?>
+					<?php if ( '' !== $care_plan_created_by_name ) : ?>
+						<tr>
+							<th scope="row"><?php echo esc_html__( 'Created By', 'jm-referral-system' ); ?></th>
+							<td><?php echo esc_html( $care_plan_created_by_name ); ?></td>
+						</tr>
+					<?php endif; ?>
+					<?php if ( '' !== $care_plan_approved_by_name ) : ?>
+						<tr>
+							<th scope="row"><?php echo esc_html__( 'Approved By', 'jm-referral-system' ); ?></th>
+							<td><?php echo esc_html( $care_plan_approved_by_name ); ?></td>
+						</tr>
+					<?php endif; ?>
+					<?php foreach ( $care_plan_content_fields as $field_key => $field_label ) : ?>
+						<?php
+						$field_value = $jmrs_care_plan_value( $field_key );
+						if ( '' === trim( $field_value ) ) {
+							continue;
+						}
+						$is_short = in_array( $field_key, $care_plan_short_fields, true );
+						?>
+						<tr>
+							<th scope="row"><?php echo esc_html( (string) $field_label ); ?></th>
+							<td>
+								<?php
+								if ( $is_short ) {
+									echo esc_html( $field_value );
+								} else {
+									echo nl2br( esc_html( $field_value ) );
+								}
+								?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php elseif ( $can_manage_care_plan ) : ?>
+			<p><?php echo esc_html__( 'No care plan has been created yet.', 'jm-referral-system' ); ?></p>
+			<div class="jmrs-care-plan-actions">
+				<?php if ( $has_assessment ) : ?>
+					<form method="post" action="" style="display:inline-block; margin-right:8px;">
+						<?php wp_nonce_field( 'jmrs_generate_care_plan_' . $referral_id, 'jmrs_generate_care_plan_nonce' ); ?>
+						<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+						<?php
+						submit_button(
+							__( 'Generate Care Plan from Assessment', 'jm-referral-system' ),
+							'secondary',
+							'jmrs_generate_care_plan',
+							false
+						);
+						?>
+					</form>
+				<?php endif; ?>
+				<form method="post" action="" style="display:inline-block;">
+					<?php wp_nonce_field( 'jmrs_blank_care_plan_' . $referral_id, 'jmrs_blank_care_plan_nonce' ); ?>
+					<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+					<?php
+					submit_button(
+						__( 'Create Blank Care Plan', 'jm-referral-system' ),
+						'secondary',
+						'jmrs_blank_care_plan',
+						false
+					);
+					?>
+				</form>
+			</div>
+		<?php else : ?>
+			<p><?php echo esc_html__( 'No care plan available.', 'jm-referral-system' ); ?></p>
+		<?php endif; ?>
 	<?php endif; ?>
 
 	<h2><?php echo esc_html__( 'Internal Notes', 'jm-referral-system' ); ?></h2>

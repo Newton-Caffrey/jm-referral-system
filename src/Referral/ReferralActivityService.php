@@ -143,6 +143,42 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that a care plan was created.
+     */
+    public function log_care_plan_created(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'care_plan_created',
+            __('Care plan created', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a care plan was updated.
+     */
+    public function log_care_plan_updated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'care_plan_updated',
+            __('Care plan updated', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a care plan was activated.
+     */
+    public function log_care_plan_activated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'care_plan_activated',
+            __('Care plan activated', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void
