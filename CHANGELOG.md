@@ -47,6 +47,10 @@ Milestone release covering the foundation, security, and clinical operations del
 - Auto-generated read-only task summaries (Completed / Outstanding / Refused) on visit save
 - Dashboard widgets: Top Outstanding Task Types (managers) and Today's Outstanding Tasks (Support Workers)
 - Activity event `visit_tasks_updated` when a visit task checklist is saved
+- Operational alerts engine with dynamic compliance/ops checks (no alerts table)
+- Capability `jmrs_view_operational_alerts` for Administrators, JM Administrators, Referral Managers, and Care Coordinators
+- Dedicated Operational Alerts admin page with severity/type filters and search
+- Dashboard Operational Alerts summary cards and grouped alert lists
 
 ### Changed
 
@@ -58,7 +62,7 @@ Milestone release covering the foundation, security, and clinical operations del
 - Visit execution UI uses structured task checklists instead of free-text Tasks Completed / Tasks Not Completed
 - Generated visit inserts are insert-only and do not rewrite manual, completed, cancelled, or missed visits
 - Schedule visit generation logs a single `schedule_visits_generated` activity entry instead of one `visit_created` entry per generated visit
-- Database schema advanced through additive migrations (current schema version `2.10.0`)
+- Database schema advanced through additive migrations (current schema version `2.11.0`)
 
 ### Security
 

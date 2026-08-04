@@ -4,8 +4,10 @@ namespace JMReferral\Admin;
 
 use JMReferral\Admin\Pages\AddReferralPage;
 use JMReferral\Admin\Pages\DashboardPage;
+use JMReferral\Admin\Pages\OperationalAlertsPage;
 use JMReferral\Admin\Pages\ReferralsPage;
 use JMReferral\Admin\Pages\SettingsPage;
+use JMReferral\Alerts\OperationalAlertService;
 use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\CarePlan\ReferralCarePlanRepository;
 use JMReferral\CarePlan\ReferralCarePlanReviewController;
@@ -52,6 +54,7 @@ use JMReferral\Workflow\WorkflowStageService;
 class Menu
 {
     private DashboardPage $dashboard_page;
+    private OperationalAlertsPage $operational_alerts_page;
     private ReferralsPage $referrals_page;
     private AddReferralPage $add_referral_page;
     private SettingsPage $settings_page;
@@ -175,6 +178,18 @@ class Menu
             $care_plan_repository
         );
 
+        $operational_alert_service = new OperationalAlertService(
+            $repository,
+            new ReferralAssessmentRepository(),
+            $care_plan_repository,
+            new ReferralCarePlanReviewRepository(),
+            new CareTeamRepository(),
+            new ScheduleRepository(),
+            $visit_repository,
+            new VisitTaskRepository(),
+            $access_policy
+        );
+
         $care_visit_service ??= new CareVisitService(
             $visit_repository,
             $repository,
@@ -234,8 +249,10 @@ class Menu
             $access_policy,
             $schedule_service,
             $visit_execution_service,
-            $visit_task_service
+            $visit_task_service,
+            $operational_alert_service
         );
+        $this->operational_alerts_page   = new OperationalAlertsPage($operational_alert_service);
         $this->referrals_page            = new ReferralsPage($list_controller);
         $this->add_referral_page         = new AddReferralPage($user_provider, $service_type_service);
         $this->settings_page             = new SettingsPage();
@@ -292,6 +309,15 @@ class Menu
             Capabilities::VIEW_DASHBOARD,
             'jm-referrals',
             [$this->dashboard_page, 'render']
+        );
+
+        add_submenu_page(
+            'jm-referrals',
+            __('Operational Alerts', 'jm-referral-system'),
+            __('Operational Alerts', 'jm-referral-system'),
+            Capabilities::VIEW_OPERATIONAL_ALERTS,
+            'jm-referrals-operational-alerts',
+            [$this->operational_alerts_page, 'render']
         );
 
         add_submenu_page(

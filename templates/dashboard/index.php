@@ -136,6 +136,110 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 		<?php endif; ?>
 	</div>
 
+	<?php if ( ! empty( $show_operational_alerts ) && is_array( $operational_alerts ?? null ) ) : ?>
+		<?php
+		$alert_counts  = is_array( $operational_alerts['counts'] ?? null ) ? $operational_alerts['counts'] : array();
+		$alert_grouped = is_array( $operational_alerts['grouped'] ?? null ) ? $operational_alerts['grouped'] : array();
+		$view_all_url  = (string) ( $operational_alerts['view_all_url'] ?? '' );
+		$critical_alerts = is_array( $alert_grouped['critical'] ?? null ) ? $alert_grouped['critical'] : array();
+		$warning_alerts  = is_array( $alert_grouped['warning'] ?? null ) ? $alert_grouped['warning'] : array();
+		$info_alerts     = is_array( $alert_grouped['information'] ?? null ) ? $alert_grouped['information'] : array();
+		?>
+		<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Operational Alerts', 'jm-referral-system' ); ?></h2>
+		<div class="jmrs-stats">
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) absint( $alert_counts['critical'] ?? 0 ) ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Critical', 'jm-referral-system' ); ?></span>
+			</div>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) absint( $alert_counts['warning'] ?? 0 ) ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Warning', 'jm-referral-system' ); ?></span>
+			</div>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) absint( $alert_counts['information'] ?? 0 ) ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Information', 'jm-referral-system' ); ?></span>
+			</div>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) absint( $alert_counts['total'] ?? 0 ) ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Total Alerts', 'jm-referral-system' ); ?></span>
+			</div>
+		</div>
+		<p>
+			<?php if ( '' !== $view_all_url ) : ?>
+				<a class="button" href="<?php echo esc_url( $view_all_url ); ?>">
+					<?php echo esc_html__( 'View All Alerts', 'jm-referral-system' ); ?>
+				</a>
+			<?php endif; ?>
+		</p>
+		<?php
+		$jmrs_render_alert_table = static function ( string $heading, array $rows ): void {
+			?>
+			<h3 class="jmrs-dashboard-section-title"><?php echo esc_html( $heading ); ?></h3>
+			<table class="wp-list-table widefat fixed striped table-view-list">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Alert', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Client / Referral', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Due or Occurred', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Action', 'jm-referral-system' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php if ( empty( $rows ) ) : ?>
+						<tr class="no-items">
+							<td colspan="4"><?php echo esc_html__( 'No alerts in this group.', 'jm-referral-system' ); ?></td>
+						</tr>
+					<?php else : ?>
+						<?php foreach ( $rows as $alert ) : ?>
+							<?php
+							$title           = (string) ( $alert['title'] ?? '' );
+							$client_name     = (string) ( $alert['client_name'] ?? '' );
+							$referral_number = (string) ( $alert['referral_number'] ?? '' );
+							$due_raw         = (string) ( $alert['occurred_or_due_date'] ?? '' );
+							$action_url      = (string) ( $alert['action_url'] ?? '' );
+							$action_label    = (string) ( $alert['action_label'] ?? __( 'View', 'jm-referral-system' ) );
+							$client_display  = trim( $client_name );
+							if ( '' !== $referral_number ) {
+								$client_display = '' !== $client_display
+									? $client_display . ' (' . $referral_number . ')'
+									: $referral_number;
+							}
+							$due_display = '—';
+							if ( '' !== $due_raw ) {
+								if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $due_raw ) === 1 ) {
+									$due_display = mysql2date( get_option( 'date_format' ), $due_raw );
+								} elseif ( preg_match( '/^\d{4}-\d{2}-\d{2}/', $due_raw ) === 1 ) {
+									$due_display = mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $due_raw );
+								} else {
+									$due_display = $due_raw;
+								}
+							}
+							?>
+							<tr>
+								<td><?php echo esc_html( $title ); ?></td>
+								<td><?php echo '' !== $client_display ? esc_html( $client_display ) : '—'; ?></td>
+								<td><?php echo esc_html( $due_display ); ?></td>
+								<td>
+									<?php if ( '' !== $action_url ) : ?>
+										<a href="<?php echo esc_url( $action_url ); ?>"><?php echo esc_html( $action_label ); ?></a>
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</tbody>
+			</table>
+			<?php
+		};
+
+		$jmrs_render_alert_table( __( 'Critical Alerts', 'jm-referral-system' ), $critical_alerts );
+		$jmrs_render_alert_table( __( 'Warnings', 'jm-referral-system' ), $warning_alerts );
+		$jmrs_render_alert_table( __( 'Information', 'jm-referral-system' ), $info_alerts );
+		?>
+	<?php endif; ?>
+
 	<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Workflow Pipeline', 'jm-referral-system' ); ?></h2>
 	<div class="jmrs-stats">
 		<?php if ( empty( $pipeline ) ) : ?>

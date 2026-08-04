@@ -161,6 +161,52 @@ class ScheduleRepository
     }
 
     /**
+     * Active schedules with missing, inactive, or mismatched care-team assignment.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_active_schedules_without_team(int $limit = 100, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $limit     = max(1, min(500, $limit));
+        $schedules = Tables::visit_schedules_table();
+        $referrals = Tables::referrals_table();
+        $care_team = Tables::care_team_table();
+        $where     = [
+            "s.status = 'active'",
+            '(
+                s.team_assignment_id IS NULL
+                OR s.team_assignment_id = 0
+                OR t.id IS NULL
+                OR t.assignment_status != \'active\'
+                OR t.referral_id != s.referral_id
+            )',
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT s.id, s.referral_id, s.schedule_name, s.team_assignment_id, s.status, s.start_date,
+                r.referral_number, r.client_name, r.assigned_to
+            FROM {$schedules} s
+            INNER JOIN {$referrals} r ON r.id = s.referral_id
+            LEFT JOIN {$care_team} t ON t.id = s.team_assignment_id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY s.start_date ASC, s.id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      */

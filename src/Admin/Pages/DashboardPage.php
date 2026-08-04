@@ -12,6 +12,7 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskService;
+use JMReferral\Alerts\OperationalAlertService;
 
 class DashboardPage
 {
@@ -24,7 +25,8 @@ class DashboardPage
         private AccessPolicy $access_policy,
         private ScheduleService $schedule_service,
         private VisitExecutionService $visit_execution_service,
-        private VisitTaskService $visit_task_service
+        private VisitTaskService $visit_task_service,
+        private OperationalAlertService $alert_service
     ) {
     }
 
@@ -129,6 +131,14 @@ class DashboardPage
                     : '';
                 $todays_outstanding_tasks[] = $task_row;
             }
+        }
+
+        $show_operational_alerts = false;
+        $operational_alerts      = null;
+
+        if (Capabilities::current_user_can(Capabilities::VIEW_OPERATIONAL_ALERTS)) {
+            $operational_alerts = $this->alert_service->get_dashboard_alerts();
+            $show_operational_alerts = is_array($operational_alerts);
         }
 
         include JMRS_PLUGIN_PATH . 'templates/dashboard/index.php';

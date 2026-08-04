@@ -27,6 +27,7 @@ class Capabilities
     public const MANAGE_SERVICE_TYPES = 'jmrs_manage_service_types';
     public const MANAGE_WORKFLOW_STAGES = 'jmrs_manage_workflow_stages';
     public const MANAGE_SETTINGS = 'jmrs_manage_settings';
+    public const VIEW_OPERATIONAL_ALERTS = 'jmrs_view_operational_alerts';
 
     /**
      * Returns every plugin capability.
@@ -59,6 +60,7 @@ class Capabilities
             self::MANAGE_SERVICE_TYPES,
             self::MANAGE_WORKFLOW_STAGES,
             self::MANAGE_SETTINGS,
+            self::VIEW_OPERATIONAL_ALERTS,
         ];
     }
 

@@ -55,6 +55,7 @@ class Roles
                     Capabilities::MANAGE_CARE_TEAM,
                     Capabilities::VIEW_SCHEDULES,
                     Capabilities::MANAGE_SCHEDULES,
+                    Capabilities::VIEW_OPERATIONAL_ALERTS,
                 ],
             ],
             self::CARE_COORDINATOR => [
@@ -78,6 +79,7 @@ class Roles
                     Capabilities::MANAGE_CARE_TEAM,
                     Capabilities::VIEW_SCHEDULES,
                     Capabilities::MANAGE_SCHEDULES,
+                    Capabilities::VIEW_OPERATIONAL_ALERTS,
                 ],
             ],
             self::ASSESSOR => [

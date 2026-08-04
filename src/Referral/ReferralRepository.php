@@ -590,4 +590,163 @@ class ReferralRepository
 
         return $counts;
     }
+
+    /**
+     * Open high/urgent referrals with no assignee.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_unassigned_high_priority(int $limit = 100, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $limit  = max(1, min(500, $limit));
+        $table  = Tables::referrals_table();
+        $where  = [
+            "priority IN ('high', 'urgent')",
+            "status NOT IN ('completed', 'cancelled')",
+            '(assigned_to IS NULL OR assigned_to = 0)',
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT id, referral_number, client_name, priority, status, assigned_to, created_at, updated_at
+            FROM {$table}
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY FIELD(priority, \'urgent\', \'high\'), created_at ASC, id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Open referrals older than the cutoff with no assessment row.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_without_assessment(string $created_before, int $limit = 100, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $limit       = max(1, min(500, $limit));
+        $referrals   = Tables::referrals_table();
+        $assessments = Tables::referral_assessments_table();
+        $where       = [
+            "r.status NOT IN ('completed', 'cancelled')",
+            'a.id IS NULL',
+            'r.created_at <= %s',
+        ];
+        $params = [$created_before];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT r.id, r.referral_number, r.client_name, r.priority, r.status, r.assigned_to, r.created_at
+            FROM {$referrals} r
+            LEFT JOIN {$assessments} a ON a.referral_id = r.id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY r.created_at ASC, r.id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Open referrals that have an assessment but no active care plan.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_without_active_care_plan(int $limit = 100, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $limit       = max(1, min(500, $limit));
+        $referrals   = Tables::referrals_table();
+        $assessments = Tables::referral_assessments_table();
+        $care_plans  = Tables::referral_care_plans_table();
+        $where       = [
+            "r.status NOT IN ('completed', 'cancelled')",
+            '(cp.id IS NULL OR cp.plan_status IN (\'draft\', \'under_review\'))',
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT r.id, r.referral_number, r.client_name, r.priority, r.status, r.assigned_to, r.created_at,
+                cp.id AS care_plan_id, cp.plan_status
+            FROM {$referrals} r
+            INNER JOIN {$assessments} a ON a.referral_id = r.id
+            LEFT JOIN {$care_plans} cp ON cp.referral_id = r.id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY r.created_at ASC, r.id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * High/urgent open referrals with no upcoming open visit.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_high_priority_without_upcoming_visits(
+        string $today,
+        int $limit = 100,
+        ?int $access_assigned_to = null
+    ): array {
+        global $wpdb;
+
+        $limit     = max(1, min(500, $limit));
+        $referrals = Tables::referrals_table();
+        $visits    = Tables::care_visits_table();
+        $where     = [
+            "r.priority IN ('high', 'urgent')",
+            "r.status NOT IN ('completed', 'cancelled')",
+            "NOT EXISTS (
+                SELECT 1 FROM {$visits} v
+                WHERE v.referral_id = r.id
+                  AND v.visit_status IN ('scheduled', 'confirmed', 'in_progress')
+                  AND v.visit_date >= %s
+            )",
+        ];
+        $params = [$today];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT r.id, r.referral_number, r.client_name, r.priority, r.status, r.assigned_to, r.created_at
+            FROM {$referrals} r
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY FIELD(r.priority, \'urgent\', \'high\'), r.created_at ASC, r.id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
 }

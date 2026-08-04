@@ -331,6 +331,96 @@ class CareVisitRepository
     }
 
     /**
+     * Open visits whose scheduled date/time is in the past.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_overdue_visits(
+        string $today,
+        string $now_time,
+        int $limit = 100,
+        ?int $access_assigned_to = null
+    ): array {
+        global $wpdb;
+
+        $limit     = max(1, min(500, $limit));
+        $visits    = Tables::care_visits_table();
+        $referrals = Tables::referrals_table();
+        $where     = [
+            "v.visit_status IN ('scheduled', 'confirmed', 'in_progress')",
+            '(
+                v.visit_date < %s
+                OR (
+                    v.visit_date = %s
+                    AND v.start_time IS NOT NULL
+                    AND v.start_time != \'\'
+                    AND v.start_time < %s
+                )
+            )',
+        ];
+        $params = [$today, $today, $now_time];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT v.id, v.referral_id, v.visit_date, v.start_time, v.end_time, v.visit_status,
+                v.assigned_user_id, r.referral_number, r.client_name, r.assigned_to
+            FROM {$visits} v
+            INNER JOIN {$referrals} r ON r.id = v.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY v.visit_date ASC, v.start_time ASC, v.id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Completed executed visits awaiting manager review.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_visits_awaiting_review(int $limit = 100, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $limit     = max(1, min(500, $limit));
+        $visits    = Tables::care_visits_table();
+        $referrals = Tables::referrals_table();
+        $where     = [
+            "v.visit_status = 'completed'",
+            'v.visit_outcome IS NOT NULL',
+            "v.visit_outcome != ''",
+            '(v.reviewed_at IS NULL OR v.reviewed_at = \'\')',
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT v.id, v.referral_id, v.visit_date, v.start_time, v.visit_status, v.visit_outcome,
+                v.completed_at, v.reviewed_at, r.referral_number, r.client_name, r.assigned_to
+            FROM {$visits} v
+            INNER JOIN {$referrals} r ON r.id = v.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY v.completed_at ASC, v.visit_date ASC, v.id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      */

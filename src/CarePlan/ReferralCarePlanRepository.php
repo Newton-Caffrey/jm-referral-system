@@ -137,6 +137,92 @@ class ReferralCarePlanRepository
     }
 
     /**
+     * Active care plans whose review_date is before today.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_overdue_care_plan_reviews(
+        string $today,
+        int $limit = 100,
+        ?int $access_assigned_to = null
+    ): array {
+        global $wpdb;
+
+        $limit      = max(1, min(500, $limit));
+        $care_plans = Tables::referral_care_plans_table();
+        $referrals  = Tables::referrals_table();
+        $where      = [
+            "cp.plan_status = 'active'",
+            'cp.review_date IS NOT NULL',
+            "cp.review_date != ''",
+            'cp.review_date < %s',
+        ];
+        $params = [$today];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT cp.id, cp.referral_id, cp.plan_status, cp.review_date,
+                r.referral_number, r.client_name, r.assigned_to, r.status AS referral_status
+            FROM {$care_plans} cp
+            INNER JOIN {$referrals} r ON r.id = cp.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY cp.review_date ASC, cp.id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Active care plans with no active care-team member on the referral.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_active_without_care_team(int $limit = 100, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $limit      = max(1, min(500, $limit));
+        $care_plans = Tables::referral_care_plans_table();
+        $referrals  = Tables::referrals_table();
+        $care_team  = Tables::care_team_table();
+        $where      = [
+            "cp.plan_status = 'active'",
+            "NOT EXISTS (
+                SELECT 1 FROM {$care_team} t
+                WHERE t.referral_id = cp.referral_id
+                  AND t.assignment_status = 'active'
+            )",
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT cp.id, cp.referral_id, cp.plan_status, cp.review_date,
+                r.referral_number, r.client_name, r.assigned_to
+            FROM {$care_plans} cp
+            INNER JOIN {$referrals} r ON r.id = cp.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY cp.updated_at ASC, cp.id ASC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      */

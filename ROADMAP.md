@@ -68,6 +68,12 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Task exceptions (not completed, refused, not applicable) with notes
 - [x] Auto-generated task summaries and manager review
 
+### Operational Alerts ✅
+
+- [x] Dynamic compliance and operational alerts (no persistence table)
+- [x] Dashboard summary and dedicated Operational Alerts page
+- [x] Capability-gated access for managers and coordinators
+
 ---
 
 ## In Progress 🚧
@@ -127,7 +133,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 1 — Foundation | Architecture, referrals, dashboard, notes, export, notifications | ✅ Complete |
 | Phase 2 — Security | Roles, capabilities, workflow, service types, sources, access policy | ✅ Complete |
 | Phase 3 — Clinical Operations | Documents, assessments, care plans, care team, scheduling, generated visits | ✅ Complete |
-| Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, and medication administration | 🚧 In progress |
+| Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, operational alerts, and medication administration | 🚧 In progress |
 | Phase 5 — Reporting | Advanced reports, KPIs, workload, analytics | 🚧 In progress |
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
 | Phase 7 — Production Hardening | Performance, UX polish, automated testing, v1.0 | 🚀 Future |

@@ -250,4 +250,46 @@ class VisitTaskRepository
 
         return is_array($results) ? $results : [];
     }
+
+    /**
+     * Visits that have refused or not_completed care tasks.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_visits_with_task_exceptions(int $limit = 100, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $limit       = max(1, min(500, $limit));
+        $tasks_table = Tables::visit_tasks_table();
+        $visits      = Tables::care_visits_table();
+        $referrals   = Tables::referrals_table();
+        $where       = [
+            "t.task_status IN ('refused', 'not_completed')",
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT v.id AS visit_id, v.referral_id, v.visit_date, v.start_time, v.visit_status,
+                r.referral_number, r.client_name, r.assigned_to,
+                COUNT(t.id) AS exception_count
+            FROM {$tasks_table} t
+            INNER JOIN {$visits} v ON v.id = t.visit_id
+            INNER JOIN {$referrals} r ON r.id = v.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            GROUP BY v.id, v.referral_id, v.visit_date, v.start_time, v.visit_status,
+                     r.referral_number, r.client_name, r.assigned_to
+            ORDER BY v.visit_date DESC, v.id DESC
+            LIMIT %d';
+        $params[] = $limit;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table/where fragments are trusted; values are prepared.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
 }
