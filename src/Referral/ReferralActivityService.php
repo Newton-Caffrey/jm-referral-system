@@ -241,6 +241,30 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that staff recorded visit execution details.
+     */
+    public function log_visit_executed(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'visit_executed',
+            __('Visit completed by staff', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a manager reviewed an executed visit.
+     */
+    public function log_visit_reviewed(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'visit_reviewed',
+            __('Visit reviewed by manager', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Logs that a care team member was added.
      */
     public function log_care_team_member_added(int $referral_id): void

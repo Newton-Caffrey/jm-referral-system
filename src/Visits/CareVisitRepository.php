@@ -6,7 +6,7 @@ use JMReferral\Database\Tables;
 
 class CareVisitRepository
 {
-    private const SELECT_COLUMNS = 'id, referral_id, care_plan_id, assigned_user_id, schedule_id, schedule_occurrence_date, generation_key, visit_date, start_time, end_time, visit_status, visit_type, tasks, notes, completed_at, created_by, created_at, updated_at';
+    private const SELECT_COLUMNS = 'id, referral_id, care_plan_id, assigned_user_id, schedule_id, schedule_occurrence_date, generation_key, visit_date, start_time, end_time, visit_status, visit_type, tasks, notes, completed_at, arrival_time, departure_time, actual_duration_minutes, visit_outcome, tasks_completed, tasks_not_completed, client_response, wellbeing_observations, incident_report, manager_review_notes, reviewed_by, reviewed_at, created_by, created_at, updated_at';
 
     /**
      * @param array<string, mixed> $data
@@ -255,60 +255,237 @@ class CareVisitRepository
     }
 
     /**
+     * Completed visits awaiting manager review.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function get_awaiting_review(int $limit = 10): array
+    {
+        global $wpdb;
+
+        $limit   = max(1, min(100, $limit));
+        $table   = Tables::care_visits_table();
+        $columns = self::SELECT_COLUMNS;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT {$columns}
+                FROM {$table}
+                WHERE visit_status = %s
+                  AND visit_outcome IS NOT NULL
+                  AND visit_outcome != ''
+                  AND (reviewed_at IS NULL OR reviewed_at = '')
+                ORDER BY completed_at DESC, visit_date DESC, id DESC
+                LIMIT %d",
+                'completed',
+                $limit
+            ),
+            ARRAY_A
+        );
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Visits completed today for a staff member.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function get_completed_today_by_user(int $user_id, int $limit = 10): array
+    {
+        global $wpdb;
+
+        if ($user_id <= 0) {
+            return [];
+        }
+
+        $limit   = max(1, min(100, $limit));
+        $table   = Tables::care_visits_table();
+        $columns = self::SELECT_COLUMNS;
+        $today   = current_time('Y-m-d');
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT {$columns}
+                FROM {$table}
+                WHERE assigned_user_id = %d
+                  AND visit_status = %s
+                  AND (
+                    DATE(completed_at) = %s
+                    OR (completed_at IS NULL AND visit_date = %s)
+                  )
+                ORDER BY completed_at DESC, departure_time DESC, id DESC
+                LIMIT %d",
+                $user_id,
+                'completed',
+                $today,
+                $today,
+                $limit
+            ),
+            ARRAY_A
+        );
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
     private function map_row(array $data, bool $include_create_fields): array
     {
+        if ($include_create_fields) {
+            return $this->map_create_row($data);
+        }
+
+        return $this->map_update_row($data);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function map_create_row(array $data): array
+    {
         $row = [
-            'referral_id'      => absint($data['referral_id'] ?? 0),
-            'care_plan_id'     => array_key_exists('care_plan_id', $data) ? $data['care_plan_id'] : null,
-            'assigned_user_id' => array_key_exists('assigned_user_id', $data) ? $data['assigned_user_id'] : null,
-            'visit_date'       => (string) ($data['visit_date'] ?? ''),
-            'start_time'       => (string) ($data['start_time'] ?? ''),
-            'end_time'         => (string) ($data['end_time'] ?? ''),
-            'visit_status'     => (string) ($data['visit_status'] ?? 'scheduled'),
-            'visit_type'       => $data['visit_type'] ?? null,
-            'tasks'            => $data['tasks'] ?? null,
-            'notes'            => $data['notes'] ?? null,
-            'completed_at'     => array_key_exists('completed_at', $data) ? $data['completed_at'] : null,
-            'updated_at'       => (string) ($data['updated_at'] ?? ''),
+            'created_by'               => absint($data['created_by'] ?? 0),
+            'referral_id'              => absint($data['referral_id'] ?? 0),
+            'care_plan_id'             => array_key_exists('care_plan_id', $data) ? $data['care_plan_id'] : null,
+            'assigned_user_id'         => array_key_exists('assigned_user_id', $data) ? $data['assigned_user_id'] : null,
+            'schedule_id'              => array_key_exists('schedule_id', $data) ? $data['schedule_id'] : null,
+            'schedule_occurrence_date' => array_key_exists('schedule_occurrence_date', $data) ? $data['schedule_occurrence_date'] : null,
+            'generation_key'           => array_key_exists('generation_key', $data) ? $data['generation_key'] : null,
+            'visit_date'               => (string) ($data['visit_date'] ?? ''),
+            'start_time'               => (string) ($data['start_time'] ?? ''),
+            'end_time'                 => (string) ($data['end_time'] ?? ''),
+            'visit_status'             => (string) ($data['visit_status'] ?? 'scheduled'),
+            'visit_type'               => $data['visit_type'] ?? null,
+            'tasks'                    => $data['tasks'] ?? null,
+            'notes'                    => $data['notes'] ?? null,
+            'completed_at'             => array_key_exists('completed_at', $data) ? $data['completed_at'] : null,
+            'arrival_time'             => null,
+            'departure_time'           => null,
+            'actual_duration_minutes'  => null,
+            'visit_outcome'            => null,
+            'tasks_completed'          => null,
+            'tasks_not_completed'      => null,
+            'client_response'          => null,
+            'wellbeing_observations'   => null,
+            'incident_report'          => null,
+            'manager_review_notes'     => null,
+            'reviewed_by'              => null,
+            'reviewed_at'              => null,
+            'created_at'               => (string) ($data['created_at'] ?? ''),
+            'updated_at'               => (string) ($data['updated_at'] ?? ''),
         ];
 
-        if (null !== $row['care_plan_id']) {
-            $row['care_plan_id'] = absint($row['care_plan_id']) ?: null;
+        return $this->normalize_nullable_ids($row);
+    }
+
+    /**
+     * Partial update: only keys present in $data are written.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function map_update_row(array $data): array
+    {
+        $row = [];
+
+        $nullable_strings = [
+            'visit_type',
+            'tasks',
+            'notes',
+            'completed_at',
+            'schedule_occurrence_date',
+            'generation_key',
+            'arrival_time',
+            'departure_time',
+            'visit_outcome',
+            'tasks_completed',
+            'tasks_not_completed',
+            'client_response',
+            'wellbeing_observations',
+            'incident_report',
+            'manager_review_notes',
+            'reviewed_at',
+        ];
+
+        $required_strings = [
+            'visit_date',
+            'start_time',
+            'end_time',
+            'visit_status',
+            'updated_at',
+        ];
+
+        foreach ($required_strings as $field) {
+            if (array_key_exists($field, $data)) {
+                $row[$field] = (string) ($data[$field] ?? '');
+            }
         }
 
-        if (null !== $row['assigned_user_id']) {
-            $row['assigned_user_id'] = absint($row['assigned_user_id']) ?: null;
+        foreach ($nullable_strings as $field) {
+            if (! array_key_exists($field, $data)) {
+                continue;
+            }
+            $value = $data[$field];
+            if (null === $value || (is_string($value) && '' === trim($value))) {
+                $row[$field] = null;
+            } else {
+                $row[$field] = (string) $value;
+            }
         }
 
-        // Schedule source fields: required on create (NULL for manual), only touched on update when provided.
-        if ($include_create_fields || array_key_exists('schedule_id', $data)) {
-            $schedule_id = array_key_exists('schedule_id', $data) ? $data['schedule_id'] : null;
-            $row['schedule_id'] = null !== $schedule_id ? (absint($schedule_id) ?: null) : null;
+        $int_fields = [
+            'referral_id',
+            'care_plan_id',
+            'assigned_user_id',
+            'schedule_id',
+            'actual_duration_minutes',
+            'reviewed_by',
+        ];
+
+        foreach ($int_fields as $field) {
+            if (! array_key_exists($field, $data)) {
+                continue;
+            }
+            $value = $data[$field];
+            if (null === $value || '' === $value) {
+                $row[$field] = null;
+                continue;
+            }
+            if ('referral_id' === $field || 'actual_duration_minutes' === $field) {
+                $row[$field] = absint($value);
+            } else {
+                $row[$field] = absint($value) ?: null;
+            }
         }
 
-        if ($include_create_fields || array_key_exists('schedule_occurrence_date', $data)) {
-            $occurrence = array_key_exists('schedule_occurrence_date', $data) ? $data['schedule_occurrence_date'] : null;
-            $row['schedule_occurrence_date'] = (null !== $occurrence && '' !== trim((string) $occurrence))
-                ? (string) $occurrence
-                : null;
+        return $row;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function normalize_nullable_ids(array $row): array
+    {
+        foreach (['care_plan_id', 'assigned_user_id', 'schedule_id', 'reviewed_by'] as $key) {
+            if (! array_key_exists($key, $row) || null === $row[$key]) {
+                continue;
+            }
+            $row[$key] = absint($row[$key]) ?: null;
         }
 
-        if ($include_create_fields || array_key_exists('generation_key', $data)) {
-            $generation_key = array_key_exists('generation_key', $data) ? $data['generation_key'] : null;
-            $row['generation_key'] = (null !== $generation_key && '' !== trim((string) $generation_key))
-                ? (string) $generation_key
-                : null;
+        if (array_key_exists('generation_key', $row) && (null === $row['generation_key'] || '' === trim((string) $row['generation_key']))) {
+            $row['generation_key'] = null;
         }
 
-        if ($include_create_fields) {
-            $row = [
-                'created_by' => absint($data['created_by'] ?? 0),
-            ] + $row + [
-                'created_at' => (string) ($data['created_at'] ?? ''),
-            ];
+        if (array_key_exists('schedule_occurrence_date', $row) && (null === $row['schedule_occurrence_date'] || '' === trim((string) $row['schedule_occurrence_date']))) {
+            $row['schedule_occurrence_date'] = null;
         }
 
         return $row;
@@ -320,8 +497,16 @@ class CareVisitRepository
      */
     private function formats_for_row(array $row): array
     {
-        $int_keys = ['referral_id', 'care_plan_id', 'assigned_user_id', 'schedule_id', 'created_by'];
-        $formats  = [];
+        $int_keys = [
+            'referral_id',
+            'care_plan_id',
+            'assigned_user_id',
+            'schedule_id',
+            'created_by',
+            'actual_duration_minutes',
+            'reviewed_by',
+        ];
+        $formats = [];
 
         foreach ($row as $key => $value) {
             if (in_array($key, $int_keys, true) && null !== $value) {

@@ -475,6 +475,18 @@ class Tables
             tasks LONGTEXT NULL,
             notes LONGTEXT NULL,
             completed_at DATETIME NULL,
+            arrival_time DATETIME NULL,
+            departure_time DATETIME NULL,
+            actual_duration_minutes INT NULL,
+            visit_outcome VARCHAR(50) NULL,
+            tasks_completed LONGTEXT NULL,
+            tasks_not_completed LONGTEXT NULL,
+            client_response LONGTEXT NULL,
+            wellbeing_observations LONGTEXT NULL,
+            incident_report LONGTEXT NULL,
+            manager_review_notes LONGTEXT NULL,
+            reviewed_by BIGINT UNSIGNED NULL,
+            reviewed_at DATETIME NULL,
             created_by BIGINT UNSIGNED NOT NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
@@ -486,7 +498,9 @@ class Tables
             KEY schedule_id (schedule_id),
             KEY schedule_occurrence_date (schedule_occurrence_date),
             KEY visit_date (visit_date),
-            KEY visit_status (visit_status)
+            KEY visit_status (visit_status),
+            KEY visit_outcome (visit_outcome),
+            KEY reviewed_by (reviewed_by)
         ) {$charset};";
 
         dbDelta($sql);

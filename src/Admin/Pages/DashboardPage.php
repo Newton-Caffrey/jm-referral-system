@@ -10,6 +10,7 @@ use JMReferral\Referral\ReferralService;
 use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\VisitExecutionService;
 
 class DashboardPage
 {
@@ -20,7 +21,8 @@ class DashboardPage
         private ReferralRepository $referral_repository,
         private CareTeamService $care_team_service,
         private AccessPolicy $access_policy,
-        private ScheduleService $schedule_service
+        private ScheduleService $schedule_service,
+        private VisitExecutionService $visit_execution_service
     ) {
     }
 
@@ -38,6 +40,7 @@ class DashboardPage
 
         $can_view_visits     = Capabilities::current_user_can(Capabilities::VIEW_VISITS);
         $visit_status_labels = CareVisitService::status_labels();
+        $visit_outcome_labels = VisitExecutionService::outcome_labels();
         $upcoming_visits     = [];
 
         if ($can_view_visits) {
@@ -74,6 +77,61 @@ class DashboardPage
             $active_schedules_count = $this->schedule_service->count_active_schedules();
         }
 
+        $show_awaiting_review = Capabilities::current_user_can(Capabilities::MANAGE_VISITS)
+            && ! $this->access_policy->should_scope_to_assigned();
+        $awaiting_review_visits = [];
+
+        if ($show_awaiting_review) {
+            foreach ($this->visit_execution_service->get_awaiting_review_for_dashboard(10) as $visit_row) {
+                $awaiting_review_visits[] = $this->enrich_dashboard_visit($visit_row, $visit_outcome_labels);
+            }
+        }
+
+        $show_todays_completed = $this->access_policy->should_scope_to_assigned()
+            && Capabilities::current_user_can(Capabilities::EXECUTE_VISITS);
+        $todays_completed_visits = [];
+
+        if ($show_todays_completed) {
+            foreach ($this->visit_execution_service->get_todays_completed_for_current_user(10) as $visit_row) {
+                $todays_completed_visits[] = $this->enrich_dashboard_visit($visit_row, $visit_outcome_labels);
+            }
+        }
+
         include JMRS_PLUGIN_PATH . 'templates/dashboard/index.php';
+    }
+
+    /**
+     * @param array<string, mixed>  $visit_row
+     * @param array<string, string> $outcome_labels
+     * @return array<string, mixed>
+     */
+    private function enrich_dashboard_visit(array $visit_row, array $outcome_labels): array
+    {
+        $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
+        $visit_row['assigned_staff_name'] = $assigned_id > 0
+            ? $this->user_provider->get_display_name($assigned_id)
+            : '';
+
+        $referral_id = absint($visit_row['referral_id'] ?? 0);
+        $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
+        $visit_row['client_name'] = is_array($referral)
+            ? (string) ($referral['client_name'] ?? '')
+            : '';
+        $visit_row['referral_url'] = $referral_id > 0
+            ? add_query_arg(
+                [
+                    'page'        => 'jm-referrals-view',
+                    'referral_id' => $referral_id,
+                ],
+                admin_url('admin.php')
+            )
+            : '';
+
+        $outcome_key = (string) ($visit_row['visit_outcome'] ?? '');
+        $visit_row['outcome_label'] = isset($outcome_labels[$outcome_key])
+            ? $outcome_labels[$outcome_key]
+            : $outcome_key;
+
+        return $visit_row;
     }
 }

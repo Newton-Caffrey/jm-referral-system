@@ -49,6 +49,7 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Workflow\WorkflowStageController;
 use JMReferral\Workflow\WorkflowStageRepository;
 use JMReferral\Workflow\WorkflowStageService;
@@ -69,6 +70,7 @@ class Plugin
     private ?ReferralCarePlanReviewController $care_plan_review_controller = null;
     private ?CareVisitController $care_visit_controller = null;
     private ?CareVisitService $care_visit_service = null;
+    private ?VisitExecutionService $visit_execution_service = null;
     private ?CareTeamController $care_team_controller = null;
     private ?CareTeamService $care_team_service = null;
     private ?ScheduleController $schedule_controller = null;
@@ -190,6 +192,13 @@ class Plugin
             $this->care_team_service
         );
 
+        $this->visit_execution_service = new VisitExecutionService(
+            $visit_repository,
+            $repository,
+            $activity_service,
+            $this->access_policy
+        );
+
         $this->schedule_generation_service = new ScheduleGenerationService(
             new ScheduleRepository(),
             $visit_repository,
@@ -272,7 +281,8 @@ class Plugin
             $care_plan_review_service,
             $this->care_visit_service,
             $this->care_team_service,
-            $this->schedule_service
+            $this->schedule_service,
+            $this->visit_execution_service
         );
 
         $document_controller = new ReferralDocumentController(
@@ -302,6 +312,7 @@ class Plugin
 
         $this->care_visit_controller = new CareVisitController(
             $this->care_visit_service,
+            $this->visit_execution_service,
             $repository,
             $this->access_policy,
             $this->user_provider,

@@ -199,6 +199,124 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 		</table>
 	<?php endif; ?>
 
+	<?php if ( ! empty( $show_awaiting_review ) ) : ?>
+		<?php
+		$awaiting_review_visits = is_array( $awaiting_review_visits ?? null ) ? $awaiting_review_visits : array();
+		?>
+		<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Visits Awaiting Review', 'jm-referral-system' ); ?></h2>
+		<table class="wp-list-table widefat fixed striped table-view-list">
+			<thead>
+				<tr>
+					<th scope="col"><?php echo esc_html__( 'Date', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Assigned Staff', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( empty( $awaiting_review_visits ) ) : ?>
+					<tr class="no-items">
+						<td colspan="5"><?php echo esc_html__( 'No visits awaiting review.', 'jm-referral-system' ); ?></td>
+					</tr>
+				<?php else : ?>
+					<?php foreach ( $awaiting_review_visits as $visit_row ) : ?>
+						<?php
+						$visit_date_raw = (string) ( $visit_row['visit_date'] ?? '' );
+						$client_name    = (string) ( $visit_row['client_name'] ?? '' );
+						$assigned_name  = (string) ( $visit_row['assigned_staff_name'] ?? '' );
+						$outcome_label  = (string) ( $visit_row['outcome_label'] ?? '' );
+						$referral_url   = (string) ( $visit_row['referral_url'] ?? '' );
+						$visit_date_display = '' !== $visit_date_raw
+							? mysql2date( get_option( 'date_format' ), $visit_date_raw )
+							: '';
+						?>
+						<tr>
+							<td><?php echo esc_html( $visit_date_display ); ?></td>
+							<td><?php echo '' !== $client_name ? esc_html( $client_name ) : '—'; ?></td>
+							<td><?php echo '' !== $assigned_name ? esc_html( $assigned_name ) : '—'; ?></td>
+							<td><?php echo '' !== $outcome_label ? esc_html( $outcome_label ) : '—'; ?></td>
+							<td>
+								<?php if ( '' !== $referral_url ) : ?>
+									<a href="<?php echo esc_url( $referral_url ); ?>">
+										<?php echo esc_html__( 'View', 'jm-referral-system' ); ?>
+									</a>
+								<?php else : ?>
+									—
+								<?php endif; ?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
+	<?php endif; ?>
+
+	<?php if ( ! empty( $show_todays_completed ) ) : ?>
+		<?php
+		$todays_completed_visits = is_array( $todays_completed_visits ?? null ) ? $todays_completed_visits : array();
+		?>
+		<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( "Today's Completed Visits", 'jm-referral-system' ); ?></h2>
+		<table class="wp-list-table widefat fixed striped table-view-list">
+			<thead>
+				<tr>
+					<th scope="col"><?php echo esc_html__( 'Date', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Duration', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( empty( $todays_completed_visits ) ) : ?>
+					<tr class="no-items">
+						<td colspan="5"><?php echo esc_html__( 'No completed visits today.', 'jm-referral-system' ); ?></td>
+					</tr>
+				<?php else : ?>
+					<?php foreach ( $todays_completed_visits as $visit_row ) : ?>
+						<?php
+						$visit_date_raw = (string) ( $visit_row['visit_date'] ?? '' );
+						$client_name    = (string) ( $visit_row['client_name'] ?? '' );
+						$outcome_label  = (string) ( $visit_row['outcome_label'] ?? '' );
+						$duration_mins  = absint( $visit_row['actual_duration_minutes'] ?? 0 );
+						$referral_url   = (string) ( $visit_row['referral_url'] ?? '' );
+						$visit_date_display = '' !== $visit_date_raw
+							? mysql2date( get_option( 'date_format' ), $visit_date_raw )
+							: '';
+						?>
+						<tr>
+							<td><?php echo esc_html( $visit_date_display ); ?></td>
+							<td><?php echo '' !== $client_name ? esc_html( $client_name ) : '—'; ?></td>
+							<td><?php echo '' !== $outcome_label ? esc_html( $outcome_label ) : '—'; ?></td>
+							<td>
+								<?php
+								echo esc_html(
+									$duration_mins > 0
+										? sprintf(
+											/* translators: %d: duration in minutes */
+											_n( '%d minute', '%d minutes', $duration_mins, 'jm-referral-system' ),
+											$duration_mins
+										)
+										: '—'
+								);
+								?>
+							</td>
+							<td>
+								<?php if ( '' !== $referral_url ) : ?>
+									<a href="<?php echo esc_url( $referral_url ); ?>">
+										<?php echo esc_html__( 'View', 'jm-referral-system' ); ?>
+									</a>
+								<?php else : ?>
+									—
+								<?php endif; ?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
+	<?php endif; ?>
+
 	<h2 class="jmrs-dashboard-section-title">
 		<?php
 		echo esc_html(

@@ -42,6 +42,7 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Workflow\WorkflowStageController;
 use JMReferral\Workflow\WorkflowStageRepository;
 use JMReferral\Workflow\WorkflowStageService;
@@ -186,6 +187,13 @@ class Menu
             $access_policy
         );
 
+        $visit_execution_service = new VisitExecutionService(
+            $visit_repository,
+            $repository,
+            $activity_service,
+            $access_policy
+        );
+
         $view_controller ??= new ReferralViewController(
             $repository,
             $activity_repository,
@@ -201,7 +209,8 @@ class Menu
             $care_plan_review_service,
             $care_visit_service,
             $care_team_service,
-            $schedule_service
+            $schedule_service,
+            $visit_execution_service
         );
 
         $this->dashboard_page            = new DashboardPage(
@@ -211,7 +220,8 @@ class Menu
             $repository,
             $care_team_service,
             $access_policy,
-            $schedule_service
+            $schedule_service,
+            $visit_execution_service
         );
         $this->referrals_page            = new ReferralsPage($list_controller);
         $this->add_referral_page         = new AddReferralPage($user_provider, $service_type_service);
@@ -228,6 +238,7 @@ class Menu
         );
         $this->care_visit_controller = $care_visit_controller ?? new CareVisitController(
             $care_visit_service,
+            $visit_execution_service,
             $repository,
             $access_policy,
             $user_provider,

@@ -1648,6 +1648,270 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 								</td>
 							<?php endif; ?>
 						</tr>
+						<?php
+						$visit_id_row       = absint( $visit_row['id'] ?? 0 );
+						$can_execute_visit  = ! empty( $visit_row['can_execute'] );
+						$can_review_visit   = ! empty( $visit_row['can_review'] );
+						$is_executed_visit  = ! empty( $visit_row['is_executed'] );
+						$is_reviewed_visit  = ! empty( $visit_row['is_reviewed'] );
+						$execution_data     = is_array( $visit_row['execution_form_data'] ?? null ) ? $visit_row['execution_form_data'] : array();
+						$execution_errors   = is_array( $visit_row['execution_errors'] ?? null ) ? $visit_row['execution_errors'] : array();
+						$outcome_labels     = is_array( $visit_outcome_labels ?? null ) ? $visit_outcome_labels : array();
+						$colspan            = $can_manage_visits ? 7 : 6;
+
+						$jmrs_exec_value = static function ( string $key ) use ( $execution_data ): string {
+							return (string) ( $execution_data[ $key ] ?? '' );
+						};
+
+						$arrival_display = (string) ( $visit_row['arrival_time'] ?? '' );
+						$departure_display = (string) ( $visit_row['departure_time'] ?? '' );
+						$duration_minutes = absint( $visit_row['actual_duration_minutes'] ?? 0 );
+						$outcome_label = (string) ( $visit_row['outcome_label'] ?? '' );
+						?>
+						<?php if ( $can_execute_visit || $is_executed_visit ) : ?>
+							<tr>
+								<td colspan="<?php echo esc_attr( (string) $colspan ); ?>">
+									<h3 style="margin:8px 0;"><?php echo esc_html__( 'Visit Execution', 'jm-referral-system' ); ?></h3>
+
+									<?php if ( $can_execute_visit ) : ?>
+										<form method="post" action="">
+											<?php wp_nonce_field( 'jmrs_execute_care_visit_' . $visit_id_row, 'jmrs_execute_visit_nonce' ); ?>
+											<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+											<input type="hidden" name="jmrs_visit_id" value="<?php echo esc_attr( (string) $visit_id_row ); ?>" />
+
+											<table class="form-table" role="presentation">
+												<tbody>
+													<tr>
+														<th scope="row">
+															<label for="jmrs_visit_arrival_time_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+																<?php echo esc_html__( 'Arrival Time', 'jm-referral-system' ); ?>
+															</label>
+														</th>
+														<td>
+															<input
+																type="datetime-local"
+																name="jmrs_visit_arrival_time"
+																id="jmrs_visit_arrival_time_<?php echo esc_attr( (string) $visit_id_row ); ?>"
+																value="<?php echo esc_attr( str_replace( ' ', 'T', substr( $jmrs_exec_value( 'arrival_time' ), 0, 16 ) ) ); ?>"
+																required
+															/>
+															<?php if ( isset( $execution_errors['arrival_time'] ) ) : ?>
+																<p class="description"><?php echo esc_html( $execution_errors['arrival_time'] ); ?></p>
+															<?php endif; ?>
+														</td>
+													</tr>
+													<tr>
+														<th scope="row">
+															<label for="jmrs_visit_departure_time_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+																<?php echo esc_html__( 'Departure Time', 'jm-referral-system' ); ?>
+															</label>
+														</th>
+														<td>
+															<input
+																type="datetime-local"
+																name="jmrs_visit_departure_time"
+																id="jmrs_visit_departure_time_<?php echo esc_attr( (string) $visit_id_row ); ?>"
+																value="<?php echo esc_attr( str_replace( ' ', 'T', substr( $jmrs_exec_value( 'departure_time' ), 0, 16 ) ) ); ?>"
+																required
+															/>
+															<?php if ( isset( $execution_errors['departure_time'] ) ) : ?>
+																<p class="description"><?php echo esc_html( $execution_errors['departure_time'] ); ?></p>
+															<?php endif; ?>
+														</td>
+													</tr>
+													<tr>
+														<th scope="row">
+															<label for="jmrs_visit_outcome_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+																<?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?>
+															</label>
+														</th>
+														<td>
+															<select name="jmrs_visit_outcome" id="jmrs_visit_outcome_<?php echo esc_attr( (string) $visit_id_row ); ?>" required>
+																<option value=""><?php echo esc_html__( '— Select —', 'jm-referral-system' ); ?></option>
+																<?php foreach ( $outcome_labels as $outcome_value => $outcome_text ) : ?>
+																	<option value="<?php echo esc_attr( (string) $outcome_value ); ?>" <?php selected( $jmrs_exec_value( 'visit_outcome' ), (string) $outcome_value ); ?>>
+																		<?php echo esc_html( (string) $outcome_text ); ?>
+																	</option>
+																<?php endforeach; ?>
+															</select>
+															<?php if ( isset( $execution_errors['visit_outcome'] ) ) : ?>
+																<p class="description"><?php echo esc_html( $execution_errors['visit_outcome'] ); ?></p>
+															<?php endif; ?>
+														</td>
+													</tr>
+													<tr>
+														<th scope="row">
+															<label for="jmrs_visit_tasks_completed_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+																<?php echo esc_html__( 'Tasks Completed', 'jm-referral-system' ); ?>
+															</label>
+														</th>
+														<td>
+															<textarea name="jmrs_visit_tasks_completed" id="jmrs_visit_tasks_completed_<?php echo esc_attr( (string) $visit_id_row ); ?>" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_exec_value( 'tasks_completed' ) ); ?></textarea>
+														</td>
+													</tr>
+													<tr>
+														<th scope="row">
+															<label for="jmrs_visit_tasks_not_completed_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+																<?php echo esc_html__( 'Tasks Not Completed', 'jm-referral-system' ); ?>
+															</label>
+														</th>
+														<td>
+															<textarea name="jmrs_visit_tasks_not_completed" id="jmrs_visit_tasks_not_completed_<?php echo esc_attr( (string) $visit_id_row ); ?>" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_exec_value( 'tasks_not_completed' ) ); ?></textarea>
+														</td>
+													</tr>
+													<tr>
+														<th scope="row">
+															<label for="jmrs_visit_client_response_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+																<?php echo esc_html__( 'Client Response', 'jm-referral-system' ); ?>
+															</label>
+														</th>
+														<td>
+															<textarea name="jmrs_visit_client_response" id="jmrs_visit_client_response_<?php echo esc_attr( (string) $visit_id_row ); ?>" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_exec_value( 'client_response' ) ); ?></textarea>
+														</td>
+													</tr>
+													<tr>
+														<th scope="row">
+															<label for="jmrs_visit_wellbeing_observations_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+																<?php echo esc_html__( 'Wellbeing Observations', 'jm-referral-system' ); ?>
+															</label>
+														</th>
+														<td>
+															<textarea name="jmrs_visit_wellbeing_observations" id="jmrs_visit_wellbeing_observations_<?php echo esc_attr( (string) $visit_id_row ); ?>" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_exec_value( 'wellbeing_observations' ) ); ?></textarea>
+														</td>
+													</tr>
+													<tr>
+														<th scope="row">
+															<label for="jmrs_visit_incident_report_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+																<?php echo esc_html__( 'Incident Report', 'jm-referral-system' ); ?>
+															</label>
+														</th>
+														<td>
+															<textarea name="jmrs_visit_incident_report" id="jmrs_visit_incident_report_<?php echo esc_attr( (string) $visit_id_row ); ?>" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_exec_value( 'incident_report' ) ); ?></textarea>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+
+											<?php
+											submit_button(
+												__( 'Complete Visit', 'jm-referral-system' ),
+												'primary small',
+												'jmrs_execute_care_visit',
+												false
+											);
+											?>
+										</form>
+									<?php elseif ( $is_executed_visit ) : ?>
+										<p>
+											<strong><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?>:</strong>
+											<?php echo esc_html( '' !== $outcome_label ? $outcome_label : '—' ); ?>
+										</p>
+										<p>
+											<strong><?php echo esc_html__( 'Arrival', 'jm-referral-system' ); ?>:</strong>
+											<?php
+											echo esc_html(
+												'' !== $arrival_display
+													? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $arrival_display )
+													: '—'
+											);
+											?>
+										</p>
+										<p>
+											<strong><?php echo esc_html__( 'Departure', 'jm-referral-system' ); ?>:</strong>
+											<?php
+											echo esc_html(
+												'' !== $departure_display
+													? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $departure_display )
+													: '—'
+											);
+											?>
+										</p>
+										<p>
+											<strong><?php echo esc_html__( 'Duration', 'jm-referral-system' ); ?>:</strong>
+											<?php
+											echo esc_html(
+												$duration_minutes > 0
+													? sprintf(
+														/* translators: %d: duration in minutes */
+														_n( '%d minute', '%d minutes', $duration_minutes, 'jm-referral-system' ),
+														$duration_minutes
+													)
+													: '—'
+											);
+											?>
+										</p>
+										<?php if ( '' !== trim( (string) ( $visit_row['tasks_completed'] ?? '' ) ) ) : ?>
+											<p><strong><?php echo esc_html__( 'Tasks Completed', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['tasks_completed'] ) ); ?></p>
+										<?php endif; ?>
+										<?php if ( '' !== trim( (string) ( $visit_row['tasks_not_completed'] ?? '' ) ) ) : ?>
+											<p><strong><?php echo esc_html__( 'Tasks Not Completed', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['tasks_not_completed'] ) ); ?></p>
+										<?php endif; ?>
+										<?php if ( '' !== trim( (string) ( $visit_row['client_response'] ?? '' ) ) ) : ?>
+											<p><strong><?php echo esc_html__( 'Client Response', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['client_response'] ) ); ?></p>
+										<?php endif; ?>
+										<?php if ( '' !== trim( (string) ( $visit_row['wellbeing_observations'] ?? '' ) ) ) : ?>
+											<p><strong><?php echo esc_html__( 'Wellbeing Observations', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['wellbeing_observations'] ) ); ?></p>
+										<?php endif; ?>
+										<?php if ( '' !== trim( (string) ( $visit_row['incident_report'] ?? '' ) ) ) : ?>
+											<p><strong><?php echo esc_html__( 'Incident Report', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['incident_report'] ) ); ?></p>
+										<?php endif; ?>
+
+										<?php if ( $can_review_visit || $is_reviewed_visit ) : ?>
+											<h3 style="margin:16px 0 8px;"><?php echo esc_html__( 'Manager Review', 'jm-referral-system' ); ?></h3>
+											<?php if ( $can_review_visit ) : ?>
+												<form method="post" action="">
+													<?php wp_nonce_field( 'jmrs_review_care_visit_' . $visit_id_row, 'jmrs_review_visit_nonce' ); ?>
+													<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+													<input type="hidden" name="jmrs_visit_id" value="<?php echo esc_attr( (string) $visit_id_row ); ?>" />
+													<p>
+														<label for="jmrs_visit_manager_review_notes_<?php echo esc_attr( (string) $visit_id_row ); ?>">
+															<?php echo esc_html__( 'Manager Review Notes', 'jm-referral-system' ); ?>
+														</label><br />
+														<textarea
+															name="jmrs_visit_manager_review_notes"
+															id="jmrs_visit_manager_review_notes_<?php echo esc_attr( (string) $visit_id_row ); ?>"
+															class="large-text"
+															rows="3"
+															required
+														><?php echo esc_textarea( $jmrs_exec_value( 'manager_review_notes' ) ); ?></textarea>
+														<?php if ( isset( $execution_errors['manager_review_notes'] ) ) : ?>
+															<span class="description"><?php echo esc_html( $execution_errors['manager_review_notes'] ); ?></span>
+														<?php endif; ?>
+													</p>
+													<?php
+													submit_button(
+														__( 'Review', 'jm-referral-system' ),
+														'secondary small',
+														'jmrs_review_care_visit',
+														false
+													);
+													?>
+												</form>
+											<?php else : ?>
+												<p>
+													<strong><?php echo esc_html__( 'Reviewed by', 'jm-referral-system' ); ?>:</strong>
+													<?php echo esc_html( (string) ( $visit_row['reviewed_by_name'] ?? '—' ) ); ?>
+												</p>
+												<p>
+													<strong><?php echo esc_html__( 'Reviewed at', 'jm-referral-system' ); ?>:</strong>
+													<?php
+													$reviewed_at = (string) ( $visit_row['reviewed_at'] ?? '' );
+													echo esc_html(
+														'' !== $reviewed_at
+															? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $reviewed_at )
+															: '—'
+													);
+													?>
+												</p>
+												<?php if ( '' !== trim( (string) ( $visit_row['manager_review_notes'] ?? '' ) ) ) : ?>
+													<p><strong><?php echo esc_html__( 'Manager Review Notes', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['manager_review_notes'] ) ); ?></p>
+												<?php endif; ?>
+											<?php endif; ?>
+										<?php endif; ?>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endif; ?>
 					<?php endforeach; ?>
 				</tbody>
 			</table>

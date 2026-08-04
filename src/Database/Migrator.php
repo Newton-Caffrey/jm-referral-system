@@ -10,7 +10,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.8.1';
+    public const DB_VERSION = '2.9.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -96,6 +96,11 @@ class Migrator
 
         if (version_compare($from_version, '2.8.1', '<')) {
             // Widen days_of_week for JSON weekday arrays via Tables::create().
+        }
+
+        if (version_compare($from_version, '2.9.0', '<')) {
+            Capabilities::grant_to_administrators();
+            Roles::register();
         }
     }
 

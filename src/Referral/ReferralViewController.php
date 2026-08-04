@@ -23,6 +23,7 @@ use JMReferral\Services\ServiceTypeService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Workflow\WorkflowStageService;
 
 class ReferralViewController
@@ -42,7 +43,8 @@ class ReferralViewController
         private ReferralCarePlanReviewService $care_plan_review_service,
         private CareVisitService $care_visit_service,
         private CareTeamService $care_team_service,
-        private ScheduleService $schedule_service
+        private ScheduleService $schedule_service,
+        private VisitExecutionService $visit_execution_service
     ) {
     }
 
@@ -398,6 +400,9 @@ class ReferralViewController
         }
 
         if ($can_view_visits) {
+            $execution_form_state = CareVisitController::get_execution_form_state($referral_id);
+            $visit_outcome_labels = VisitExecutionService::outcome_labels();
+
             foreach ($this->care_visit_service->get_visits_for_referral($referral_id) as $visit_row) {
                 $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
                 $visit_row['assigned_staff_name'] = $assigned_id > 0
@@ -423,8 +428,46 @@ class ReferralViewController
                     $visit_row['source_label'] = __('Manual', 'jm-referral-system');
                 }
 
+                $is_executed = $this->visit_execution_service->is_executed($visit_row);
+                $is_reviewed = $this->visit_execution_service->is_reviewed($visit_row);
+                $visit_row['is_executed'] = $is_executed;
+                $visit_row['is_reviewed'] = $is_reviewed;
+                $visit_row['can_execute'] = ! $is_executed
+                    && $this->visit_execution_service->can_execute_visit($referral, $visit_row);
+                $visit_row['can_review'] = $is_executed
+                    && ! $is_reviewed
+                    && $this->visit_execution_service->can_review_visit($referral);
+
+                $outcome_key = (string) ($visit_row['visit_outcome'] ?? '');
+                $visit_row['outcome_label'] = isset($visit_outcome_labels[$outcome_key])
+                    ? $visit_outcome_labels[$outcome_key]
+                    : $outcome_key;
+
+                $reviewed_by = absint($visit_row['reviewed_by'] ?? 0);
+                $visit_row['reviewed_by_name'] = $reviewed_by > 0
+                    ? $this->user_provider->get_display_name($reviewed_by)
+                    : '';
+
+                $visit_id_row = absint($visit_row['id'] ?? 0);
+                if (
+                    $visit_id_row > 0
+                    && absint($execution_form_state['visit_id'] ?? 0) === $visit_id_row
+                    && ! empty($execution_form_state['data'])
+                ) {
+                    $visit_row['execution_form_data'] = array_merge(
+                        VisitExecutionService::empty_execution_form_data(),
+                        $execution_form_state['data']
+                    );
+                    $visit_row['execution_errors'] = $execution_form_state['errors'];
+                } else {
+                    $visit_row['execution_form_data'] = VisitExecutionService::empty_execution_form_data();
+                    $visit_row['execution_errors']    = [];
+                }
+
                 $care_visits[] = $visit_row;
             }
+        } else {
+            $visit_outcome_labels = [];
         }
 
         include JMRS_PLUGIN_PATH . 'templates/referrals/view.php';
