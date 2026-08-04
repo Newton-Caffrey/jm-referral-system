@@ -253,6 +253,18 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that a visit task checklist was updated.
+     */
+    public function log_visit_tasks_updated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'visit_tasks_updated',
+            __('Visit task checklist updated', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Logs that a manager reviewed an executed visit.
      */
     public function log_visit_reviewed(int $referral_id): void

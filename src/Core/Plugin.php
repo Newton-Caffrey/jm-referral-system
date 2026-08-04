@@ -50,6 +50,8 @@ use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
+use JMReferral\Visits\VisitTaskRepository;
+use JMReferral\Visits\VisitTaskService;
 use JMReferral\Workflow\WorkflowStageController;
 use JMReferral\Workflow\WorkflowStageRepository;
 use JMReferral\Workflow\WorkflowStageService;
@@ -181,7 +183,13 @@ class Plugin
             $this->access_policy
         );
 
-        $visit_repository         = new CareVisitRepository();
+        $visit_repository    = new CareVisitRepository();
+        $visit_task_service  = new VisitTaskService(
+            new VisitTaskRepository(),
+            $visit_repository,
+            $care_plan_repository
+        );
+
         $this->care_visit_service = new CareVisitService(
             $visit_repository,
             $repository,
@@ -189,14 +197,16 @@ class Plugin
             $activity_service,
             $this->access_policy,
             $this->user_provider,
-            $this->care_team_service
+            $this->care_team_service,
+            $visit_task_service
         );
 
         $this->visit_execution_service = new VisitExecutionService(
             $visit_repository,
             $repository,
             $activity_service,
-            $this->access_policy
+            $this->access_policy,
+            $visit_task_service
         );
 
         $this->schedule_generation_service = new ScheduleGenerationService(
@@ -206,7 +216,8 @@ class Plugin
             $care_plan_repository,
             new CareTeamRepository(),
             $activity_service,
-            $this->access_policy
+            $this->access_policy,
+            $visit_task_service
         );
 
         $service_type_repository       = new ServiceTypeRepository();
@@ -282,7 +293,8 @@ class Plugin
             $this->care_visit_service,
             $this->care_team_service,
             $this->schedule_service,
-            $this->visit_execution_service
+            $this->visit_execution_service,
+            $visit_task_service
         );
 
         $document_controller = new ReferralDocumentController(

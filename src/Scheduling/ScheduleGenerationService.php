@@ -12,6 +12,7 @@ use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralRepository;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\VisitTaskService;
 
 class ScheduleGenerationService
 {
@@ -25,7 +26,8 @@ class ScheduleGenerationService
         private ReferralCarePlanRepository $care_plan_repository,
         private CareTeamRepository $care_team_repository,
         private ReferralActivityService $activity_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private VisitTaskService $visit_task_service
     ) {
     }
 
@@ -249,6 +251,7 @@ class ScheduleGenerationService
                 ];
             }
 
+            $this->visit_task_service->generate_for_visit($inserted);
             ++$created;
         }
 

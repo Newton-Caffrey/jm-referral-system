@@ -99,7 +99,8 @@ class CareVisitService
         private ReferralActivityService $activity_service,
         private AccessPolicy $access_policy,
         private UserProvider $user_provider,
-        private CareTeamService $care_team_service
+        private CareTeamService $care_team_service,
+        private VisitTaskService $visit_task_service
     ) {
     }
 
@@ -166,6 +167,7 @@ class CareVisitService
                 return false;
             }
 
+            $this->visit_task_service->generate_for_visit($id);
             $this->activity_service->log_visit_created($referral_id);
 
             if (self::STATUS_COMPLETED === $new_status) {
@@ -184,6 +186,7 @@ class CareVisitService
             return false;
         }
 
+        $this->visit_task_service->generate_for_visit($visit_id);
         $this->activity_service->log_visit_updated($referral_id);
 
         if (self::STATUS_COMPLETED === $new_status && self::STATUS_COMPLETED !== $old_status) {

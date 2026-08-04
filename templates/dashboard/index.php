@@ -317,6 +317,93 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 		</table>
 	<?php endif; ?>
 
+	<?php if ( ! empty( $show_top_outstanding_tasks ) ) : ?>
+		<?php
+		$top_outstanding_task_types = is_array( $top_outstanding_task_types ?? null ) ? $top_outstanding_task_types : array();
+		?>
+		<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Top Outstanding Task Types', 'jm-referral-system' ); ?></h2>
+		<table class="wp-list-table widefat fixed striped table-view-list">
+			<thead>
+				<tr>
+					<th scope="col"><?php echo esc_html__( 'Task', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Outstanding Count', 'jm-referral-system' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( empty( $top_outstanding_task_types ) ) : ?>
+					<tr class="no-items">
+						<td colspan="2"><?php echo esc_html__( 'No outstanding visit tasks.', 'jm-referral-system' ); ?></td>
+					</tr>
+				<?php else : ?>
+					<?php foreach ( $top_outstanding_task_types as $task_type_row ) : ?>
+						<?php
+						$task_name  = (string) ( $task_type_row['task_name'] ?? '' );
+						$task_count = absint( $task_type_row['count'] ?? 0 );
+						?>
+						<tr>
+							<td><?php echo '' !== $task_name ? esc_html( $task_name ) : '—'; ?></td>
+							<td><?php echo esc_html( (string) $task_count ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
+	<?php endif; ?>
+
+	<?php if ( ! empty( $show_todays_outstanding_tasks ) ) : ?>
+		<?php
+		$todays_outstanding_tasks = is_array( $todays_outstanding_tasks ?? null ) ? $todays_outstanding_tasks : array();
+		?>
+		<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( "Today's Outstanding Tasks", 'jm-referral-system' ); ?></h2>
+		<table class="wp-list-table widefat fixed striped table-view-list">
+			<thead>
+				<tr>
+					<th scope="col"><?php echo esc_html__( 'Task', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( empty( $todays_outstanding_tasks ) ) : ?>
+					<tr class="no-items">
+						<td colspan="4"><?php echo esc_html__( 'No outstanding tasks for today.', 'jm-referral-system' ); ?></td>
+					</tr>
+				<?php else : ?>
+					<?php foreach ( $todays_outstanding_tasks as $task_row ) : ?>
+						<?php
+						$task_name     = (string) ( $task_row['task_name'] ?? '' );
+						$client_name   = (string) ( $task_row['client_name'] ?? '' );
+						$task_status   = (string) ( $task_row['task_status'] ?? '' );
+						$referral_url  = (string) ( $task_row['referral_url'] ?? '' );
+						$status_labels = array(
+							'pending'       => __( 'Pending', 'jm-referral-system' ),
+							'not_completed' => __( 'Not Completed', 'jm-referral-system' ),
+						);
+						$status_label = isset( $status_labels[ $task_status ] )
+							? $status_labels[ $task_status ]
+							: $task_status;
+						?>
+						<tr>
+							<td><?php echo '' !== $task_name ? esc_html( $task_name ) : '—'; ?></td>
+							<td><?php echo '' !== $client_name ? esc_html( $client_name ) : '—'; ?></td>
+							<td><?php echo '' !== $status_label ? esc_html( $status_label ) : '—'; ?></td>
+							<td>
+								<?php if ( '' !== $referral_url ) : ?>
+									<a href="<?php echo esc_url( $referral_url ); ?>">
+										<?php echo esc_html__( 'View', 'jm-referral-system' ); ?>
+									</a>
+								<?php else : ?>
+									—
+								<?php endif; ?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
+	<?php endif; ?>
+
 	<h2 class="jmrs-dashboard-section-title">
 		<?php
 		echo esc_html(

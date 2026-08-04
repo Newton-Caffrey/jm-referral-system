@@ -61,15 +61,16 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Generation window, duplicate prevention, and source labelling
 - [x] Manual visits preserved separately from generated visits
 
+### Visit Execution ✅
+
+- [x] Visit check-in / check-out and completion workflows
+- [x] Structured visit task checklists from care-plan sections
+- [x] Task exceptions (not completed, refused, not applicable) with notes
+- [x] Auto-generated task summaries and manager review
+
 ---
 
 ## In Progress 🚧
-
-### Visit Execution
-
-- [ ] Visit check-in / check-out and completion workflows in the field
-- [ ] Richer visit task capture during delivery
-- [ ] Operational handling of missed and cancelled visits
 
 ### Medication Administration
 
@@ -126,7 +127,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 1 — Foundation | Architecture, referrals, dashboard, notes, export, notifications | ✅ Complete |
 | Phase 2 — Security | Roles, capabilities, workflow, service types, sources, access policy | ✅ Complete |
 | Phase 3 — Clinical Operations | Documents, assessments, care plans, care team, scheduling, generated visits | ✅ Complete |
-| Phase 4 — Visit Execution & Medication | Field visit delivery and medication administration | 🚧 In progress |
+| Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, and medication administration | 🚧 In progress |
 | Phase 5 — Reporting | Advanced reports, KPIs, workload, analytics | 🚧 In progress |
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
 | Phase 7 — Production Hardening | Performance, UX polish, automated testing, v1.0 | 🚀 Future |

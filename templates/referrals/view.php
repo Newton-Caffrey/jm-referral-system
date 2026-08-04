@@ -1740,23 +1740,54 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 														</td>
 													</tr>
 													<tr>
-														<th scope="row">
-															<label for="jmrs_visit_tasks_completed_<?php echo esc_attr( (string) $visit_id_row ); ?>">
-																<?php echo esc_html__( 'Tasks Completed', 'jm-referral-system' ); ?>
-															</label>
-														</th>
+														<th scope="row"><?php echo esc_html__( 'Tasks', 'jm-referral-system' ); ?></th>
 														<td>
-															<textarea name="jmrs_visit_tasks_completed" id="jmrs_visit_tasks_completed_<?php echo esc_attr( (string) $visit_id_row ); ?>" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_exec_value( 'tasks_completed' ) ); ?></textarea>
-														</td>
-													</tr>
-													<tr>
-														<th scope="row">
-															<label for="jmrs_visit_tasks_not_completed_<?php echo esc_attr( (string) $visit_id_row ); ?>">
-																<?php echo esc_html__( 'Tasks Not Completed', 'jm-referral-system' ); ?>
-															</label>
-														</th>
-														<td>
-															<textarea name="jmrs_visit_tasks_not_completed" id="jmrs_visit_tasks_not_completed_<?php echo esc_attr( (string) $visit_id_row ); ?>" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_exec_value( 'tasks_not_completed' ) ); ?></textarea>
+															<?php
+															$visit_tasks       = is_array( $visit_row['visit_tasks'] ?? null ) ? $visit_row['visit_tasks'] : array();
+															$task_status_labels = is_array( $visit_task_statuses ?? null ) ? $visit_task_statuses : array();
+															?>
+															<?php if ( empty( $visit_tasks ) ) : ?>
+																<p class="description"><?php echo esc_html__( 'No care-plan tasks were generated for this visit.', 'jm-referral-system' ); ?></p>
+															<?php else : ?>
+																<table class="widefat striped" style="max-width:100%;">
+																	<thead>
+																		<tr>
+																			<th><?php echo esc_html__( 'Task Name', 'jm-referral-system' ); ?></th>
+																			<th><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+																			<th><?php echo esc_html__( 'Task Notes', 'jm-referral-system' ); ?></th>
+																		</tr>
+																	</thead>
+																	<tbody>
+																		<?php foreach ( $visit_tasks as $task_row ) : ?>
+																			<?php
+																			$task_id     = absint( $task_row['id'] ?? 0 );
+																			$task_name   = (string) ( $task_row['task_name'] ?? '' );
+																			$task_status = (string) ( $task_row['task_status'] ?? 'pending' );
+																			$task_notes  = (string) ( $task_row['task_notes'] ?? '' );
+																			?>
+																			<tr>
+																				<td><?php echo esc_html( $task_name ); ?></td>
+																				<td>
+																					<select name="jmrs_visit_tasks[<?php echo esc_attr( (string) $task_id ); ?>][task_status]">
+																						<?php foreach ( $task_status_labels as $status_value => $status_text ) : ?>
+																							<option value="<?php echo esc_attr( (string) $status_value ); ?>" <?php selected( $task_status, (string) $status_value ); ?>>
+																								<?php echo esc_html( (string) $status_text ); ?>
+																							</option>
+																						<?php endforeach; ?>
+																					</select>
+																				</td>
+																				<td>
+																					<textarea
+																						name="jmrs_visit_tasks[<?php echo esc_attr( (string) $task_id ); ?>][task_notes]"
+																						class="large-text"
+																						rows="2"
+																					><?php echo esc_textarea( $task_notes ); ?></textarea>
+																				</td>
+																			</tr>
+																		<?php endforeach; ?>
+																	</tbody>
+																</table>
+															<?php endif; ?>
 														</td>
 													</tr>
 													<tr>
@@ -1840,11 +1871,41 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 											);
 											?>
 										</p>
-										<?php if ( '' !== trim( (string) ( $visit_row['tasks_completed'] ?? '' ) ) ) : ?>
-											<p><strong><?php echo esc_html__( 'Tasks Completed', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['tasks_completed'] ) ); ?></p>
+										<?php
+										$task_summaries = is_array( $visit_row['task_summaries'] ?? null ) ? $visit_row['task_summaries'] : array();
+										$completed_list = is_array( $task_summaries['completed'] ?? null ) ? $task_summaries['completed'] : array();
+										$outstanding_list = is_array( $task_summaries['outstanding'] ?? null ) ? $task_summaries['outstanding'] : array();
+										$refused_list = is_array( $task_summaries['refused'] ?? null ) ? $task_summaries['refused'] : array();
+										?>
+										<p><strong><?php echo esc_html__( 'Tasks Completed', 'jm-referral-system' ); ?>:</strong></p>
+										<?php if ( empty( $completed_list ) ) : ?>
+											<p>—</p>
+										<?php else : ?>
+											<ul>
+												<?php foreach ( $completed_list as $task_label ) : ?>
+													<li><?php echo esc_html( (string) $task_label ); ?></li>
+												<?php endforeach; ?>
+											</ul>
 										<?php endif; ?>
-										<?php if ( '' !== trim( (string) ( $visit_row['tasks_not_completed'] ?? '' ) ) ) : ?>
-											<p><strong><?php echo esc_html__( 'Tasks Not Completed', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['tasks_not_completed'] ) ); ?></p>
+										<p><strong><?php echo esc_html__( 'Tasks Outstanding', 'jm-referral-system' ); ?>:</strong></p>
+										<?php if ( empty( $outstanding_list ) ) : ?>
+											<p>—</p>
+										<?php else : ?>
+											<ul>
+												<?php foreach ( $outstanding_list as $task_label ) : ?>
+													<li><?php echo esc_html( (string) $task_label ); ?></li>
+												<?php endforeach; ?>
+											</ul>
+										<?php endif; ?>
+										<p><strong><?php echo esc_html__( 'Tasks Refused', 'jm-referral-system' ); ?>:</strong></p>
+										<?php if ( empty( $refused_list ) ) : ?>
+											<p>—</p>
+										<?php else : ?>
+											<ul>
+												<?php foreach ( $refused_list as $task_label ) : ?>
+													<li><?php echo esc_html( (string) $task_label ); ?></li>
+												<?php endforeach; ?>
+											</ul>
 										<?php endif; ?>
 										<?php if ( '' !== trim( (string) ( $visit_row['client_response'] ?? '' ) ) ) : ?>
 											<p><strong><?php echo esc_html__( 'Client Response', 'jm-referral-system' ); ?>:</strong><br /><?php echo nl2br( esc_html( (string) $visit_row['client_response'] ) ); ?></p>

@@ -427,12 +427,7 @@ class CareVisitController
                 ? sanitize_text_field(wp_unslash($input['jmrs_visit_departure_time']))
                 : '',
             'visit_outcome'          => $outcome,
-            'tasks_completed'        => isset($input['jmrs_visit_tasks_completed'])
-                ? sanitize_textarea_field(wp_unslash($input['jmrs_visit_tasks_completed']))
-                : '',
-            'tasks_not_completed'    => isset($input['jmrs_visit_tasks_not_completed'])
-                ? sanitize_textarea_field(wp_unslash($input['jmrs_visit_tasks_not_completed']))
-                : '',
+            'tasks'                  => $this->sanitize_tasks_input($input),
             'client_response'        => isset($input['jmrs_visit_client_response'])
                 ? sanitize_textarea_field(wp_unslash($input['jmrs_visit_client_response']))
                 : '',
@@ -443,6 +438,43 @@ class CareVisitController
                 ? sanitize_textarea_field(wp_unslash($input['jmrs_visit_incident_report']))
                 : '',
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<int, array{task_status: string, task_notes: string}>
+     */
+    private function sanitize_tasks_input(array $input): array
+    {
+        $raw = $input['jmrs_visit_tasks'] ?? null;
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $tasks = [];
+        foreach ($raw as $task_id => $row) {
+            $task_id = absint($task_id);
+            if ($task_id <= 0 || ! is_array($row)) {
+                continue;
+            }
+
+            $status = isset($row['task_status'])
+                ? sanitize_key(wp_unslash($row['task_status']))
+                : VisitTaskService::STATUS_PENDING;
+
+            if (! in_array($status, VisitTaskService::allowed_statuses(), true)) {
+                $status = VisitTaskService::STATUS_PENDING;
+            }
+
+            $tasks[$task_id] = [
+                'task_status' => $status,
+                'task_notes'  => isset($row['task_notes'])
+                    ? sanitize_textarea_field(wp_unslash($row['task_notes']))
+                    : '',
+            ];
+        }
+
+        return $tasks;
     }
 
     /**

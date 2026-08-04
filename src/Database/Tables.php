@@ -135,6 +135,16 @@ class Tables
     }
 
     /**
+     * Returns the visit tasks table name with the WordPress prefix.
+     */
+    public static function visit_tasks_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_visit_tasks';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -158,6 +168,7 @@ class Tables
         self::create_care_visits_table($charset);
         self::create_care_team_table($charset);
         self::create_visit_schedules_table($charset);
+        self::create_visit_tasks_table($charset);
     }
 
     /**
@@ -568,6 +579,31 @@ class Tables
             KEY care_plan_id (care_plan_id),
             KEY team_assignment_id (team_assignment_id),
             KEY status (status)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the visit tasks table.
+     */
+    private static function create_visit_tasks_table(string $charset): void
+    {
+        $table = self::visit_tasks_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            visit_id BIGINT UNSIGNED NOT NULL,
+            task_name VARCHAR(255) NOT NULL,
+            task_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+            task_notes LONGTEXT NULL,
+            display_order INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY visit_id (visit_id),
+            KEY task_status (task_status),
+            KEY display_order (display_order)
         ) {$charset};";
 
         dbDelta($sql);

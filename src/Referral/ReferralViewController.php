@@ -24,6 +24,7 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
+use JMReferral\Visits\VisitTaskService;
 use JMReferral\Workflow\WorkflowStageService;
 
 class ReferralViewController
@@ -44,7 +45,8 @@ class ReferralViewController
         private CareVisitService $care_visit_service,
         private CareTeamService $care_team_service,
         private ScheduleService $schedule_service,
-        private VisitExecutionService $visit_execution_service
+        private VisitExecutionService $visit_execution_service,
+        private VisitTaskService $visit_task_service
     ) {
     }
 
@@ -402,6 +404,7 @@ class ReferralViewController
         if ($can_view_visits) {
             $execution_form_state = CareVisitController::get_execution_form_state($referral_id);
             $visit_outcome_labels = VisitExecutionService::outcome_labels();
+            $visit_task_statuses  = VisitTaskService::status_labels();
 
             foreach ($this->care_visit_service->get_visits_for_referral($referral_id) as $visit_row) {
                 $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
@@ -449,6 +452,23 @@ class ReferralViewController
                     : '';
 
                 $visit_id_row = absint($visit_row['id'] ?? 0);
+                if ($visit_id_row > 0 && ! $is_executed) {
+                    $this->visit_task_service->generate_for_visit($visit_id_row);
+                }
+                $visit_row['visit_tasks'] = $visit_id_row > 0
+                    ? $this->visit_task_service->get_tasks_for_visit($visit_id_row)
+                    : [];
+                $visit_row['task_summaries'] = $visit_id_row > 0
+                    ? $this->visit_task_service->get_summaries($visit_id_row)
+                    : [
+                        'completed'        => [],
+                        'outstanding'      => [],
+                        'refused'          => [],
+                        'completed_text'   => '',
+                        'outstanding_text' => '',
+                        'refused_text'     => '',
+                    ];
+
                 if (
                     $visit_id_row > 0
                     && absint($execution_form_state['visit_id'] ?? 0) === $visit_id_row
@@ -459,6 +479,18 @@ class ReferralViewController
                         $execution_form_state['data']
                     );
                     $visit_row['execution_errors'] = $execution_form_state['errors'];
+                    $posted_tasks = is_array($execution_form_state['data']['tasks'] ?? null)
+                        ? $execution_form_state['data']['tasks']
+                        : [];
+                    if (! empty($posted_tasks) && ! empty($visit_row['visit_tasks'])) {
+                        foreach ($visit_row['visit_tasks'] as $idx => $task_row) {
+                            $tid = absint($task_row['id'] ?? 0);
+                            if ($tid > 0 && isset($posted_tasks[$tid]) && is_array($posted_tasks[$tid])) {
+                                $visit_row['visit_tasks'][$idx]['task_status'] = (string) ($posted_tasks[$tid]['task_status'] ?? $task_row['task_status']);
+                                $visit_row['visit_tasks'][$idx]['task_notes']  = (string) ($posted_tasks[$tid]['task_notes'] ?? '');
+                            }
+                        }
+                    }
                 } else {
                     $visit_row['execution_form_data'] = VisitExecutionService::empty_execution_form_data();
                     $visit_row['execution_errors']    = [];
@@ -468,6 +500,7 @@ class ReferralViewController
             }
         } else {
             $visit_outcome_labels = [];
+            $visit_task_statuses  = [];
         }
 
         include JMRS_PLUGIN_PATH . 'templates/referrals/view.php';

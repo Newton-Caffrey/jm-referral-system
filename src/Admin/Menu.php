@@ -43,6 +43,8 @@ use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
+use JMReferral\Visits\VisitTaskRepository;
+use JMReferral\Visits\VisitTaskService;
 use JMReferral\Workflow\WorkflowStageController;
 use JMReferral\Workflow\WorkflowStageRepository;
 use JMReferral\Workflow\WorkflowStageService;
@@ -167,6 +169,12 @@ class Menu
         );
 
         $visit_repository = new CareVisitRepository();
+        $visit_task_service = new VisitTaskService(
+            new VisitTaskRepository(),
+            $visit_repository,
+            $care_plan_repository
+        );
+
         $care_visit_service ??= new CareVisitService(
             $visit_repository,
             $repository,
@@ -174,7 +182,8 @@ class Menu
             $activity_service,
             $access_policy,
             $user_provider,
-            $care_team_service
+            $care_team_service,
+            $visit_task_service
         );
 
         $schedule_generation_service = new ScheduleGenerationService(
@@ -184,14 +193,16 @@ class Menu
             $care_plan_repository,
             new CareTeamRepository(),
             $activity_service,
-            $access_policy
+            $access_policy,
+            $visit_task_service
         );
 
         $visit_execution_service = new VisitExecutionService(
             $visit_repository,
             $repository,
             $activity_service,
-            $access_policy
+            $access_policy,
+            $visit_task_service
         );
 
         $view_controller ??= new ReferralViewController(
@@ -210,7 +221,8 @@ class Menu
             $care_visit_service,
             $care_team_service,
             $schedule_service,
-            $visit_execution_service
+            $visit_execution_service,
+            $visit_task_service
         );
 
         $this->dashboard_page            = new DashboardPage(
@@ -221,7 +233,8 @@ class Menu
             $care_team_service,
             $access_policy,
             $schedule_service,
-            $visit_execution_service
+            $visit_execution_service,
+            $visit_task_service
         );
         $this->referrals_page            = new ReferralsPage($list_controller);
         $this->add_referral_page         = new AddReferralPage($user_provider, $service_type_service);

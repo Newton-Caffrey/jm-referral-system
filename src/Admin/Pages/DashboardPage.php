@@ -11,6 +11,7 @@ use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
+use JMReferral\Visits\VisitTaskService;
 
 class DashboardPage
 {
@@ -22,7 +23,8 @@ class DashboardPage
         private CareTeamService $care_team_service,
         private AccessPolicy $access_policy,
         private ScheduleService $schedule_service,
-        private VisitExecutionService $visit_execution_service
+        private VisitExecutionService $visit_execution_service,
+        private VisitTaskService $visit_task_service
     ) {
     }
 
@@ -94,6 +96,38 @@ class DashboardPage
         if ($show_todays_completed) {
             foreach ($this->visit_execution_service->get_todays_completed_for_current_user(10) as $visit_row) {
                 $todays_completed_visits[] = $this->enrich_dashboard_visit($visit_row, $visit_outcome_labels);
+            }
+        }
+
+        $show_top_outstanding_tasks = Capabilities::current_user_can(Capabilities::MANAGE_VISITS)
+            && ! $this->access_policy->should_scope_to_assigned();
+        $top_outstanding_task_types = [];
+
+        if ($show_top_outstanding_tasks) {
+            $top_outstanding_task_types = $this->visit_task_service->get_top_outstanding_task_types(10);
+        }
+
+        $show_todays_outstanding_tasks = $this->access_policy->should_scope_to_assigned()
+            && Capabilities::current_user_can(Capabilities::EXECUTE_VISITS);
+        $todays_outstanding_tasks = [];
+
+        if ($show_todays_outstanding_tasks) {
+            foreach ($this->visit_task_service->get_todays_outstanding_for_user(get_current_user_id(), 10) as $task_row) {
+                $referral_id = absint($task_row['referral_id'] ?? 0);
+                $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
+                $task_row['client_name'] = is_array($referral)
+                    ? (string) ($referral['client_name'] ?? '')
+                    : '';
+                $task_row['referral_url'] = $referral_id > 0
+                    ? add_query_arg(
+                        [
+                            'page'        => 'jm-referrals-view',
+                            'referral_id' => $referral_id,
+                        ],
+                        admin_url('admin.php')
+                    )
+                    : '';
+                $todays_outstanding_tasks[] = $task_row;
             }
         }
 

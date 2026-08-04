@@ -41,6 +41,12 @@ Milestone release covering the foundation, security, and clinical operations del
 - Custom capabilities for dashboard, referrals, notes, export, documents, care plans, reviews, visits, care team, schedules, service types, workflow stages, and settings
 - Project README documenting architecture, roles, capabilities, security, and installation
 - Admin UI templates for referrals, assessments, care plans, care team, schedules, visits, services, workflow, and dashboard
+- Visit execution with arrival/departure, outcomes, duration, manager review, and activity logging (`visit_executed`, `visit_reviewed`)
+- Visit task checklists generated from care-plan sections (`wp_jmrs_visit_tasks`)
+- Structured task statuses: pending, completed, not_completed, refused, not_applicable
+- Auto-generated read-only task summaries (Completed / Outstanding / Refused) on visit save
+- Dashboard widgets: Top Outstanding Task Types (managers) and Today's Outstanding Tasks (Support Workers)
+- Activity event `visit_tasks_updated` when a visit task checklist is saved
 
 ### Changed
 
@@ -48,9 +54,11 @@ Milestone release covering the foundation, security, and clinical operations del
 - Schedule `days_of_week` storage normalised to a JSON array of lowercase weekday keys (for example `["monday","wednesday","friday"]`), with backward-compatible decoding of legacy comma-separated values and ISO weekday numbers
 - `days_of_week` column widened to `VARCHAR(191)` to support full JSON weekday arrays
 - Care visits table extended with nullable schedule source fields: `schedule_id`, `schedule_occurrence_date`, `generation_key`
+- Care visits table extended with execution fields (arrival, departure, outcome, task summaries, review)
+- Visit execution UI uses structured task checklists instead of free-text Tasks Completed / Tasks Not Completed
 - Generated visit inserts are insert-only and do not rewrite manual, completed, cancelled, or missed visits
 - Schedule visit generation logs a single `schedule_visits_generated` activity entry instead of one `visit_created` entry per generated visit
-- Database schema advanced through additive migrations (current schema version `2.8.1`)
+- Database schema advanced through additive migrations (current schema version `2.10.0`)
 
 ### Security
 

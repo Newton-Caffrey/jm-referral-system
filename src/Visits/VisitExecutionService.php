@@ -69,12 +69,13 @@ class VisitExecutionService
         private CareVisitRepository $visit_repository,
         private ReferralRepository $referral_repository,
         private ReferralActivityService $activity_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private VisitTaskService $visit_task_service
     ) {
     }
 
     /**
-     * @param array<string, string> $input
+     * @param array<string, mixed> $input
      * @return array{id: int}|array{errors: array<string, string>}|false
      */
     public function execute(int $referral_id, int $visit_id, array $input): array|false
@@ -112,11 +113,28 @@ class VisitExecutionService
             ];
         }
 
+        $tasks_input = is_array($input['tasks'] ?? null) ? $input['tasks'] : [];
+        if (! empty($tasks_input)) {
+            $task_result = $this->visit_task_service->update_tasks_for_visit($visit_id, $tasks_input);
+            if (! empty($task_result['errors'])) {
+                return ['errors' => $task_result['errors']];
+            }
+        }
+
+        $summaries = $this->visit_task_service->get_summaries($visit_id);
+
         $now          = current_time('mysql');
         $completed_at = trim((string) ($visit['completed_at'] ?? ''));
         if ('' === $completed_at) {
             $completed_at = $now;
         }
+
+        $not_completed = trim(
+            trim($summaries['outstanding_text'])
+            . ('' !== $summaries['refused_text']
+                ? ("\n\n" . __('Refused', 'jm-referral-system') . ":\n" . $summaries['refused_text'])
+                : '')
+        );
 
         $updated = $this->visit_repository->update(
             $visit_id,
@@ -125,8 +143,8 @@ class VisitExecutionService
                 'departure_time'           => $departure,
                 'actual_duration_minutes'  => $duration,
                 'visit_outcome'            => (string) ($input['visit_outcome'] ?? ''),
-                'tasks_completed'          => $this->nullable_text((string) ($input['tasks_completed'] ?? '')),
-                'tasks_not_completed'      => $this->nullable_text((string) ($input['tasks_not_completed'] ?? '')),
+                'tasks_completed'          => '' !== $summaries['completed_text'] ? $summaries['completed_text'] : null,
+                'tasks_not_completed'      => '' !== $not_completed ? $not_completed : null,
                 'client_response'          => $this->nullable_text((string) ($input['client_response'] ?? '')),
                 'wellbeing_observations'   => $this->nullable_text((string) ($input['wellbeing_observations'] ?? '')),
                 'incident_report'          => $this->nullable_text((string) ($input['incident_report'] ?? '')),
@@ -138,6 +156,10 @@ class VisitExecutionService
 
         if (! $updated) {
             return false;
+        }
+
+        if (! empty($tasks_input)) {
+            $this->activity_service->log_visit_tasks_updated($referral_id);
         }
 
         $this->activity_service->log_visit_executed($referral_id);
