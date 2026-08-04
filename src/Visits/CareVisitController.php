@@ -7,6 +7,7 @@ use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\ReferralRepository;
 use JMReferral\Scheduling\ScheduleRepository;
 use JMReferral\Users\UserProvider;
+use JMReferral\Medication\MedicationAdministrationService;
 
 class CareVisitController
 {
@@ -114,16 +115,16 @@ class CareVisitController
             $this->redirect_to_view($referral_id, false);
         }
 
-        wp_safe_redirect(
-            add_query_arg(
-                [
-                    'page'                 => 'jm-referrals-view',
-                    'referral_id'          => $referral_id,
-                    'jmrs_visit_executed'  => '1',
-                ],
-                admin_url('admin.php')
-            )
-        );
+        $redirect_args = [
+            'page'                => 'jm-referrals-view',
+            'referral_id'         => $referral_id,
+            'jmrs_visit_executed' => '1',
+        ];
+        if (! empty($result['medication_warning'])) {
+            $redirect_args['jmrs_medication_warning'] = '1';
+        }
+
+        wp_safe_redirect(add_query_arg($redirect_args, admin_url('admin.php')));
         exit;
     }
 
@@ -256,6 +257,15 @@ class CareVisitController
         if (isset($_GET['jmrs_visit_executed']) && '1' === $_GET['jmrs_visit_executed']) {
             echo '<div class="notice notice-success is-dismissible"><p>';
             echo esc_html__('Visit completed by staff successfully.', 'jm-referral-system');
+            echo '</p></div>';
+        }
+
+        if (isset($_GET['jmrs_medication_warning']) && '1' === $_GET['jmrs_medication_warning']) {
+            echo '<div class="notice notice-warning is-dismissible"><p>';
+            echo esc_html__(
+                'Active medications exist for this client, but no medication administrations were recorded for this visit.',
+                'jm-referral-system'
+            );
             echo '</p></div>';
         }
 
@@ -428,6 +438,7 @@ class CareVisitController
                 : '',
             'visit_outcome'          => $outcome,
             'tasks'                  => $this->sanitize_tasks_input($input),
+            'medications'            => $this->sanitize_medications_input($input),
             'client_response'        => isset($input['jmrs_visit_client_response'])
                 ? sanitize_textarea_field(wp_unslash($input['jmrs_visit_client_response']))
                 : '',
@@ -438,6 +449,62 @@ class CareVisitController
                 ? sanitize_textarea_field(wp_unslash($input['jmrs_visit_incident_report']))
                 : '',
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<int, array<string, mixed>>
+     */
+    private function sanitize_medications_input(array $input): array
+    {
+        $raw = $input['jmrs_visit_medications'] ?? null;
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($raw as $medication_id => $row) {
+            $medication_id = absint($medication_id);
+            if ($medication_id <= 0 || ! is_array($row)) {
+                continue;
+            }
+
+            $status = isset($row['administration_status'])
+                ? sanitize_key(wp_unslash($row['administration_status']))
+                : '';
+            if ('' !== $status && ! in_array($status, MedicationAdministrationService::allowed_statuses(), true)) {
+                $status = '';
+            }
+
+            $reason = isset($row['reason_code'])
+                ? sanitize_key(wp_unslash($row['reason_code']))
+                : '';
+            if ('' !== $reason && ! in_array($reason, MedicationAdministrationService::allowed_reason_codes(), true)) {
+                $reason = '';
+            }
+
+            $rows[$medication_id] = [
+                'administration_status' => $status,
+                'scheduled_time'        => isset($row['scheduled_time'])
+                    ? sanitize_text_field(wp_unslash($row['scheduled_time']))
+                    : '',
+                'administered_time'     => isset($row['administered_time'])
+                    ? sanitize_text_field(wp_unslash($row['administered_time']))
+                    : '',
+                'dose_given'            => isset($row['dose_given'])
+                    ? sanitize_text_field(wp_unslash($row['dose_given']))
+                    : '',
+                'reason_code'           => $reason,
+                'notes'                 => isset($row['notes'])
+                    ? sanitize_textarea_field(wp_unslash($row['notes']))
+                    : '',
+                'witness_user_id'       => isset($row['witness_user_id'])
+                    ? (string) absint(wp_unslash($row['witness_user_id']))
+                    : '',
+            ];
+        }
+
+        return $rows;
     }
 
     /**

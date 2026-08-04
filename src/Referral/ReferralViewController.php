@@ -25,6 +25,9 @@ use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskService;
+use JMReferral\Medication\MedicationController;
+use JMReferral\Medication\MedicationService;
+use JMReferral\Medication\MedicationAdministrationService;
 use JMReferral\Workflow\WorkflowStageService;
 
 class ReferralViewController
@@ -46,7 +49,9 @@ class ReferralViewController
         private CareTeamService $care_team_service,
         private ScheduleService $schedule_service,
         private VisitExecutionService $visit_execution_service,
-        private VisitTaskService $visit_task_service
+        private VisitTaskService $visit_task_service,
+        private MedicationService $medication_service,
+        private MedicationAdministrationService $medication_administration_service
     ) {
     }
 
@@ -289,6 +294,36 @@ class ReferralViewController
             }
         }
 
+        $can_view_medications = $this->medication_service->can_view_medications($referral);
+        $can_manage_medications = $this->medication_service->can_manage_medications($referral);
+        $show_inactive_medications = isset($_GET['jmrs_show_inactive_meds']) && '1' === (string) $_GET['jmrs_show_inactive_meds'];
+        $medication_status_labels = MedicationService::status_labels();
+        $medication_route_labels  = MedicationService::route_labels();
+        $medication_form_state    = MedicationController::get_form_state($referral_id);
+        $medication_errors        = $medication_form_state['errors'];
+        $medication_data          = ! empty($medication_form_state['data']) && absint($medication_form_state['medication_id'] ?? 0) === 0
+            ? array_merge(MedicationService::empty_form_data(), $medication_form_state['data'])
+            : MedicationService::empty_form_data();
+        $medications = [];
+        $can_administer_medications_cap = Capabilities::current_user_can(Capabilities::ADMINISTER_MEDICATIONS)
+            && $this->access_policy->can_view_referral($referral);
+
+        if ($can_view_medications) {
+            $medications = $this->medication_service->get_medications_for_referral(
+                $referral_id,
+                $show_inactive_medications
+            );
+            foreach ($medications as $idx => $med_row) {
+                $medications[$idx]['edit_url'] = MedicationController::get_edit_url(absint($med_row['id'] ?? 0));
+            }
+        }
+
+        $administration_status_labels = MedicationAdministrationService::status_labels();
+        $administration_reason_labels = MedicationAdministrationService::reason_labels();
+        $witness_users = ($can_view_medications || $can_administer_medications_cap)
+            ? $this->user_provider->get_assignable_users()
+            : [];
+
         $care_visits = [];
         $schedule_name_by_id = [];
 
@@ -469,6 +504,24 @@ class ReferralViewController
                         'refused_text'     => '',
                     ];
 
+                $visit_active_medications = $this->medication_administration_service
+                    ->get_active_medications_valid_on_visit($visit_row);
+                $visit_row['can_administer_medications'] = ! $is_executed
+                    && $this->medication_administration_service->can_show_administration_for_visit(
+                        $referral,
+                        $visit_row
+                    );
+                $visit_row['active_medications'] = $visit_active_medications;
+                $visit_row['medication_administrations'] = $visit_id_row > 0
+                    ? $this->medication_administration_service->get_for_visit($visit_id_row)
+                    : [];
+
+                $admin_by_med = [];
+                foreach ($visit_row['medication_administrations'] as $admin_row) {
+                    $admin_by_med[absint($admin_row['medication_id'] ?? 0)] = $admin_row;
+                }
+                $visit_row['medication_admin_by_id'] = $admin_by_med;
+
                 if (
                     $visit_id_row > 0
                     && absint($execution_form_state['visit_id'] ?? 0) === $visit_id_row
@@ -491,9 +544,14 @@ class ReferralViewController
                             }
                         }
                     }
+                    $posted_meds = is_array($execution_form_state['data']['medications'] ?? null)
+                        ? $execution_form_state['data']['medications']
+                        : [];
+                    $visit_row['posted_medications'] = $posted_meds;
                 } else {
                     $visit_row['execution_form_data'] = VisitExecutionService::empty_execution_form_data();
                     $visit_row['execution_errors']    = [];
+                    $visit_row['posted_medications']  = [];
                 }
 
                 $care_visits[] = $visit_row;

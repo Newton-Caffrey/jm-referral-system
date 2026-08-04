@@ -14,6 +14,11 @@ use JMReferral\CarePlan\ReferralCarePlanReviewController;
 use JMReferral\CarePlan\ReferralCarePlanReviewRepository;
 use JMReferral\CarePlan\ReferralCarePlanReviewService;
 use JMReferral\CarePlan\ReferralCarePlanVersionRepository;
+use JMReferral\Medication\MedicationAdministrationRepository;
+use JMReferral\Medication\MedicationAdministrationService;
+use JMReferral\Medication\MedicationController;
+use JMReferral\Medication\MedicationRepository;
+use JMReferral\Medication\MedicationService;
 use JMReferral\CareTeam\CareTeamController;
 use JMReferral\CareTeam\CareTeamRepository;
 use JMReferral\CareTeam\CareTeamService;
@@ -66,6 +71,7 @@ class Menu
     private CareVisitController $care_visit_controller;
     private CareTeamController $care_team_controller;
     private ScheduleController $schedule_controller;
+    private MedicationController $medication_controller;
 
     public function __construct(
         ?ReferralListController $list_controller = null,
@@ -85,7 +91,10 @@ class Menu
         ?CareTeamController $care_team_controller = null,
         ?CareTeamService $care_team_service = null,
         ?ScheduleController $schedule_controller = null,
-        ?ScheduleService $schedule_service = null
+        ?ScheduleService $schedule_service = null,
+        ?MedicationController $medication_controller = null,
+        ?MedicationService $medication_service = null,
+        ?MedicationAdministrationService $medication_administration_service = null
     ) {
         $repository      = new ReferralRepository();
         $access_policy ??= new AccessPolicy();
@@ -178,6 +187,23 @@ class Menu
             $care_plan_repository
         );
 
+        $medication_repository = new MedicationRepository();
+        $medication_service ??= new MedicationService(
+            $medication_repository,
+            $repository,
+            $activity_service,
+            $access_policy
+        );
+        $medication_administration_repository = new MedicationAdministrationRepository();
+        $medication_administration_service ??= new MedicationAdministrationService(
+            $medication_administration_repository,
+            $medication_repository,
+            $visit_repository,
+            $repository,
+            $activity_service,
+            $access_policy
+        );
+
         $operational_alert_service = new OperationalAlertService(
             $repository,
             new ReferralAssessmentRepository(),
@@ -187,7 +213,8 @@ class Menu
             new ScheduleRepository(),
             $visit_repository,
             new VisitTaskRepository(),
-            $access_policy
+            $access_policy,
+            $medication_administration_repository
         );
 
         $care_visit_service ??= new CareVisitService(
@@ -217,7 +244,8 @@ class Menu
             $repository,
             $activity_service,
             $access_policy,
-            $visit_task_service
+            $visit_task_service,
+            $medication_administration_service
         );
 
         $view_controller ??= new ReferralViewController(
@@ -237,7 +265,9 @@ class Menu
             $care_team_service,
             $schedule_service,
             $visit_execution_service,
-            $visit_task_service
+            $visit_task_service,
+            $medication_service,
+            $medication_administration_service
         );
 
         $this->dashboard_page            = new DashboardPage(
@@ -250,7 +280,8 @@ class Menu
             $schedule_service,
             $visit_execution_service,
             $visit_task_service,
-            $operational_alert_service
+            $operational_alert_service,
+            $medication_administration_service
         );
         $this->operational_alerts_page   = new OperationalAlertsPage($operational_alert_service);
         $this->referrals_page            = new ReferralsPage($list_controller);
@@ -287,6 +318,11 @@ class Menu
             $access_policy,
             $care_team_service,
             $user_provider
+        );
+        $this->medication_controller = $medication_controller ?? new MedicationController(
+            $medication_service,
+            $repository,
+            $access_policy
         );
     }
 
@@ -444,6 +480,15 @@ class Menu
             Capabilities::MANAGE_SCHEDULES,
             'jm-referrals-schedule-edit',
             [$this->schedule_controller, 'render_edit']
+        );
+
+        add_submenu_page(
+            null,
+            __('Edit Medication', 'jm-referral-system'),
+            __('Edit Medication', 'jm-referral-system'),
+            Capabilities::MANAGE_MEDICATIONS,
+            'jm-referrals-medications-edit',
+            [$this->medication_controller, 'render_edit']
         );
 
         add_submenu_page(

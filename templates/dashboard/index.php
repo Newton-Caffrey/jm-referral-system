@@ -134,6 +134,18 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 				<span class="jmrs-stat-label"><?php echo esc_html__( 'Active Schedules', 'jm-referral-system' ); ?></span>
 			</div>
 		<?php endif; ?>
+		<?php if ( ! empty( $show_medication_exceptions ) ) : ?>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) absint( $medication_exceptions_today ?? 0 ) ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Medication Exceptions Today', 'jm-referral-system' ); ?></span>
+			</div>
+		<?php endif; ?>
+		<?php if ( ! empty( $show_my_medication_exceptions ) ) : ?>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) absint( $my_medication_exceptions_today ?? 0 ) ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'My Medication Exceptions Today', 'jm-referral-system' ); ?></span>
+			</div>
+		<?php endif; ?>
 	</div>
 
 	<?php if ( ! empty( $show_operational_alerts ) && is_array( $operational_alerts ?? null ) ) : ?>

@@ -56,6 +56,9 @@ class Roles
                     Capabilities::VIEW_SCHEDULES,
                     Capabilities::MANAGE_SCHEDULES,
                     Capabilities::VIEW_OPERATIONAL_ALERTS,
+                    Capabilities::VIEW_MEDICATIONS,
+                    Capabilities::MANAGE_MEDICATIONS,
+                    Capabilities::ADMINISTER_MEDICATIONS,
                 ],
             ],
             self::CARE_COORDINATOR => [
@@ -80,6 +83,9 @@ class Roles
                     Capabilities::VIEW_SCHEDULES,
                     Capabilities::MANAGE_SCHEDULES,
                     Capabilities::VIEW_OPERATIONAL_ALERTS,
+                    Capabilities::VIEW_MEDICATIONS,
+                    Capabilities::MANAGE_MEDICATIONS,
+                    Capabilities::ADMINISTER_MEDICATIONS,
                 ],
             ],
             self::ASSESSOR => [
@@ -96,6 +102,8 @@ class Roles
                     Capabilities::VIEW_VISITS,
                     Capabilities::VIEW_CARE_TEAM,
                     Capabilities::VIEW_SCHEDULES,
+                    Capabilities::VIEW_MEDICATIONS,
+                    Capabilities::MANAGE_MEDICATIONS,
                 ],
             ],
             self::SUPPORT_WORKER => [
@@ -110,6 +118,8 @@ class Roles
                     Capabilities::EXECUTE_VISITS,
                     Capabilities::VIEW_CARE_TEAM,
                     Capabilities::VIEW_SCHEDULES,
+                    Capabilities::VIEW_MEDICATIONS,
+                    Capabilities::ADMINISTER_MEDICATIONS,
                 ],
             ],
         ];

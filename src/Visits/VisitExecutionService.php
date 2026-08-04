@@ -7,6 +7,7 @@ use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralRepository;
+use JMReferral\Medication\MedicationAdministrationService;
 
 class VisitExecutionService
 {
@@ -70,13 +71,14 @@ class VisitExecutionService
         private ReferralRepository $referral_repository,
         private ReferralActivityService $activity_service,
         private AccessPolicy $access_policy,
-        private VisitTaskService $visit_task_service
+        private VisitTaskService $visit_task_service,
+        private MedicationAdministrationService $medication_administration_service
     ) {
     }
 
     /**
      * @param array<string, mixed> $input
-     * @return array{id: int}|array{errors: array<string, string>}|false
+     * @return array{id: int, medication_warning?: string}|array{errors: array<string, string>}|false
      */
     public function execute(int $referral_id, int $visit_id, array $input): array|false
     {
@@ -118,6 +120,36 @@ class VisitExecutionService
             $task_result = $this->visit_task_service->update_tasks_for_visit($visit_id, $tasks_input);
             if (! empty($task_result['errors'])) {
                 return ['errors' => $task_result['errors']];
+            }
+        }
+
+        $medication_warning = null;
+        $medications_input  = is_array($input['medications'] ?? null) ? $input['medications'] : [];
+        $referral           = $this->referral_repository->find($referral_id);
+
+        if (
+            null !== $referral
+            && $this->medication_administration_service->can_administer_for_visit($referral, $visit)
+        ) {
+            $med_result = $this->medication_administration_service->save_for_visit(
+                $referral_id,
+                $visit_id,
+                $medications_input
+            );
+            if (! empty($med_result['errors'])) {
+                return ['errors' => $med_result['errors']];
+            }
+            $medication_warning = $med_result['warning'] ?? null;
+
+            if (
+                null === $medication_warning
+                && [] !== $this->medication_administration_service->get_active_medications_valid_on_visit($visit)
+                && empty($this->medication_administration_service->get_for_visit($visit_id))
+            ) {
+                $medication_warning = __(
+                    'Active medications exist for this client, but no medication administrations were recorded for this visit.',
+                    'jm-referral-system'
+                );
             }
         }
 
@@ -164,7 +196,12 @@ class VisitExecutionService
 
         $this->activity_service->log_visit_executed($referral_id);
 
-        return ['id' => $visit_id];
+        $response = ['id' => $visit_id];
+        if (null !== $medication_warning && '' !== $medication_warning) {
+            $response['medication_warning'] = $medication_warning;
+        }
+
+        return $response;
     }
 
     /**

@@ -13,6 +13,7 @@ use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskService;
 use JMReferral\Alerts\OperationalAlertService;
+use JMReferral\Medication\MedicationAdministrationService;
 
 class DashboardPage
 {
@@ -26,7 +27,8 @@ class DashboardPage
         private ScheduleService $schedule_service,
         private VisitExecutionService $visit_execution_service,
         private VisitTaskService $visit_task_service,
-        private OperationalAlertService $alert_service
+        private OperationalAlertService $alert_service,
+        private MedicationAdministrationService $medication_administration_service
     ) {
     }
 
@@ -139,6 +141,20 @@ class DashboardPage
         if (Capabilities::current_user_can(Capabilities::VIEW_OPERATIONAL_ALERTS)) {
             $operational_alerts = $this->alert_service->get_dashboard_alerts();
             $show_operational_alerts = is_array($operational_alerts);
+        }
+
+        $show_medication_exceptions = Capabilities::current_user_can(Capabilities::MANAGE_VISITS)
+            && ! $this->access_policy->should_scope_to_assigned();
+        $medication_exceptions_today = 0;
+        if ($show_medication_exceptions) {
+            $medication_exceptions_today = $this->medication_administration_service->count_exceptions_today_for_managers();
+        }
+
+        $show_my_medication_exceptions = $this->access_policy->should_scope_to_assigned()
+            && Capabilities::current_user_can(Capabilities::ADMINISTER_MEDICATIONS);
+        $my_medication_exceptions_today = 0;
+        if ($show_my_medication_exceptions) {
+            $my_medication_exceptions_today = $this->medication_administration_service->count_my_exceptions_today();
         }
 
         include JMRS_PLUGIN_PATH . 'templates/dashboard/index.php';

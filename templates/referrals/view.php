@@ -1067,6 +1067,160 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 		<?php endif; ?>
 	<?php endif; ?>
 
+	<?php if ( ! empty( $can_view_medications ) ) : ?>
+		<?php
+		$medications                 = is_array( $medications ?? null ) ? $medications : array();
+		$medication_status_labels    = is_array( $medication_status_labels ?? null ) ? $medication_status_labels : array();
+		$medication_route_labels     = is_array( $medication_route_labels ?? null ) ? $medication_route_labels : array();
+		$medication_errors           = is_array( $medication_errors ?? null ) ? $medication_errors : array();
+		$medication_data             = is_array( $medication_data ?? null ) ? $medication_data : array();
+		$can_manage_medications      = ! empty( $can_manage_medications );
+		$show_inactive_medications   = ! empty( $show_inactive_medications );
+		$jmrs_med_value              = static function ( string $key ) use ( $medication_data ): string {
+			return (string) ( $medication_data[ $key ] ?? '' );
+		};
+		$toggle_url = add_query_arg(
+			array(
+				'page'                   => 'jm-referrals-view',
+				'referral_id'            => $referral_id,
+				'jmrs_show_inactive_meds'=> $show_inactive_medications ? '0' : '1',
+			),
+			admin_url( 'admin.php' )
+		);
+		?>
+		<h2><?php echo esc_html__( 'Medication List', 'jm-referral-system' ); ?></h2>
+
+		<p>
+			<a href="<?php echo esc_url( $toggle_url ); ?>">
+				<?php
+				echo esc_html(
+					$show_inactive_medications
+						? __( 'Hide inactive medications', 'jm-referral-system' )
+						: __( 'Show inactive medications', 'jm-referral-system' )
+				);
+				?>
+			</a>
+		</p>
+
+		<?php if ( $can_manage_medications ) : ?>
+			<form method="post" action="">
+				<?php wp_nonce_field( 'jmrs_save_medication_' . $referral_id, 'jmrs_medication_nonce' ); ?>
+				<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+				<input type="hidden" name="jmrs_medication_id" value="0" />
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="jmrs_medication_name"><?php echo esc_html__( 'Medication Name', 'jm-referral-system' ); ?></label></th>
+						<td><input type="text" class="regular-text" name="jmrs_medication_name" id="jmrs_medication_name" value="<?php echo esc_attr( $jmrs_med_value( 'medication_name' ) ); ?>" required /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_strength"><?php echo esc_html__( 'Strength', 'jm-referral-system' ); ?></label></th>
+						<td><input type="text" class="regular-text" name="jmrs_medication_strength" id="jmrs_medication_strength" value="<?php echo esc_attr( $jmrs_med_value( 'strength' ) ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_dosage"><?php echo esc_html__( 'Dosage', 'jm-referral-system' ); ?></label></th>
+						<td><input type="text" class="regular-text" name="jmrs_medication_dosage" id="jmrs_medication_dosage" value="<?php echo esc_attr( $jmrs_med_value( 'dosage' ) ); ?>" required /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_route"><?php echo esc_html__( 'Route', 'jm-referral-system' ); ?></label></th>
+						<td>
+							<select name="jmrs_medication_route" id="jmrs_medication_route" required>
+								<option value=""><?php echo esc_html__( 'Select route', 'jm-referral-system' ); ?></option>
+								<?php foreach ( $medication_route_labels as $value => $label ) : ?>
+									<option value="<?php echo esc_attr( (string) $value ); ?>" <?php selected( $jmrs_med_value( 'route' ), (string) $value ); ?>><?php echo esc_html( (string) $label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_frequency"><?php echo esc_html__( 'Frequency', 'jm-referral-system' ); ?></label></th>
+						<td><input type="text" class="regular-text" name="jmrs_medication_frequency" id="jmrs_medication_frequency" value="<?php echo esc_attr( $jmrs_med_value( 'frequency' ) ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_instructions"><?php echo esc_html__( 'Instructions', 'jm-referral-system' ); ?></label></th>
+						<td><textarea class="large-text" rows="3" name="jmrs_medication_instructions" id="jmrs_medication_instructions"><?php echo esc_textarea( $jmrs_med_value( 'instructions' ) ); ?></textarea></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_start_date"><?php echo esc_html__( 'Start Date', 'jm-referral-system' ); ?></label></th>
+						<td><input type="date" name="jmrs_medication_start_date" id="jmrs_medication_start_date" value="<?php echo esc_attr( $jmrs_med_value( 'start_date' ) ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_end_date"><?php echo esc_html__( 'End Date', 'jm-referral-system' ); ?></label></th>
+						<td><input type="date" name="jmrs_medication_end_date" id="jmrs_medication_end_date" value="<?php echo esc_attr( $jmrs_med_value( 'end_date' ) ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_status"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></label></th>
+						<td>
+							<select name="jmrs_medication_status" id="jmrs_medication_status">
+								<?php foreach ( $medication_status_labels as $value => $label ) : ?>
+									<option value="<?php echo esc_attr( (string) $value ); ?>" <?php selected( $jmrs_med_value( 'medication_status' ), (string) $value ); ?>><?php echo esc_html( (string) $label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="jmrs_medication_prescribing_source"><?php echo esc_html__( 'Prescribing Source', 'jm-referral-system' ); ?></label></th>
+						<td><input type="text" class="regular-text" name="jmrs_medication_prescribing_source" id="jmrs_medication_prescribing_source" value="<?php echo esc_attr( $jmrs_med_value( 'prescribing_source' ) ); ?>" /></td>
+					</tr>
+				</table>
+				<?php submit_button( __( 'Save Medication', 'jm-referral-system' ), 'secondary', 'jmrs_save_medication' ); ?>
+			</form>
+		<?php endif; ?>
+
+		<table class="wp-list-table widefat fixed striped">
+			<thead>
+				<tr>
+					<th><?php echo esc_html__( 'Medication', 'jm-referral-system' ); ?></th>
+					<th><?php echo esc_html__( 'Strength', 'jm-referral-system' ); ?></th>
+					<th><?php echo esc_html__( 'Dosage', 'jm-referral-system' ); ?></th>
+					<th><?php echo esc_html__( 'Route', 'jm-referral-system' ); ?></th>
+					<th><?php echo esc_html__( 'Frequency', 'jm-referral-system' ); ?></th>
+					<th><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+					<th><?php echo esc_html__( 'Start Date', 'jm-referral-system' ); ?></th>
+					<th><?php echo esc_html__( 'End Date', 'jm-referral-system' ); ?></th>
+					<?php if ( $can_manage_medications ) : ?>
+						<th><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
+					<?php endif; ?>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( empty( $medications ) ) : ?>
+					<tr class="no-items">
+						<td colspan="<?php echo $can_manage_medications ? '9' : '8'; ?>"><?php echo esc_html__( 'No medications recorded.', 'jm-referral-system' ); ?></td>
+					</tr>
+				<?php else : ?>
+					<?php foreach ( $medications as $med_row ) : ?>
+						<?php
+						$status_key  = (string) ( $med_row['medication_status'] ?? '' );
+						$route_key   = (string) ( $med_row['route'] ?? '' );
+						$status_text = $medication_status_labels[ $status_key ] ?? $status_key;
+						$route_text  = $medication_route_labels[ $route_key ] ?? $route_key;
+						$edit_url    = (string) ( $med_row['edit_url'] ?? '' );
+						?>
+						<tr>
+							<td><?php echo esc_html( (string) ( $med_row['medication_name'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $med_row['strength'] ?? '' ) ?: '—' ); ?></td>
+							<td><?php echo esc_html( (string) ( $med_row['dosage'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( (string) $route_text ); ?></td>
+							<td><?php echo esc_html( (string) ( $med_row['frequency'] ?? '' ) ?: '—' ); ?></td>
+							<td><?php echo esc_html( (string) $status_text ); ?></td>
+							<td><?php echo esc_html( (string) ( $med_row['start_date'] ?? '' ) ?: '—' ); ?></td>
+							<td><?php echo esc_html( (string) ( $med_row['end_date'] ?? '' ) ?: '—' ); ?></td>
+							<?php if ( $can_manage_medications ) : ?>
+								<td>
+									<?php if ( '' !== $edit_url ) : ?>
+										<a href="<?php echo esc_url( $edit_url ); ?>"><?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?></a>
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+							<?php endif; ?>
+						</tr>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
+	<?php endif; ?>
+
 	<?php if ( $can_view_care_team ) : ?>
 		<h2><?php echo esc_html__( 'Care Team', 'jm-referral-system' ); ?></h2>
 
@@ -1236,7 +1390,7 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 						$is_primary     = ! empty( $member_row['is_primary'] );
 						$start_raw      = (string) ( $member_row['start_date'] ?? '' );
 						$end_raw        = (string) ( $member_row['end_date'] ?? '' );
-						$notes          = (string) ( $member_row['notes'] ?? '' );
+						$member_notes   = (string) ( $member_row['notes'] ?? '' );
 						$edit_url       = (string) ( $member_row['edit_url'] ?? '' );
 						$start_display  = '' !== $start_raw ? mysql2date( get_option( 'date_format' ), $start_raw ) : '';
 						$end_display    = '' !== $end_raw ? mysql2date( get_option( 'date_format' ), $end_raw ) : '—';
@@ -1248,7 +1402,7 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 							<td><?php echo esc_html( $status_label ); ?></td>
 							<td><?php echo esc_html( $start_display ); ?></td>
 							<td><?php echo esc_html( $end_display ); ?></td>
-							<td><?php echo '' !== trim( $notes ) ? nl2br( esc_html( $notes ) ) : '—'; ?></td>
+							<td><?php echo '' !== trim( $member_notes ) ? nl2br( esc_html( $member_notes ) ) : '—'; ?></td>
 							<?php if ( $can_manage_care_team ) : ?>
 								<td>
 									<?php if ( '' !== $edit_url ) : ?>
@@ -1790,6 +1944,111 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 															<?php endif; ?>
 														</td>
 													</tr>
+													<?php if ( ! empty( $visit_row['can_administer_medications'] ) ) : ?>
+														<?php
+														$active_meds_for_visit = is_array( $visit_row['active_medications'] ?? null ) ? $visit_row['active_medications'] : array();
+														$posted_meds          = is_array( $visit_row['posted_medications'] ?? null ) ? $visit_row['posted_medications'] : array();
+														$admin_status_labels  = is_array( $administration_status_labels ?? null ) ? $administration_status_labels : array();
+														$admin_reason_labels  = is_array( $administration_reason_labels ?? null ) ? $administration_reason_labels : array();
+														$witness_users_list   = is_array( $witness_users ?? null ) ? $witness_users : array();
+														$default_admin_time   = current_time( 'Y-m-d\TH:i' );
+														?>
+														<tr>
+															<th scope="row"><?php echo esc_html__( 'Medication Administration', 'jm-referral-system' ); ?></th>
+															<td>
+																<table class="widefat striped" style="max-width:100%;">
+																	<thead>
+																		<tr>
+																			<th><?php echo esc_html__( 'Medication', 'jm-referral-system' ); ?></th>
+																			<th><?php echo esc_html__( 'Scheduled Time', 'jm-referral-system' ); ?></th>
+																			<th><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+																			<th><?php echo esc_html__( 'Dose Given', 'jm-referral-system' ); ?></th>
+																			<th><?php echo esc_html__( 'Reason Code', 'jm-referral-system' ); ?></th>
+																			<th><?php echo esc_html__( 'Notes', 'jm-referral-system' ); ?></th>
+																			<th><?php echo esc_html__( 'Witness', 'jm-referral-system' ); ?></th>
+																		</tr>
+																	</thead>
+																	<tbody>
+																		<?php foreach ( $active_meds_for_visit as $med_row ) : ?>
+																			<?php
+																			$med_id      = absint( $med_row['id'] ?? 0 );
+																			$posted      = is_array( $posted_meds[ $med_id ] ?? null ) ? $posted_meds[ $med_id ] : array();
+																			$existing    = is_array( ( $visit_row['medication_admin_by_id'][ $med_id ] ?? null ) ) ? $visit_row['medication_admin_by_id'][ $med_id ] : array();
+																			$status_val  = (string) ( $posted['administration_status'] ?? $existing['administration_status'] ?? '' );
+																			$dose_val    = (string) ( $posted['dose_given'] ?? $existing['dose_given'] ?? '' );
+																			$reason_val  = (string) ( $posted['reason_code'] ?? $existing['reason_code'] ?? '' );
+																			$notes_val   = (string) ( $posted['notes'] ?? $existing['notes'] ?? '' );
+																			$witness_val = (string) ( $posted['witness_user_id'] ?? $existing['witness_user_id'] ?? '' );
+																			$sched_raw   = (string) ( $posted['scheduled_time'] ?? $existing['scheduled_time'] ?? '' );
+																			$admin_raw   = (string) ( $posted['administered_time'] ?? $existing['administered_time'] ?? '' );
+																			$sched_input = '' !== $sched_raw ? str_replace( ' ', 'T', substr( $sched_raw, 0, 16 ) ) : '';
+																			$admin_input = '' !== $admin_raw ? str_replace( ' ', 'T', substr( $admin_raw, 0, 16 ) ) : $default_admin_time;
+																			$route_key   = (string) ( $med_row['route'] ?? '' );
+																			$route_label = is_array( $medication_route_labels ?? null ) && isset( $medication_route_labels[ $route_key ] )
+																				? $medication_route_labels[ $route_key ]
+																				: $route_key;
+																			?>
+																			<tr>
+																				<td>
+																					<strong><?php echo esc_html( (string) ( $med_row['medication_name'] ?? '' ) ); ?></strong><br />
+																					<span class="description">
+																						<?php
+																						echo esc_html(
+																							trim(
+																								(string) ( $med_row['strength'] ?? '' ) . ' / ' .
+																								(string) ( $med_row['dosage'] ?? '' ) . ' / ' .
+																								(string) $route_label,
+																								' /'
+																							)
+																						);
+																						?>
+																					</span>
+																					<input type="hidden" name="jmrs_visit_medications[<?php echo esc_attr( (string) $med_id ); ?>][administered_time]" value="<?php echo esc_attr( $admin_input ); ?>" />
+																				</td>
+																				<td>
+																					<input type="datetime-local" name="jmrs_visit_medications[<?php echo esc_attr( (string) $med_id ); ?>][scheduled_time]" value="<?php echo esc_attr( $sched_input ); ?>" />
+																				</td>
+																				<td>
+																					<select name="jmrs_visit_medications[<?php echo esc_attr( (string) $med_id ); ?>][administration_status]">
+																						<option value=""><?php echo esc_html__( 'Select', 'jm-referral-system' ); ?></option>
+																						<?php foreach ( $admin_status_labels as $value => $label ) : ?>
+																							<option value="<?php echo esc_attr( (string) $value ); ?>" <?php selected( $status_val, (string) $value ); ?>><?php echo esc_html( (string) $label ); ?></option>
+																						<?php endforeach; ?>
+																					</select>
+																				</td>
+																				<td>
+																					<input type="text" class="regular-text" name="jmrs_visit_medications[<?php echo esc_attr( (string) $med_id ); ?>][dose_given]" value="<?php echo esc_attr( $dose_val ); ?>" />
+																				</td>
+																				<td>
+																					<select name="jmrs_visit_medications[<?php echo esc_attr( (string) $med_id ); ?>][reason_code]">
+																						<option value=""><?php echo esc_html__( 'None', 'jm-referral-system' ); ?></option>
+																						<?php foreach ( $admin_reason_labels as $value => $label ) : ?>
+																							<option value="<?php echo esc_attr( (string) $value ); ?>" <?php selected( $reason_val, (string) $value ); ?>><?php echo esc_html( (string) $label ); ?></option>
+																						<?php endforeach; ?>
+																					</select>
+																				</td>
+																				<td>
+																					<textarea class="large-text" rows="2" name="jmrs_visit_medications[<?php echo esc_attr( (string) $med_id ); ?>][notes]"><?php echo esc_textarea( $notes_val ); ?></textarea>
+																				</td>
+																				<td>
+																					<select name="jmrs_visit_medications[<?php echo esc_attr( (string) $med_id ); ?>][witness_user_id]">
+																						<option value=""><?php echo esc_html__( 'None', 'jm-referral-system' ); ?></option>
+																						<?php foreach ( $witness_users_list as $user_row ) : ?>
+																							<?php
+																							$uid   = absint( $user_row['id'] ?? 0 );
+																							$uname = (string) ( $user_row['display_name'] ?? '' );
+																							?>
+																							<option value="<?php echo esc_attr( (string) $uid ); ?>" <?php selected( $witness_val, (string) $uid ); ?>><?php echo esc_html( $uname ); ?></option>
+																						<?php endforeach; ?>
+																					</select>
+																				</td>
+																			</tr>
+																		<?php endforeach; ?>
+																	</tbody>
+																</table>
+															</td>
+														</tr>
+													<?php endif; ?>
 													<tr>
 														<th scope="row">
 															<label for="jmrs_visit_client_response_<?php echo esc_attr( (string) $visit_id_row ); ?>">
@@ -1981,7 +2240,19 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 
 	<h2><?php echo esc_html__( 'Internal Notes', 'jm-referral-system' ); ?></h2>
 
-	<?php if ( empty( $notes ) ) : ?>
+	<?php
+	$notes_list = $notes ?? array();
+	if ( is_string( $notes_list ) ) {
+		$decoded_notes = json_decode( $notes_list, true );
+		$notes_list    = ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded_notes ) )
+			? $decoded_notes
+			: array();
+	} elseif ( ! is_array( $notes_list ) ) {
+		$notes_list = array();
+	}
+	?>
+
+	<?php if ( empty( $notes_list ) ) : ?>
 		<p><?php echo esc_html__( 'No internal notes yet.', 'jm-referral-system' ); ?></p>
 	<?php else : ?>
 		<table class="wp-list-table widefat fixed striped table-view-list">
@@ -1993,7 +2264,7 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 				</tr>
 			</thead>
 			<tbody>
-				<?php foreach ( $notes as $note_row ) : ?>
+				<?php foreach ( $notes_list as $note_row ) : ?>
 					<?php
 					$author_name     = (string) ( $note_row['author_name'] ?? '' );
 					$note_created    = (string) ( $note_row['created_at'] ?? '' );

@@ -28,6 +28,9 @@ class Capabilities
     public const MANAGE_WORKFLOW_STAGES = 'jmrs_manage_workflow_stages';
     public const MANAGE_SETTINGS = 'jmrs_manage_settings';
     public const VIEW_OPERATIONAL_ALERTS = 'jmrs_view_operational_alerts';
+    public const VIEW_MEDICATIONS = 'jmrs_view_medications';
+    public const MANAGE_MEDICATIONS = 'jmrs_manage_medications';
+    public const ADMINISTER_MEDICATIONS = 'jmrs_administer_medications';
 
     /**
      * Returns every plugin capability.
@@ -61,6 +64,9 @@ class Capabilities
             self::MANAGE_WORKFLOW_STAGES,
             self::MANAGE_SETTINGS,
             self::VIEW_OPERATIONAL_ALERTS,
+            self::VIEW_MEDICATIONS,
+            self::MANAGE_MEDICATIONS,
+            self::ADMINISTER_MEDICATIONS,
         ];
     }
 

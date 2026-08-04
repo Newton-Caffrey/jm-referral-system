@@ -52,6 +52,12 @@ use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskRepository;
 use JMReferral\Visits\VisitTaskService;
+use JMReferral\Medication\MedicationAdministrationController;
+use JMReferral\Medication\MedicationAdministrationRepository;
+use JMReferral\Medication\MedicationAdministrationService;
+use JMReferral\Medication\MedicationController;
+use JMReferral\Medication\MedicationRepository;
+use JMReferral\Medication\MedicationService;
 use JMReferral\Workflow\WorkflowStageController;
 use JMReferral\Workflow\WorkflowStageRepository;
 use JMReferral\Workflow\WorkflowStageService;
@@ -78,6 +84,9 @@ class Plugin
     private ?ScheduleController $schedule_controller = null;
     private ?ScheduleService $schedule_service = null;
     private ?ScheduleGenerationService $schedule_generation_service = null;
+    private ?MedicationController $medication_controller = null;
+    private ?MedicationService $medication_service = null;
+    private ?MedicationAdministrationService $medication_administration_service = null;
 
     public function run(): void
     {
@@ -107,7 +116,10 @@ class Plugin
             $this->care_team_controller,
             $this->care_team_service,
             $this->schedule_controller,
-            $this->schedule_service
+            $this->schedule_service,
+            $this->medication_controller,
+            $this->medication_service,
+            $this->medication_administration_service
         );
         $menu->register();
     }
@@ -190,6 +202,23 @@ class Plugin
             $care_plan_repository
         );
 
+        $medication_repository = new MedicationRepository();
+        $this->medication_service = new MedicationService(
+            $medication_repository,
+            $repository,
+            $activity_service,
+            $this->access_policy
+        );
+        $medication_administration_repository = new MedicationAdministrationRepository();
+        $this->medication_administration_service = new MedicationAdministrationService(
+            $medication_administration_repository,
+            $medication_repository,
+            $visit_repository,
+            $repository,
+            $activity_service,
+            $this->access_policy
+        );
+
         $this->care_visit_service = new CareVisitService(
             $visit_repository,
             $repository,
@@ -206,7 +235,8 @@ class Plugin
             $repository,
             $activity_service,
             $this->access_policy,
-            $visit_task_service
+            $visit_task_service,
+            $this->medication_administration_service
         );
 
         $this->schedule_generation_service = new ScheduleGenerationService(
@@ -294,7 +324,9 @@ class Plugin
             $this->care_team_service,
             $this->schedule_service,
             $this->visit_execution_service,
-            $visit_task_service
+            $visit_task_service,
+            $this->medication_service,
+            $this->medication_administration_service
         );
 
         $document_controller = new ReferralDocumentController(
@@ -347,6 +379,13 @@ class Plugin
             $this->user_provider
         );
 
+        $this->medication_controller = new MedicationController(
+            $this->medication_service,
+            $repository,
+            $this->access_policy
+        );
+        new MedicationAdministrationController($this->medication_administration_service);
+
         $create_controller->register();
         $this->list_controller->register();
         $this->edit_controller->register();
@@ -360,6 +399,7 @@ class Plugin
         $this->care_visit_controller->register();
         $this->care_team_controller->register();
         $this->schedule_controller->register();
+        $this->medication_controller->register();
         $this->service_type_controller->register();
         $this->workflow_stage_controller->register();
     }

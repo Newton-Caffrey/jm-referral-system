@@ -277,6 +277,72 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that a medication was added.
+     */
+    public function log_medication_added(int $referral_id, string $medication_name): void
+    {
+        $this->log(
+            $referral_id,
+            'medication_added',
+            sprintf(
+                /* translators: %s: medication name */
+                __('Medication added: %s', 'jm-referral-system'),
+                $medication_name
+            )
+        );
+    }
+
+    /**
+     * Logs that a medication was updated.
+     */
+    public function log_medication_updated(int $referral_id, string $medication_name): void
+    {
+        $this->log(
+            $referral_id,
+            'medication_updated',
+            sprintf(
+                /* translators: %s: medication name */
+                __('Medication updated: %s', 'jm-referral-system'),
+                $medication_name
+            )
+        );
+    }
+
+    /**
+     * Logs that a medication status changed.
+     */
+    public function log_medication_status_changed(int $referral_id, string $from, string $to): void
+    {
+        $this->log(
+            $referral_id,
+            'medication_status_changed',
+            sprintf(
+                /* translators: 1: previous status, 2: new status */
+                __('Medication status changed from %1$s to %2$s', 'jm-referral-system'),
+                $from,
+                $to
+            )
+        );
+    }
+
+    /**
+     * Logs that a medication administration was recorded.
+     */
+    public function log_medication_administered(int $referral_id, string $medication_name, string $status_label): void
+    {
+        $this->log(
+            $referral_id,
+            'medication_administered',
+            sprintf(
+                /* translators: 1: medication name, 2: administration status */
+                __('Medication administration recorded: %1$s — %2$s', 'jm-referral-system'),
+                $medication_name,
+                $status_label
+            )
+        );
+    }
+
+    /**
      * Logs that a care team member was added.
      */
     public function log_care_team_member_added(int $referral_id): void

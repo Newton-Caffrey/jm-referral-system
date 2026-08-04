@@ -74,14 +74,19 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Dashboard summary and dedicated Operational Alerts page
 - [x] Capability-gated access for managers and coordinators
 
+### Medication Administration ✅
+
+- [x] Client medication list (active / paused / discontinued)
+- [x] Medication administration outcomes during visit execution
+- [x] Exception reason codes, dashboard counts, and operational alerts
+
 ---
 
 ## In Progress 🚧
 
-### Medication Administration
+### Medication Administration (advanced)
 
-- [ ] Medication records linked to care delivery
-- [ ] Administration logging and review
+- [ ] Stock control, controlled-drug registers, PRN, eMAR export
 
 ### Reporting
 
@@ -133,7 +138,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 1 — Foundation | Architecture, referrals, dashboard, notes, export, notifications | ✅ Complete |
 | Phase 2 — Security | Roles, capabilities, workflow, service types, sources, access policy | ✅ Complete |
 | Phase 3 — Clinical Operations | Documents, assessments, care plans, care team, scheduling, generated visits | ✅ Complete |
-| Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, operational alerts, and medication administration | 🚧 In progress |
+| Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, operational alerts, and MAR foundation | 🚧 In progress |
 | Phase 5 — Reporting | Advanced reports, KPIs, workload, analytics | 🚧 In progress |
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
 | Phase 7 — Production Hardening | Performance, UX polish, automated testing, v1.0 | 🚀 Future |

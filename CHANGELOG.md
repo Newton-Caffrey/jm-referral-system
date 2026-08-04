@@ -51,6 +51,10 @@ Milestone release covering the foundation, security, and clinical operations del
 - Capability `jmrs_view_operational_alerts` for Administrators, JM Administrators, Referral Managers, and Care Coordinators
 - Dedicated Operational Alerts admin page with severity/type filters and search
 - Dashboard Operational Alerts summary cards and grouped alert lists
+- Medication Administration Records (MAR) foundation: client medication list and visit administration outcomes
+- Capabilities `jmrs_view_medications`, `jmrs_manage_medications`, and `jmrs_administer_medications`
+- Dashboard widgets for Medication Exceptions Today / My Medication Exceptions Today
+- Operational alert for medication administration exceptions
 
 ### Changed
 
@@ -60,9 +64,10 @@ Milestone release covering the foundation, security, and clinical operations del
 - Care visits table extended with nullable schedule source fields: `schedule_id`, `schedule_occurrence_date`, `generation_key`
 - Care visits table extended with execution fields (arrival, departure, outcome, task summaries, review)
 - Visit execution UI uses structured task checklists instead of free-text Tasks Completed / Tasks Not Completed
+- Visit execution can record medication administrations alongside visit completion
 - Generated visit inserts are insert-only and do not rewrite manual, completed, cancelled, or missed visits
 - Schedule visit generation logs a single `schedule_visits_generated` activity entry instead of one `visit_created` entry per generated visit
-- Database schema advanced through additive migrations (current schema version `2.11.0`)
+- Database schema advanced through additive migrations (current schema version `2.12.1`)
 
 ### Security
 
@@ -80,6 +85,7 @@ Milestone release covering the foundation, security, and clinical operations del
 - Notification delivery reliability
 - Document upload MIME type compatibility
 - Weekly/custom schedule visit generation failing when selected weekdays could not be decoded from stored `days_of_week` values
+- Support Workers not seeing Medication Administration during visit execution when they had administer rights and visit ownership; UI now uses `jmrs_administer_medications`, visit `assigned_user_id` ownership for scoped users, AccessPolicy, and active medications valid on the visit date (matched on save)
 
 ## [0.2.0]
 

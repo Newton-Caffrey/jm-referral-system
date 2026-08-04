@@ -15,6 +15,8 @@ use JMReferral\Scheduling\ScheduleController;
 use JMReferral\Scheduling\ScheduleRepository;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\VisitTaskRepository;
+use JMReferral\Medication\MedicationAdministrationRepository;
+use JMReferral\Medication\MedicationAdministrationService;
 
 class OperationalAlertService
 {
@@ -32,6 +34,7 @@ class OperationalAlertService
     public const TYPE_VISIT_OVERDUE = 'visit_overdue';
     public const TYPE_VISIT_AWAITING_REVIEW = 'visit_awaiting_review';
     public const TYPE_TASK_EXCEPTIONS = 'visit_task_exceptions';
+    public const TYPE_MEDICATION_EXCEPTION = 'medication_administration_exception';
 
     private const QUERY_LIMIT = 200;
 
@@ -44,7 +47,8 @@ class OperationalAlertService
         private ScheduleRepository $schedule_repository,
         private CareVisitRepository $visit_repository,
         private VisitTaskRepository $visit_task_repository,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private ?MedicationAdministrationRepository $medication_administration_repository = null
     ) {
     }
 
@@ -76,6 +80,7 @@ class OperationalAlertService
             self::TYPE_VISIT_OVERDUE            => __('Care visit overdue', 'jm-referral-system'),
             self::TYPE_VISIT_AWAITING_REVIEW    => __('Completed visit awaiting review', 'jm-referral-system'),
             self::TYPE_TASK_EXCEPTIONS          => __('Visit has care-task exceptions', 'jm-referral-system'),
+            self::TYPE_MEDICATION_EXCEPTION     => __('Medication administration exception', 'jm-referral-system'),
         ];
     }
 
@@ -489,6 +494,48 @@ class OperationalAlertService
                 'client_name'          => $client,
                 'referral_number'      => $number,
             ]);
+        }
+
+        if ($this->medication_administration_repository instanceof MedicationAdministrationRepository) {
+            foreach ($this->medication_administration_repository->get_exceptions_for_date($today, self::QUERY_LIMIT, $access) as $row) {
+                if (! $this->can_view_joined_referral($row)) {
+                    continue;
+                }
+
+                $status      = (string) ($row['administration_status'] ?? '');
+                $severity    = MedicationAdministrationService::STATUS_ERROR === $status
+                    ? self::SEVERITY_CRITICAL
+                    : self::SEVERITY_WARNING;
+                $client      = (string) ($row['client_name'] ?? '');
+                $number      = (string) ($row['referral_number'] ?? '');
+                $med_name    = (string) ($row['medication_name'] ?? '');
+                $status_label = MedicationAdministrationService::status_labels()[$status] ?? $status;
+                $referral_id = absint($row['referral_id'] ?? 0);
+                $visit_id    = absint($row['visit_id'] ?? 0);
+                $due         = (string) ($row['administered_time'] ?? $row['created_at'] ?? '');
+
+                $alerts[] = $this->make_alert([
+                    'type'                 => self::TYPE_MEDICATION_EXCEPTION,
+                    'severity'             => $severity,
+                    'title'                => __('Medication administration exception', 'jm-referral-system'),
+                    'description'          => sprintf(
+                        /* translators: 1: medication name, 2: status, 3: client name, 4: referral number */
+                        __('Medication %1$s was recorded as %2$s for %3$s (%4$s).', 'jm-referral-system'),
+                        $med_name,
+                        $status_label,
+                        $client,
+                        $number
+                    ),
+                    'entity_type'          => 'visit',
+                    'entity_id'            => $visit_id,
+                    'referral_id'          => $referral_id,
+                    'occurred_or_due_date' => $due,
+                    'action_url'           => ReferralViewController::get_view_url($referral_id),
+                    'action_label'         => __('View Visit', 'jm-referral-system'),
+                    'client_name'          => $client,
+                    'referral_number'      => $number,
+                ]);
+            }
         }
 
         return $alerts;

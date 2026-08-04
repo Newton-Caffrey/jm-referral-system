@@ -145,6 +145,26 @@ class Tables
     }
 
     /**
+     * Returns the medications table name with the WordPress prefix.
+     */
+    public static function medications_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_medications';
+    }
+
+    /**
+     * Returns the medication administrations table name with the WordPress prefix.
+     */
+    public static function medication_administrations_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_medication_administrations';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -169,6 +189,8 @@ class Tables
         self::create_care_team_table($charset);
         self::create_visit_schedules_table($charset);
         self::create_visit_tasks_table($charset);
+        self::create_medications_table($charset);
+        self::create_medication_administrations_table($charset);
     }
 
     /**
@@ -604,6 +626,74 @@ class Tables
             KEY visit_id (visit_id),
             KEY task_status (task_status),
             KEY display_order (display_order)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the medications table.
+     */
+    private static function create_medications_table(string $charset): void
+    {
+        $table = self::medications_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            medication_name VARCHAR(255) NOT NULL,
+            strength VARCHAR(100) NULL,
+            dosage VARCHAR(255) NOT NULL,
+            route VARCHAR(100) NOT NULL,
+            frequency VARCHAR(255) NULL,
+            instructions LONGTEXT NULL,
+            start_date DATE NULL,
+            end_date DATE NULL,
+            medication_status VARCHAR(50) NOT NULL DEFAULT 'active',
+            prescribing_source VARCHAR(255) NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY medication_status (medication_status),
+            KEY start_date (start_date),
+            KEY end_date (end_date)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the medication administrations table.
+     */
+    private static function create_medication_administrations_table(string $charset): void
+    {
+        $table = self::medication_administrations_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            medication_id BIGINT UNSIGNED NOT NULL,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            visit_id BIGINT UNSIGNED NOT NULL,
+            administered_by BIGINT UNSIGNED NOT NULL,
+            scheduled_time DATETIME NULL,
+            administered_time DATETIME NULL,
+            administration_status VARCHAR(50) NOT NULL,
+            dose_given VARCHAR(255) NULL,
+            notes LONGTEXT NULL,
+            reason_code VARCHAR(100) NULL,
+            witness_user_id BIGINT UNSIGNED NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY medication_visit_scheduled (medication_id, visit_id, scheduled_time),
+            KEY medication_id (medication_id),
+            KEY referral_id (referral_id),
+            KEY visit_id (visit_id),
+            KEY administered_by (administered_by),
+            KEY administration_status (administration_status),
+            KEY administered_time (administered_time)
         ) {$charset};";
 
         dbDelta($sql);
