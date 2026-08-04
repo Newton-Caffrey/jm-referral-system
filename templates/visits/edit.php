@@ -11,6 +11,7 @@
  * @var string                $back_url
  * @var int                   $visit_id
  * @var int                   $referral_id
+ * @var string                $schedule_source_label
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -49,6 +50,13 @@ $jmrs_visit_value = static function ( string $key ) use ( $visit_data ): string 
 		);
 		?>
 	</p>
+
+	<?php if ( ! empty( $schedule_source_label ) ) : ?>
+		<p>
+			<strong><?php echo esc_html__( 'Source', 'jm-referral-system' ); ?>:</strong>
+			<?php echo esc_html( (string) $schedule_source_label ); ?>
+		</p>
+	<?php endif; ?>
 
 	<?php if ( ! empty( $errors ) ) : ?>
 		<div class="notice notice-error">

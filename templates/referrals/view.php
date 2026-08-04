@@ -1357,11 +1357,41 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 											<?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?>
 										</a>
 									<?php endif; ?>
-									<?php if ( $schedule_id_row > 0 ) : ?>
-										<form method="post" action="" style="display:inline-block; margin-left:8px;">
+									<?php
+									$can_generate          = ! empty( $schedule_row['can_generate'] );
+									$generated_visit_count = absint( $schedule_row['generated_visit_count'] ?? 0 );
+									$gen_start_value       = (string) ( $schedule_row['generation_start_date'] ?? '' );
+									$gen_end_value         = (string) ( $schedule_row['generation_end_date'] ?? '' );
+									?>
+									<?php if ( $schedule_id_row > 0 && $can_generate ) : ?>
+										<form method="post" action="" style="margin-top:8px;">
 											<?php wp_nonce_field( 'jmrs_generate_schedule_visits_' . $schedule_id_row, 'jmrs_generate_schedule_nonce' ); ?>
 											<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
 											<input type="hidden" name="jmrs_schedule_id" value="<?php echo esc_attr( (string) $schedule_id_row ); ?>" />
+											<p style="margin:0 0 6px;">
+												<label for="jmrs_generation_start_<?php echo esc_attr( (string) $schedule_id_row ); ?>">
+													<?php echo esc_html__( 'Generate From', 'jm-referral-system' ); ?>
+												</label><br />
+												<input
+													type="date"
+													name="generation_start_date"
+													id="jmrs_generation_start_<?php echo esc_attr( (string) $schedule_id_row ); ?>"
+													value="<?php echo esc_attr( $gen_start_value ); ?>"
+													required
+												/>
+											</p>
+											<p style="margin:0 0 6px;">
+												<label for="jmrs_generation_end_<?php echo esc_attr( (string) $schedule_id_row ); ?>">
+													<?php echo esc_html__( 'Generate Until', 'jm-referral-system' ); ?>
+												</label><br />
+												<input
+													type="date"
+													name="generation_end_date"
+													id="jmrs_generation_end_<?php echo esc_attr( (string) $schedule_id_row ); ?>"
+													value="<?php echo esc_attr( $gen_end_value ); ?>"
+													required
+												/>
+											</p>
 											<?php
 											submit_button(
 												__( 'Generate Visits', 'jm-referral-system' ),
@@ -1371,6 +1401,42 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 											);
 											?>
 										</form>
+										<p class="description" style="margin-top:6px;">
+											<?php
+											echo esc_html(
+												sprintf(
+													/* translators: %d: number of generated visits */
+													_n(
+														'%d generated visit linked to this schedule.',
+														'%d generated visits linked to this schedule.',
+														$generated_visit_count,
+														'jm-referral-system'
+													),
+													$generated_visit_count
+												)
+											);
+											?>
+										</p>
+									<?php elseif ( $schedule_id_row > 0 ) : ?>
+										<p class="description" style="margin-top:6px;">
+											<?php echo esc_html__( 'Only active schedules can generate visits.', 'jm-referral-system' ); ?>
+										</p>
+										<p class="description">
+											<?php
+											echo esc_html(
+												sprintf(
+													/* translators: %d: number of generated visits */
+													_n(
+														'%d generated visit linked to this schedule.',
+														'%d generated visits linked to this schedule.',
+														$generated_visit_count,
+														'jm-referral-system'
+													),
+													$generated_visit_count
+												)
+											);
+											?>
+										</p>
 									<?php endif; ?>
 								</td>
 							<?php endif; ?>
@@ -1535,6 +1601,7 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 						<th scope="col"><?php echo esc_html__( 'Time', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Assigned Staff', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Visit Type', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Source', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
 						<?php if ( $can_manage_visits ) : ?>
 							<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
@@ -1553,6 +1620,7 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 							? (string) $care_visit_statuses[ $status_key ]
 							: ucfirst( str_replace( '_', ' ', $status_key ) );
 						$assigned_name    = (string) ( $visit_row['assigned_staff_name'] ?? '' );
+						$source_label     = (string) ( $visit_row['source_label'] ?? __( 'Manual', 'jm-referral-system' ) );
 						$edit_url         = (string) ( $visit_row['edit_url'] ?? '' );
 						$visit_date_display = '' !== $visit_date_raw
 							? mysql2date( get_option( 'date_format' ), $visit_date_raw )
@@ -1566,6 +1634,7 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 							<td><?php echo esc_html( $time_display ); ?></td>
 							<td><?php echo '' !== $assigned_name ? esc_html( $assigned_name ) : '—'; ?></td>
 							<td><?php echo '' !== trim( $visit_type ) ? esc_html( $visit_type ) : '—'; ?></td>
+							<td><?php echo esc_html( $source_label ); ?></td>
 							<td><?php echo esc_html( $status_label ); ?></td>
 							<?php if ( $can_manage_visits ) : ?>
 								<td>

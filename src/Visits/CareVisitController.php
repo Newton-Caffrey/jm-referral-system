@@ -5,6 +5,7 @@ namespace JMReferral\Visits;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\ReferralRepository;
+use JMReferral\Scheduling\ScheduleRepository;
 use JMReferral\Users\UserProvider;
 
 class CareVisitController
@@ -15,7 +16,8 @@ class CareVisitController
         private CareVisitService $visit_service,
         private ReferralRepository $referral_repository,
         private AccessPolicy $access_policy,
-        private UserProvider $user_provider
+        private UserProvider $user_provider,
+        private ScheduleRepository $schedule_repository
     ) {
     }
 
@@ -100,6 +102,19 @@ class CareVisitController
 
         $assignable_users = $this->visit_service->get_assignable_staff_for_referral($referral_id);
         $status_labels    = CareVisitService::status_labels();
+        $schedule_source_label = '';
+        $schedule_id = absint($visit['schedule_id'] ?? 0);
+        if ($schedule_id > 0) {
+            $schedule = $this->schedule_repository->find($schedule_id);
+            $schedule_name = is_array($schedule) ? (string) ($schedule['schedule_name'] ?? '') : '';
+            $schedule_source_label = '' !== $schedule_name
+                ? sprintf(
+                    /* translators: %s: schedule name */
+                    __('Schedule: %s', 'jm-referral-system'),
+                    $schedule_name
+                )
+                : __('Schedule', 'jm-referral-system');
+        }
         $back_url         = add_query_arg(
             [
                 'page'        => 'jm-referrals-view',

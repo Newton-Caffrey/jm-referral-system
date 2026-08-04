@@ -301,6 +301,27 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that care visits were generated from a schedule (one entry per generation run).
+     */
+    public function log_schedule_visits_generated(int $referral_id, int $count): void
+    {
+        $this->log(
+            $referral_id,
+            'schedule_visits_generated',
+            sprintf(
+                /* translators: %d: number of visits generated */
+                _n(
+                    '%d care visit generated from schedule',
+                    '%d care visits generated from schedule',
+                    $count,
+                    'jm-referral-system'
+                ),
+                $count
+            )
+        );
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void

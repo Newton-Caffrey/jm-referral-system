@@ -14,6 +14,7 @@ class ScheduleController
 
     public function __construct(
         private ScheduleService $schedule_service,
+        private ScheduleGenerationService $generation_service,
         private ReferralRepository $referral_repository,
         private AccessPolicy $access_policy,
         private CareTeamService $care_team_service,
@@ -91,23 +92,32 @@ class ScheduleController
             wp_die(esc_html__('You do not have permission to generate visits for this referral.', 'jm-referral-system'));
         }
 
-        $result = $this->schedule_service->generate_visits($referral_id, $schedule_id);
+        $start_date = isset($_POST['generation_start_date'])
+            ? sanitize_text_field(wp_unslash($_POST['generation_start_date']))
+            : '';
+        $end_date = isset($_POST['generation_end_date'])
+            ? sanitize_text_field(wp_unslash($_POST['generation_end_date']))
+            : '';
+
+        $result = $this->generation_service->generate($referral_id, $schedule_id, $start_date, $end_date);
 
         if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_form_state($referral_id, [], $result['errors'], $schedule_id);
+            $this->store_form_state($referral_id, [
+                'generation_start_date' => $start_date,
+                'generation_end_date'   => $end_date,
+            ], $result['errors'], $schedule_id);
             $this->redirect_to_view($referral_id, false);
         }
 
-        wp_safe_redirect(
-            add_query_arg(
-                [
-                    'page'                        => 'jm-referrals-view',
-                    'referral_id'                 => $referral_id,
-                    'jmrs_schedule_generate_soon' => '1',
-                ],
-                admin_url('admin.php')
-            )
-        );
+        $args = [
+            'page'                         => 'jm-referrals-view',
+            'referral_id'                  => $referral_id,
+            'jmrs_schedule_visits_created' => (string) absint($result['created'] ?? 0),
+            'jmrs_schedule_visits_skipped' => (string) absint($result['skipped_duplicates'] ?? 0),
+            'jmrs_schedule_visits_outside' => (string) absint($result['skipped_outside_range'] ?? 0),
+        ];
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
         exit;
     }
 
@@ -170,9 +180,36 @@ class ScheduleController
             echo '</p></div>';
         }
 
-        if (isset($_GET['jmrs_schedule_generate_soon']) && '1' === $_GET['jmrs_schedule_generate_soon']) {
-            echo '<div class="notice notice-info is-dismissible"><p>';
-            echo esc_html__('Visit generation from schedules will be available in a future update. The schedule has been saved and is ready.', 'jm-referral-system');
+        if (isset($_GET['jmrs_schedule_visits_created']) || isset($_GET['jmrs_schedule_visits_skipped'])) {
+            $created = isset($_GET['jmrs_schedule_visits_created']) ? absint($_GET['jmrs_schedule_visits_created']) : 0;
+            $skipped = isset($_GET['jmrs_schedule_visits_skipped']) ? absint($_GET['jmrs_schedule_visits_skipped']) : 0;
+            $outside = isset($_GET['jmrs_schedule_visits_outside']) ? absint($_GET['jmrs_schedule_visits_outside']) : 0;
+
+            $parts = [];
+            $parts[] = sprintf(
+                /* translators: %d: number of visits created */
+                _n('%d visit generated.', '%d visits generated.', $created, 'jm-referral-system'),
+                $created
+            );
+
+            if ($skipped > 0) {
+                $parts[] = sprintf(
+                    /* translators: %d: number of duplicate visits skipped */
+                    _n('%d existing visit skipped.', '%d existing visits skipped.', $skipped, 'jm-referral-system'),
+                    $skipped
+                );
+            }
+
+            if ($outside > 0) {
+                $parts[] = sprintf(
+                    /* translators: %d: number of occurrences outside schedule range */
+                    _n('%d occurrence outside the schedule range skipped.', '%d occurrences outside the schedule range skipped.', $outside, 'jm-referral-system'),
+                    $outside
+                );
+            }
+
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html(implode(' ', $parts));
             echo '</p></div>';
         }
 
@@ -297,11 +334,12 @@ class ScheduleController
         $days_raw = [];
         if (isset($input['jmrs_schedule_days_of_week']) && is_array($input['jmrs_schedule_days_of_week'])) {
             foreach ($input['jmrs_schedule_days_of_week'] as $day) {
-                $day = sanitize_text_field(wp_unslash($day));
-                if (isset(ScheduleService::weekday_labels()[$day])) {
+                $day = sanitize_key(wp_unslash($day));
+                if (in_array($day, ScheduleService::allowed_weekday_keys(), true)) {
                     $days_raw[] = $day;
                 }
             }
+            $days_raw = ScheduleService::normalize_weekday_list($days_raw);
         }
 
         return [

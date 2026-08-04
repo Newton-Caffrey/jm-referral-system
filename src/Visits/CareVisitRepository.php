@@ -6,7 +6,7 @@ use JMReferral\Database\Tables;
 
 class CareVisitRepository
 {
-    private const SELECT_COLUMNS = 'id, referral_id, care_plan_id, assigned_user_id, visit_date, start_time, end_time, visit_status, visit_type, tasks, notes, completed_at, created_by, created_at, updated_at';
+    private const SELECT_COLUMNS = 'id, referral_id, care_plan_id, assigned_user_id, schedule_id, schedule_occurrence_date, generation_key, visit_date, start_time, end_time, visit_status, visit_type, tasks, notes, completed_at, created_by, created_at, updated_at';
 
     /**
      * @param array<string, mixed> $data
@@ -84,6 +84,57 @@ class CareVisitRepository
         );
 
         return is_array($row) ? $row : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function find_by_generation_key(string $generation_key): ?array
+    {
+        global $wpdb;
+
+        $generation_key = trim($generation_key);
+        if ('' === $generation_key) {
+            return null;
+        }
+
+        $table   = Tables::care_visits_table();
+        $columns = self::SELECT_COLUMNS;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT {$columns}
+                FROM {$table}
+                WHERE generation_key = %s
+                LIMIT 1",
+                $generation_key
+            ),
+            ARRAY_A
+        );
+
+        return is_array($row) ? $row : null;
+    }
+
+    public function count_by_schedule(int $schedule_id): int
+    {
+        global $wpdb;
+
+        if ($schedule_id <= 0) {
+            return 0;
+        }
+
+        $table = Tables::care_visits_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        $count = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE schedule_id = %d",
+                $schedule_id
+            )
+        );
+
+        return (int) $count;
     }
 
     /**
@@ -232,6 +283,26 @@ class CareVisitRepository
             $row['assigned_user_id'] = absint($row['assigned_user_id']) ?: null;
         }
 
+        // Schedule source fields: required on create (NULL for manual), only touched on update when provided.
+        if ($include_create_fields || array_key_exists('schedule_id', $data)) {
+            $schedule_id = array_key_exists('schedule_id', $data) ? $data['schedule_id'] : null;
+            $row['schedule_id'] = null !== $schedule_id ? (absint($schedule_id) ?: null) : null;
+        }
+
+        if ($include_create_fields || array_key_exists('schedule_occurrence_date', $data)) {
+            $occurrence = array_key_exists('schedule_occurrence_date', $data) ? $data['schedule_occurrence_date'] : null;
+            $row['schedule_occurrence_date'] = (null !== $occurrence && '' !== trim((string) $occurrence))
+                ? (string) $occurrence
+                : null;
+        }
+
+        if ($include_create_fields || array_key_exists('generation_key', $data)) {
+            $generation_key = array_key_exists('generation_key', $data) ? $data['generation_key'] : null;
+            $row['generation_key'] = (null !== $generation_key && '' !== trim((string) $generation_key))
+                ? (string) $generation_key
+                : null;
+        }
+
         if ($include_create_fields) {
             $row = [
                 'created_by' => absint($data['created_by'] ?? 0),
@@ -249,7 +320,7 @@ class CareVisitRepository
      */
     private function formats_for_row(array $row): array
     {
-        $int_keys = ['referral_id', 'care_plan_id', 'assigned_user_id', 'created_by'];
+        $int_keys = ['referral_id', 'care_plan_id', 'assigned_user_id', 'schedule_id', 'created_by'];
         $formats  = [];
 
         foreach ($row as $key => $value) {

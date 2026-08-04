@@ -32,6 +32,7 @@ use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
 use JMReferral\Scheduling\ScheduleController;
+use JMReferral\Scheduling\ScheduleGenerationService;
 use JMReferral\Scheduling\ScheduleRepository;
 use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Services\ServiceTypeController;
@@ -164,14 +165,25 @@ class Menu
             $access_policy
         );
 
+        $visit_repository = new CareVisitRepository();
         $care_visit_service ??= new CareVisitService(
-            new CareVisitRepository(),
+            $visit_repository,
             $repository,
             $care_plan_repository,
             $activity_service,
             $access_policy,
             $user_provider,
             $care_team_service
+        );
+
+        $schedule_generation_service = new ScheduleGenerationService(
+            new ScheduleRepository(),
+            $visit_repository,
+            $repository,
+            $care_plan_repository,
+            new CareTeamRepository(),
+            $activity_service,
+            $access_policy
         );
 
         $view_controller ??= new ReferralViewController(
@@ -218,7 +230,8 @@ class Menu
             $care_visit_service,
             $repository,
             $access_policy,
-            $user_provider
+            $user_provider,
+            new ScheduleRepository()
         );
         $this->care_team_controller = $care_team_controller ?? new CareTeamController(
             $care_team_service,
@@ -228,6 +241,7 @@ class Menu
         );
         $this->schedule_controller = $schedule_controller ?? new ScheduleController(
             $schedule_service,
+            $schedule_generation_service,
             $repository,
             $access_policy,
             $care_team_service,

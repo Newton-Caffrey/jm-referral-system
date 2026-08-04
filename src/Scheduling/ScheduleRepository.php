@@ -115,6 +115,30 @@ class ScheduleRepository
         return is_array($results) ? $results : [];
     }
 
+    /**
+     * Count care visits generated from a schedule.
+     */
+    public function count_generated_visits(int $schedule_id): int
+    {
+        global $wpdb;
+
+        if ($schedule_id <= 0) {
+            return 0;
+        }
+
+        $table = Tables::care_visits_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        $count = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE schedule_id = %d",
+                $schedule_id
+            )
+        );
+
+        return (int) $count;
+    }
+
     public function count_by_status(string $status): int
     {
         global $wpdb;

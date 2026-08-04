@@ -17,6 +17,7 @@ use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Scheduling\ScheduleController;
+use JMReferral\Scheduling\ScheduleGenerationService;
 use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Services\ServiceTypeService;
 use JMReferral\Users\UserProvider;
@@ -251,18 +252,6 @@ class ReferralViewController
             ? $this->care_visit_service->get_assignable_staff_for_referral($referral_id)
             : [];
 
-        $care_visits = [];
-        if ($can_view_visits) {
-            foreach ($this->care_visit_service->get_visits_for_referral($referral_id) as $visit_row) {
-                $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
-                $visit_row['assigned_staff_name'] = $assigned_id > 0
-                    ? $this->user_provider->get_display_name($assigned_id)
-                    : '';
-                $visit_row['edit_url'] = CareVisitController::get_edit_url(absint($visit_row['id'] ?? 0));
-                $care_visits[] = $visit_row;
-            }
-        }
-
         $can_view_care_team = Capabilities::current_user_can(Capabilities::VIEW_CARE_TEAM)
             && $this->access_policy->can_view_referral($referral);
         $can_manage_care_team = Capabilities::current_user_can(Capabilities::MANAGE_CARE_TEAM)
@@ -296,6 +285,9 @@ class ReferralViewController
             }
         }
 
+        $care_visits = [];
+        $schedule_name_by_id = [];
+
         $can_view_schedules = Capabilities::current_user_can(Capabilities::VIEW_SCHEDULES)
             && $this->access_policy->can_view_referral($referral);
         $can_manage_schedules = Capabilities::current_user_can(Capabilities::MANAGE_SCHEDULES)
@@ -312,6 +304,12 @@ class ReferralViewController
 
         if (null !== $care_plan) {
             $schedule_data['care_plan_id'] = (string) absint($care_plan['id'] ?? 0);
+        }
+
+        // Generation date errors may include posted dates for the same schedule.
+        $generation_form_data = [];
+        if (! empty($schedule_form_state['data']) && absint($schedule_form_state['schedule_id'] ?? 0) > 0) {
+            $generation_form_data = $schedule_form_state['data'];
         }
 
         $schedule_team_options = [];
@@ -350,7 +348,6 @@ class ReferralViewController
                         }
                     }
                     if ('—' === $assigned_label) {
-                        // Team member may be inactive/hidden from list; still resolve via care team service.
                         foreach ($this->care_team_service->get_members_for_referral($referral_id) as $member_row) {
                             if (absint($member_row['id'] ?? 0) === $team_assignment_id) {
                                 $uid = absint($member_row['user_id'] ?? 0);
@@ -362,9 +359,71 @@ class ReferralViewController
                         }
                     }
                 }
-                $schedule_row['assigned_label'] = $assigned_label;
-                $schedule_row['edit_url']       = ScheduleController::get_edit_url(absint($schedule_row['id'] ?? 0));
-                $visit_schedules[]              = $schedule_row;
+
+                $schedule_id_row = absint($schedule_row['id'] ?? 0);
+                $schedule_name   = (string) ($schedule_row['schedule_name'] ?? '');
+                if ($schedule_id_row > 0 && '' !== $schedule_name) {
+                    $schedule_name_by_id[$schedule_id_row] = $schedule_name;
+                }
+
+                $status_key   = (string) ($schedule_row['status'] ?? '');
+                $can_generate = ScheduleService::STATUS_ACTIVE === $status_key && $can_manage_schedules;
+                $defaults     = ScheduleGenerationService::default_window($schedule_row);
+
+                $gen_start = $defaults['start'] ?? '';
+                $gen_end   = $defaults['end'] ?? '';
+                if (
+                    $can_generate
+                    && absint($schedule_form_state['schedule_id'] ?? 0) === $schedule_id_row
+                    && ! empty($generation_form_data)
+                ) {
+                    if (isset($generation_form_data['generation_start_date'])) {
+                        $gen_start = (string) $generation_form_data['generation_start_date'];
+                    }
+                    if (isset($generation_form_data['generation_end_date'])) {
+                        $gen_end = (string) $generation_form_data['generation_end_date'];
+                    }
+                }
+
+                $schedule_row['assigned_label']          = $assigned_label;
+                $schedule_row['edit_url']                = ScheduleController::get_edit_url($schedule_id_row);
+                $schedule_row['can_generate']            = $can_generate;
+                $schedule_row['generated_visit_count']   = $schedule_id_row > 0
+                    ? $this->schedule_service->count_generated_visits($schedule_id_row)
+                    : 0;
+                $schedule_row['generation_start_date']   = $gen_start;
+                $schedule_row['generation_end_date']     = $gen_end;
+                $visit_schedules[]                       = $schedule_row;
+            }
+        }
+
+        if ($can_view_visits) {
+            foreach ($this->care_visit_service->get_visits_for_referral($referral_id) as $visit_row) {
+                $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
+                $visit_row['assigned_staff_name'] = $assigned_id > 0
+                    ? $this->user_provider->get_display_name($assigned_id)
+                    : '';
+                $visit_row['edit_url'] = CareVisitController::get_edit_url(absint($visit_row['id'] ?? 0));
+
+                $schedule_id = absint($visit_row['schedule_id'] ?? 0);
+                if ($schedule_id > 0) {
+                    $name = $schedule_name_by_id[$schedule_id] ?? '';
+                    if ('' === $name) {
+                        $linked = $this->schedule_service->get_schedule($schedule_id);
+                        $name   = is_array($linked) ? (string) ($linked['schedule_name'] ?? '') : '';
+                    }
+                    $visit_row['source_label'] = '' !== $name
+                        ? sprintf(
+                            /* translators: %s: schedule name */
+                            __('Schedule: %s', 'jm-referral-system'),
+                            $name
+                        )
+                        : __('Schedule', 'jm-referral-system');
+                } else {
+                    $visit_row['source_label'] = __('Manual', 'jm-referral-system');
+                }
+
+                $care_visits[] = $visit_row;
             }
         }
 

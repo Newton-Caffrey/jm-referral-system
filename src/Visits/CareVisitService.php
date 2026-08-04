@@ -153,8 +153,12 @@ class CareVisitService
         ];
 
         if (null === $existing) {
-            $payload['created_by'] = get_current_user_id();
-            $payload['created_at'] = $now;
+            // Manual visits keep schedule source columns NULL.
+            $payload['schedule_id']              = null;
+            $payload['schedule_occurrence_date'] = null;
+            $payload['generation_key']           = null;
+            $payload['created_by']               = get_current_user_id();
+            $payload['created_at']               = $now;
 
             $id = $this->visit_repository->create($payload);
 

@@ -39,6 +39,7 @@ use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
 use JMReferral\Scheduling\ScheduleController;
+use JMReferral\Scheduling\ScheduleGenerationService;
 use JMReferral\Scheduling\ScheduleRepository;
 use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Services\ServiceTypeController;
@@ -72,6 +73,7 @@ class Plugin
     private ?CareTeamService $care_team_service = null;
     private ?ScheduleController $schedule_controller = null;
     private ?ScheduleService $schedule_service = null;
+    private ?ScheduleGenerationService $schedule_generation_service = null;
 
     public function run(): void
     {
@@ -188,6 +190,16 @@ class Plugin
             $this->care_team_service
         );
 
+        $this->schedule_generation_service = new ScheduleGenerationService(
+            new ScheduleRepository(),
+            $visit_repository,
+            $repository,
+            $care_plan_repository,
+            new CareTeamRepository(),
+            $activity_service,
+            $this->access_policy
+        );
+
         $service_type_repository       = new ServiceTypeRepository();
         $this->service_type_service    = new ServiceTypeService($service_type_repository, $repository);
         $this->service_type_controller = new ServiceTypeController($this->service_type_service);
@@ -292,7 +304,8 @@ class Plugin
             $this->care_visit_service,
             $repository,
             $this->access_policy,
-            $this->user_provider
+            $this->user_provider,
+            new ScheduleRepository()
         );
 
         $this->care_team_controller = new CareTeamController(
@@ -304,6 +317,7 @@ class Plugin
 
         $this->schedule_controller = new ScheduleController(
             $this->schedule_service,
+            $this->schedule_generation_service,
             $repository,
             $this->access_policy,
             $this->care_team_service,

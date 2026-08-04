@@ -21,21 +21,163 @@ class ScheduleService
     public const STATUS_COMPLETED = 'completed';
 
     /**
-     * Weekday keys stored in days_of_week (1=Monday … 7=Sunday).
+     * Weekday keys stored in days_of_week JSON (lowercase English names).
      *
      * @return array<string, string>
      */
     public static function weekday_labels(): array
     {
         return [
-            '1' => __('Monday', 'jm-referral-system'),
-            '2' => __('Tuesday', 'jm-referral-system'),
-            '3' => __('Wednesday', 'jm-referral-system'),
-            '4' => __('Thursday', 'jm-referral-system'),
-            '5' => __('Friday', 'jm-referral-system'),
-            '6' => __('Saturday', 'jm-referral-system'),
-            '7' => __('Sunday', 'jm-referral-system'),
+            'monday'    => __('Monday', 'jm-referral-system'),
+            'tuesday'   => __('Tuesday', 'jm-referral-system'),
+            'wednesday' => __('Wednesday', 'jm-referral-system'),
+            'thursday'  => __('Thursday', 'jm-referral-system'),
+            'friday'    => __('Friday', 'jm-referral-system'),
+            'saturday'  => __('Saturday', 'jm-referral-system'),
+            'sunday'    => __('Sunday', 'jm-referral-system'),
         ];
+    }
+
+    /**
+     * Allowed lowercase weekday keys.
+     *
+     * @return array<int, string>
+     */
+    public static function allowed_weekday_keys(): array
+    {
+        return array_keys(self::weekday_labels());
+    }
+
+    /**
+     * Map ISO-8601 weekday numbers (1=Monday … 7=Sunday) to storage keys.
+     *
+     * @return array<string, string>
+     */
+    public static function iso_weekday_map(): array
+    {
+        return [
+            '1' => 'monday',
+            '2' => 'tuesday',
+            '3' => 'wednesday',
+            '4' => 'thursday',
+            '5' => 'friday',
+            '6' => 'saturday',
+            '7' => 'sunday',
+        ];
+    }
+
+    /**
+     * Map storage keys to ISO-8601 weekday numbers (1=Monday … 7=Sunday).
+     *
+     * @return array<string, int>
+     */
+    public static function weekday_iso_numbers(): array
+    {
+        return [
+            'monday'    => 1,
+            'tuesday'   => 2,
+            'wednesday' => 3,
+            'thursday'  => 4,
+            'friday'    => 5,
+            'saturday'  => 6,
+            'sunday'    => 7,
+        ];
+    }
+
+    /**
+     * Normalize mixed weekday input into a unique list of valid lowercase keys.
+     *
+     * Accepts lowercase names, ISO numbers (1–7), and common legacy aliases.
+     *
+     * @param mixed $days
+     * @return array<int, string>
+     */
+    public static function normalize_weekday_list(mixed $days): array
+    {
+        if (! is_array($days)) {
+            if (is_string($days) && '' !== trim($days)) {
+                return self::decode_days_of_week($days);
+            }
+
+            return [];
+        }
+
+        $allowed = self::allowed_weekday_keys();
+        $iso_map = self::iso_weekday_map();
+        $clean   = [];
+
+        foreach ($days as $day) {
+            $day = sanitize_key((string) $day);
+            if ('' === $day) {
+                continue;
+            }
+
+            if (isset($iso_map[$day])) {
+                $day = $iso_map[$day];
+            }
+
+            if (in_array($day, $allowed, true)) {
+                $clean[] = $day;
+            }
+        }
+
+        $clean = array_values(array_unique($clean));
+
+        usort(
+            $clean,
+            static function (string $a, string $b): int {
+                $order = self::weekday_iso_numbers();
+
+                return ($order[$a] ?? 99) <=> ($order[$b] ?? 99);
+            }
+        );
+
+        return $clean;
+    }
+
+    /**
+     * Encode weekdays for database storage as a JSON array.
+     *
+     * @param mixed $days
+     */
+    public static function encode_days_of_week(mixed $days): ?string
+    {
+        $clean = self::normalize_weekday_list($days);
+
+        if ([] === $clean) {
+            return null;
+        }
+
+        $encoded = wp_json_encode($clean);
+
+        return is_string($encoded) ? $encoded : null;
+    }
+
+    /**
+     * Decode stored days_of_week into normalized lowercase weekday keys.
+     *
+     * Supports:
+     * - JSON arrays: ["monday","wednesday"]
+     * - Legacy comma-separated values: monday,wednesday or 1,3,5
+     *
+     * @return array<int, string>
+     */
+    public static function decode_days_of_week(string $value): array
+    {
+        $value = trim($value);
+        if ('' === $value) {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+        if (is_array($decoded)) {
+            return self::normalize_weekday_list($decoded);
+        }
+
+        // Backward-compatible CSV (and single values).
+        $parts = array_map('trim', explode(',', $value));
+
+        return self::normalize_weekday_list($parts);
     }
 
     /**
@@ -127,7 +269,7 @@ class ScheduleService
         $data['end_date']           = (string) ($schedule['end_date'] ?? '');
         $data['repeat_type']        = (string) ($schedule['repeat_type'] ?? self::REPEAT_WEEKLY);
         $data['repeat_interval']    = (string) max(1, absint($schedule['repeat_interval'] ?? 1));
-        $data['days_of_week']       = self::parse_days_of_week((string) ($schedule['days_of_week'] ?? ''));
+        $data['days_of_week']       = self::decode_days_of_week((string) ($schedule['days_of_week'] ?? ''));
         $data['start_time']         = self::normalize_time_for_input((string) ($schedule['start_time'] ?? ''));
         $data['end_time']           = self::normalize_time_for_input((string) ($schedule['end_time'] ?? ''));
         $data['visit_type']         = (string) ($schedule['visit_type'] ?? '');
@@ -171,7 +313,7 @@ class ScheduleService
         }
 
         $team_assignment_id = absint($input['team_assignment_id'] ?? 0);
-        $days_of_week       = $this->normalize_days_of_week($input['days_of_week'] ?? []);
+        $days_of_week       = self::encode_days_of_week($input['days_of_week'] ?? []);
 
         $payload = [
             'referral_id'        => $referral_id,
@@ -182,7 +324,7 @@ class ScheduleService
             'end_date'           => $this->nullable_date((string) ($input['end_date'] ?? '')),
             'repeat_type'        => (string) ($input['repeat_type'] ?? self::REPEAT_WEEKLY),
             'repeat_interval'    => max(1, absint($input['repeat_interval'] ?? 1)),
-            'days_of_week'       => '' !== $days_of_week ? $days_of_week : null,
+            'days_of_week'       => $days_of_week,
             'start_time'         => $this->normalize_time_for_storage((string) ($input['start_time'] ?? '')),
             'end_time'           => $this->normalize_time_for_storage((string) ($input['end_time'] ?? '')),
             'visit_type'         => $this->nullable_text((string) ($input['visit_type'] ?? '')),
@@ -224,36 +366,6 @@ class ScheduleService
     }
 
     /**
-     * Placeholder for Phase 4.4 visit generation.
-     *
-     * @return array{errors: array<string, string>}|array{deferred: true}
-     */
-    public function generate_visits(int $referral_id, int $schedule_id): array
-    {
-        $errors = [];
-
-        if (! Capabilities::current_user_can(Capabilities::MANAGE_SCHEDULES)) {
-            $errors['permission'] = __('You do not have permission to generate visits from schedules.', 'jm-referral-system');
-            return ['errors' => $errors];
-        }
-
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            $errors['permission'] = __('You do not have permission to generate visits for this referral.', 'jm-referral-system');
-            return ['errors' => $errors];
-        }
-
-        $schedule = $this->schedule_repository->find($schedule_id);
-        if (null === $schedule || absint($schedule['referral_id'] ?? 0) !== $referral_id) {
-            $errors['schedule'] = __('Schedule not found.', 'jm-referral-system');
-            return ['errors' => $errors];
-        }
-
-        // Generation engine lands in the next phase.
-        return ['deferred' => true];
-    }
-
-    /**
      * @return array<int, array<string, mixed>>
      */
     public function get_schedules_for_referral(int $referral_id): array
@@ -270,6 +382,19 @@ class ScheduleService
     public function count_active_schedules(): int
     {
         return $this->schedule_repository->count_by_status(self::STATUS_ACTIVE);
+    }
+
+    public function count_generated_visits(int $schedule_id): int
+    {
+        return $this->schedule_repository->count_generated_visits($schedule_id);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function get_schedule(int $schedule_id): ?array
+    {
+        return $this->schedule_repository->find($schedule_id);
     }
 
     /**
@@ -426,8 +551,8 @@ class ScheduleService
             $errors['status'] = __('Please select a valid schedule status.', 'jm-referral-system');
         }
 
-        $days = is_array($input['days_of_week'] ?? null) ? $input['days_of_week'] : [];
-        if (in_array($repeat_type, [self::REPEAT_WEEKLY, self::REPEAT_CUSTOM], true) && empty($days)) {
+        $days = self::normalize_weekday_list($input['days_of_week'] ?? []);
+        if (in_array($repeat_type, [self::REPEAT_WEEKLY, self::REPEAT_CUSTOM], true) && [] === $days) {
             $errors['days_of_week'] = __('Please select at least one day of the week.', 'jm-referral-system');
         }
 
@@ -450,53 +575,6 @@ class ScheduleService
         }
 
         return $errors;
-    }
-
-    /**
-     * @param mixed $days
-     */
-    private function normalize_days_of_week(mixed $days): string
-    {
-        if (! is_array($days)) {
-            return '';
-        }
-
-        $allowed = array_keys(self::weekday_labels());
-        $clean   = [];
-
-        foreach ($days as $day) {
-            $day = (string) $day;
-            if (in_array($day, $allowed, true)) {
-                $clean[] = $day;
-            }
-        }
-
-        $clean = array_values(array_unique($clean));
-        sort($clean, SORT_NUMERIC);
-
-        return implode(',', $clean);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private static function parse_days_of_week(string $value): array
-    {
-        if ('' === trim($value)) {
-            return [];
-        }
-
-        $parts   = array_map('trim', explode(',', $value));
-        $allowed = array_keys(self::weekday_labels());
-        $days    = [];
-
-        foreach ($parts as $part) {
-            if (in_array($part, $allowed, true)) {
-                $days[] = $part;
-            }
-        }
-
-        return $days;
     }
 
     private function nullable_date(string $value): ?string
