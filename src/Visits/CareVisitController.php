@@ -98,7 +98,7 @@ class CareVisitController
             $visit_data = CareVisitService::map_to_form_data($visit);
         }
 
-        $assignable_users = $this->user_provider->get_assignable_users();
+        $assignable_users = $this->visit_service->get_assignable_staff_for_referral($referral_id);
         $status_labels    = CareVisitService::status_labels();
         $back_url         = add_query_arg(
             [

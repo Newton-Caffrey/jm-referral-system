@@ -241,6 +241,42 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that a care team member was added.
+     */
+    public function log_care_team_member_added(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'care_team_member_added',
+            __('Care team member added', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a care team member was updated.
+     */
+    public function log_care_team_member_updated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'care_team_member_updated',
+            __('Care team member updated', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that the primary carer for a referral changed.
+     */
+    public function log_care_team_primary_changed(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'care_team_primary_changed',
+            __('Primary carer changed', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void

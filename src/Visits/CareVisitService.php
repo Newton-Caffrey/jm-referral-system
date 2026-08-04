@@ -3,6 +3,7 @@
 namespace JMReferral\Visits;
 
 use JMReferral\CarePlan\ReferralCarePlanRepository;
+use JMReferral\CareTeam\CareTeamService;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\ReferralActivityService;
@@ -97,7 +98,8 @@ class CareVisitService
         private ReferralCarePlanRepository $care_plan_repository,
         private ReferralActivityService $activity_service,
         private AccessPolicy $access_policy,
-        private UserProvider $user_provider
+        private UserProvider $user_provider,
+        private CareTeamService $care_team_service
     ) {
     }
 
@@ -310,6 +312,22 @@ class CareVisitService
     }
 
     /**
+     * Staff options for visit assignment: active care team when present, otherwise all assignable users.
+     *
+     * @return array<int, array{id: int, display_name: string}>
+     */
+    public function get_assignable_staff_for_referral(int $referral_id): array
+    {
+        $team_staff = $this->care_team_service->get_assignable_staff_for_referral($referral_id);
+
+        if (! empty($team_staff)) {
+            return $team_staff;
+        }
+
+        return $this->user_provider->get_assignable_users();
+    }
+
+    /**
      * @param array<string, string> $input
      * @return array<string, string>
      */
@@ -379,8 +397,14 @@ class CareVisitService
         }
 
         $assigned_user_id = absint($input['assigned_user_id'] ?? 0);
-        if ($assigned_user_id > 0 && ! $this->user_provider->is_assignable($assigned_user_id)) {
-            $errors['assigned_user_id'] = __('Please select a valid staff member who can view referrals.', 'jm-referral-system');
+        if ($assigned_user_id > 0) {
+            if ($this->care_team_service->has_active_care_team($referral_id)) {
+                if (! $this->care_team_service->is_active_team_member($referral_id, $assigned_user_id)) {
+                    $errors['assigned_user_id'] = __('Please select an active care team member for this referral.', 'jm-referral-system');
+                }
+            } elseif (! $this->user_provider->is_assignable($assigned_user_id)) {
+                $errors['assigned_user_id'] = __('Please select a valid staff member who can view referrals.', 'jm-referral-system');
+            }
         }
 
         $care_plan_id = absint($input['care_plan_id'] ?? 0);

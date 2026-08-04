@@ -2,6 +2,8 @@
 
 namespace JMReferral\Admin\Pages;
 
+use JMReferral\CareTeam\CareTeamService;
+use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\ReferralRepository;
 use JMReferral\Referral\ReferralService;
@@ -14,7 +16,9 @@ class DashboardPage
         private ReferralService $service,
         private CareVisitService $visit_service,
         private UserProvider $user_provider,
-        private ReferralRepository $referral_repository
+        private ReferralRepository $referral_repository,
+        private CareTeamService $care_team_service,
+        private AccessPolicy $access_policy
     ) {
     }
 
@@ -49,6 +53,16 @@ class DashboardPage
 
                 $upcoming_visits[] = $visit_row;
             }
+        }
+
+        $show_my_active_clients = $this->access_policy->should_scope_to_assigned()
+            && Capabilities::current_user_can(Capabilities::VIEW_CARE_TEAM);
+        $my_active_clients_count = 0;
+
+        if ($show_my_active_clients) {
+            $my_active_clients_count = $this->care_team_service->count_active_clients_for_user(
+                get_current_user_id()
+            );
         }
 
         include JMRS_PLUGIN_PATH . 'templates/dashboard/index.php';

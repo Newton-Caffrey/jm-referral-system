@@ -10,6 +10,8 @@ use JMReferral\CarePlan\ReferralCarePlanRepository;
 use JMReferral\CarePlan\ReferralCarePlanReviewController;
 use JMReferral\CarePlan\ReferralCarePlanReviewService;
 use JMReferral\CarePlan\ReferralCarePlanService;
+use JMReferral\CareTeam\CareTeamController;
+use JMReferral\CareTeam\CareTeamService;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Permissions\AccessPolicy;
@@ -35,7 +37,8 @@ class ReferralViewController
         private ReferralAssessmentRepository $assessment_repository,
         private ReferralCarePlanRepository $care_plan_repository,
         private ReferralCarePlanReviewService $care_plan_review_service,
-        private CareVisitService $care_visit_service
+        private CareVisitService $care_visit_service,
+        private CareTeamService $care_team_service
     ) {
     }
 
@@ -242,7 +245,7 @@ class ReferralViewController
         }
 
         $assignable_users = $can_manage_visits
-            ? $this->user_provider->get_assignable_users()
+            ? $this->care_visit_service->get_assignable_staff_for_referral($referral_id)
             : [];
 
         $care_visits = [];
@@ -254,6 +257,39 @@ class ReferralViewController
                     : '';
                 $visit_row['edit_url'] = CareVisitController::get_edit_url(absint($visit_row['id'] ?? 0));
                 $care_visits[] = $visit_row;
+            }
+        }
+
+        $can_view_care_team = Capabilities::current_user_can(Capabilities::VIEW_CARE_TEAM)
+            && $this->access_policy->can_view_referral($referral);
+        $can_manage_care_team = Capabilities::current_user_can(Capabilities::MANAGE_CARE_TEAM)
+            && $this->access_policy->can_edit_referral($referral);
+
+        $care_team_roles    = CareTeamService::role_labels();
+        $care_team_statuses = CareTeamService::status_labels();
+        $care_team_form_state = CareTeamController::get_form_state($referral_id);
+        $care_team_errors     = $care_team_form_state['errors'];
+        $care_team_data       = ! empty($care_team_form_state['data']) && absint($care_team_form_state['assignment_id'] ?? 0) === 0
+            ? array_merge(CareTeamService::empty_form_data(), $care_team_form_state['data'])
+            : CareTeamService::empty_form_data();
+
+        if (null !== $care_plan) {
+            $care_team_data['care_plan_id'] = (string) absint($care_plan['id'] ?? 0);
+        }
+
+        $care_team_assignable_users = $can_manage_care_team
+            ? $this->user_provider->get_assignable_users()
+            : [];
+
+        $care_team_members = [];
+        if ($can_view_care_team) {
+            foreach ($this->care_team_service->get_members_for_referral($referral_id) as $member_row) {
+                $member_user_id = absint($member_row['user_id'] ?? 0);
+                $member_row['staff_name'] = $member_user_id > 0
+                    ? $this->user_provider->get_display_name($member_user_id)
+                    : '';
+                $member_row['edit_url'] = CareTeamController::get_edit_url(absint($member_row['id'] ?? 0));
+                $care_team_members[] = $member_row;
             }
         }
 

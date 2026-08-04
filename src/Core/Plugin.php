@@ -13,6 +13,9 @@ use JMReferral\CarePlan\ReferralCarePlanReviewRepository;
 use JMReferral\CarePlan\ReferralCarePlanReviewService;
 use JMReferral\CarePlan\ReferralCarePlanService;
 use JMReferral\CarePlan\ReferralCarePlanVersionRepository;
+use JMReferral\CareTeam\CareTeamController;
+use JMReferral\CareTeam\CareTeamRepository;
+use JMReferral\CareTeam\CareTeamService;
 use JMReferral\Database\Migrator;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
@@ -62,6 +65,8 @@ class Plugin
     private ?ReferralCarePlanReviewController $care_plan_review_controller = null;
     private ?CareVisitController $care_visit_controller = null;
     private ?CareVisitService $care_visit_service = null;
+    private ?CareTeamController $care_team_controller = null;
+    private ?CareTeamService $care_team_service = null;
 
     public function run(): void
     {
@@ -87,7 +92,9 @@ class Plugin
             $this->access_policy,
             $this->care_plan_review_controller,
             $this->care_visit_controller,
-            $this->care_visit_service
+            $this->care_visit_service,
+            $this->care_team_controller,
+            $this->care_team_service
         );
         $menu->register();
     }
@@ -145,6 +152,15 @@ class Plugin
             $care_plan_review_service
         );
 
+        $this->care_team_service = new CareTeamService(
+            new CareTeamRepository(),
+            $repository,
+            $care_plan_repository,
+            $activity_service,
+            $this->access_policy,
+            $this->user_provider
+        );
+
         $visit_repository         = new CareVisitRepository();
         $this->care_visit_service = new CareVisitService(
             $visit_repository,
@@ -152,7 +168,8 @@ class Plugin
             $care_plan_repository,
             $activity_service,
             $this->access_policy,
-            $this->user_provider
+            $this->user_provider,
+            $this->care_team_service
         );
 
         $service_type_repository       = new ServiceTypeRepository();
@@ -225,7 +242,8 @@ class Plugin
             $assessment_repository,
             $care_plan_repository,
             $care_plan_review_service,
-            $this->care_visit_service
+            $this->care_visit_service,
+            $this->care_team_service
         );
 
         $document_controller = new ReferralDocumentController(
@@ -260,6 +278,13 @@ class Plugin
             $this->user_provider
         );
 
+        $this->care_team_controller = new CareTeamController(
+            $this->care_team_service,
+            $repository,
+            $this->access_policy,
+            $this->user_provider
+        );
+
         $create_controller->register();
         $this->list_controller->register();
         $this->edit_controller->register();
@@ -271,6 +296,7 @@ class Plugin
         $care_plan_controller->register();
         $this->care_plan_review_controller->register();
         $this->care_visit_controller->register();
+        $this->care_team_controller->register();
         $this->service_type_controller->register();
         $this->workflow_stage_controller->register();
     }

@@ -12,6 +12,9 @@ use JMReferral\CarePlan\ReferralCarePlanReviewController;
 use JMReferral\CarePlan\ReferralCarePlanReviewRepository;
 use JMReferral\CarePlan\ReferralCarePlanReviewService;
 use JMReferral\CarePlan\ReferralCarePlanVersionRepository;
+use JMReferral\CareTeam\CareTeamController;
+use JMReferral\CareTeam\CareTeamRepository;
+use JMReferral\CareTeam\CareTeamService;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
@@ -51,6 +54,7 @@ class Menu
     private WorkflowStageController $workflow_stage_controller;
     private ?ReferralCarePlanReviewController $care_plan_review_controller;
     private CareVisitController $care_visit_controller;
+    private CareTeamController $care_team_controller;
 
     public function __construct(
         ?ReferralListController $list_controller = null,
@@ -66,7 +70,9 @@ class Menu
         ?AccessPolicy $access_policy = null,
         ?ReferralCarePlanReviewController $care_plan_review_controller = null,
         ?CareVisitController $care_visit_controller = null,
-        ?CareVisitService $care_visit_service = null
+        ?CareVisitService $care_visit_service = null,
+        ?CareTeamController $care_team_controller = null,
+        ?CareTeamService $care_team_service = null
     ) {
         $repository      = new ReferralRepository();
         $access_policy ??= new AccessPolicy();
@@ -134,13 +140,23 @@ class Menu
             $access_policy
         );
 
+        $care_team_service ??= new CareTeamService(
+            new CareTeamRepository(),
+            $repository,
+            $care_plan_repository,
+            $activity_service,
+            $access_policy,
+            $user_provider
+        );
+
         $care_visit_service ??= new CareVisitService(
             new CareVisitRepository(),
             $repository,
             $care_plan_repository,
             $activity_service,
             $access_policy,
-            $user_provider
+            $user_provider,
+            $care_team_service
         );
 
         $view_controller ??= new ReferralViewController(
@@ -156,10 +172,18 @@ class Menu
             new ReferralAssessmentRepository(),
             $care_plan_repository,
             $care_plan_review_service,
-            $care_visit_service
+            $care_visit_service,
+            $care_team_service
         );
 
-        $this->dashboard_page            = new DashboardPage($service, $care_visit_service, $user_provider, $repository);
+        $this->dashboard_page            = new DashboardPage(
+            $service,
+            $care_visit_service,
+            $user_provider,
+            $repository,
+            $care_team_service,
+            $access_policy
+        );
         $this->referrals_page            = new ReferralsPage($list_controller);
         $this->add_referral_page         = new AddReferralPage($user_provider, $service_type_service);
         $this->settings_page             = new SettingsPage();
@@ -175,6 +199,12 @@ class Menu
         );
         $this->care_visit_controller = $care_visit_controller ?? new CareVisitController(
             $care_visit_service,
+            $repository,
+            $access_policy,
+            $user_provider
+        );
+        $this->care_team_controller = $care_team_controller ?? new CareTeamController(
+            $care_team_service,
             $repository,
             $access_policy,
             $user_provider
@@ -308,6 +338,15 @@ class Menu
             Capabilities::MANAGE_VISITS,
             'jm-referrals-visit-edit',
             [$this->care_visit_controller, 'render_edit']
+        );
+
+        add_submenu_page(
+            null,
+            __('Edit Care Team Assignment', 'jm-referral-system'),
+            __('Edit Care Team Assignment', 'jm-referral-system'),
+            Capabilities::MANAGE_CARE_TEAM,
+            'jm-referrals-care-team-edit',
+            [$this->care_team_controller, 'render_edit']
         );
 
         add_submenu_page(

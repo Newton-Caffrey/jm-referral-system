@@ -50,6 +50,8 @@ class Roles
                     Capabilities::REVIEW_CARE_PLANS,
                     Capabilities::VIEW_VISITS,
                     Capabilities::MANAGE_VISITS,
+                    Capabilities::VIEW_CARE_TEAM,
+                    Capabilities::MANAGE_CARE_TEAM,
                 ],
             ],
             self::CARE_COORDINATOR => [
@@ -68,6 +70,8 @@ class Roles
                     Capabilities::REVIEW_CARE_PLANS,
                     Capabilities::VIEW_VISITS,
                     Capabilities::MANAGE_VISITS,
+                    Capabilities::VIEW_CARE_TEAM,
+                    Capabilities::MANAGE_CARE_TEAM,
                 ],
             ],
             self::ASSESSOR => [
@@ -82,6 +86,7 @@ class Roles
                     Capabilities::MANAGE_CARE_PLANS,
                     Capabilities::REVIEW_CARE_PLANS,
                     Capabilities::VIEW_VISITS,
+                    Capabilities::VIEW_CARE_TEAM,
                 ],
             ],
             self::SUPPORT_WORKER => [
@@ -93,6 +98,7 @@ class Roles
                     Capabilities::DOWNLOAD_DOCUMENTS,
                     Capabilities::VIEW_CARE_PLANS,
                     Capabilities::VIEW_VISITS,
+                    Capabilities::VIEW_CARE_TEAM,
                 ],
             ],
         ];

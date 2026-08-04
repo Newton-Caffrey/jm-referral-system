@@ -115,6 +115,16 @@ class Tables
     }
 
     /**
+     * Returns the care team table name with the WordPress prefix.
+     */
+    public static function care_team_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_care_team';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -136,6 +146,7 @@ class Tables
         self::create_care_plan_versions_table($charset);
         self::create_care_plan_reviews_table($charset);
         self::create_care_visits_table($charset);
+        self::create_care_team_table($charset);
     }
 
     /**
@@ -459,6 +470,37 @@ class Tables
             KEY assigned_user_id (assigned_user_id),
             KEY visit_date (visit_date),
             KEY visit_status (visit_status)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the care team table.
+     */
+    private static function create_care_team_table(string $charset): void
+    {
+        $table = self::care_team_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            care_plan_id BIGINT UNSIGNED NULL,
+            user_id BIGINT UNSIGNED NOT NULL,
+            team_role VARCHAR(100) NOT NULL,
+            is_primary TINYINT(1) NOT NULL DEFAULT 0,
+            assignment_status VARCHAR(50) NOT NULL DEFAULT 'active',
+            start_date DATE NOT NULL,
+            end_date DATE NULL,
+            notes LONGTEXT NULL,
+            assigned_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY care_plan_id (care_plan_id),
+            KEY user_id (user_id),
+            KEY assignment_status (assignment_status)
         ) {$charset};";
 
         dbDelta($sql);

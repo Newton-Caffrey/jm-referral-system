@@ -17,6 +17,8 @@
  * @var bool $can_view_visits Whether the user may view care visits.
  * @var array<int, array<string, mixed>> $upcoming_visits Upcoming care visits.
  * @var array<string, string> $visit_status_labels Visit status labels.
+ * @var bool $show_my_active_clients Whether to show My Active Clients for Support Workers.
+ * @var int $my_active_clients_count Active care-team client count for the current user.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -30,6 +32,8 @@ $scoped_to_assigned = ! empty( $scoped_to_assigned );
 $can_view_visits    = ! empty( $can_view_visits );
 $upcoming_visits    = is_array( $upcoming_visits ?? null ) ? $upcoming_visits : array();
 $visit_status_labels = is_array( $visit_status_labels ?? null ) ? $visit_status_labels : array();
+$show_my_active_clients  = ! empty( $show_my_active_clients );
+$my_active_clients_count = isset( $my_active_clients_count ) ? absint( $my_active_clients_count ) : 0;
 
 $add_url  = admin_url( 'admin.php?page=jm-referrals-add' );
 $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
@@ -114,6 +118,12 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 			<span class="jmrs-stat-number"><?php echo esc_html( (string) ( $stats['cancelled'] ?? 0 ) ); ?></span>
 			<span class="jmrs-stat-label"><?php echo esc_html__( 'Cancelled', 'jm-referral-system' ); ?></span>
 		</div>
+		<?php if ( $show_my_active_clients ) : ?>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) $my_active_clients_count ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'My Active Clients', 'jm-referral-system' ); ?></span>
+			</div>
+		<?php endif; ?>
 	</div>
 
 	<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Workflow Pipeline', 'jm-referral-system' ); ?></h2>

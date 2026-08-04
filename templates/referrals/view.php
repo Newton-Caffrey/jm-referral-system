@@ -85,6 +85,14 @@ $care_visit_data              = is_array( $care_visit_data ?? null ) ? $care_vis
 $care_visit_errors            = is_array( $care_visit_errors ?? null ) ? $care_visit_errors : array();
 $care_visit_statuses          = is_array( $care_visit_statuses ?? null ) ? $care_visit_statuses : array();
 $assignable_users             = is_array( $assignable_users ?? null ) ? $assignable_users : array();
+$can_view_care_team           = ! empty( $can_view_care_team );
+$can_manage_care_team         = ! empty( $can_manage_care_team );
+$care_team_members            = is_array( $care_team_members ?? null ) ? $care_team_members : array();
+$care_team_data               = is_array( $care_team_data ?? null ) ? $care_team_data : array();
+$care_team_errors             = is_array( $care_team_errors ?? null ) ? $care_team_errors : array();
+$care_team_roles              = is_array( $care_team_roles ?? null ) ? $care_team_roles : array();
+$care_team_statuses           = is_array( $care_team_statuses ?? null ) ? $care_team_statuses : array();
+$care_team_assignable_users   = is_array( $care_team_assignable_users ?? null ) ? $care_team_assignable_users : array();
 
 $jmrs_care_plan_value = static function ( string $key ) use ( $care_plan_data ): string {
 	return (string) ( $care_plan_data[ $key ] ?? '' );
@@ -96,6 +104,10 @@ $jmrs_care_plan_review_value = static function ( string $key ) use ( $care_plan_
 
 $jmrs_care_visit_value = static function ( string $key ) use ( $care_visit_data ): string {
 	return (string) ( $care_visit_data[ $key ] ?? '' );
+};
+
+$jmrs_care_team_value = static function ( string $key ) use ( $care_team_data ): string {
+	return (string) ( $care_team_data[ $key ] ?? '' );
 };
 
 $referral_id      = absint( $referral['id'] ?? 0 );
@@ -1038,6 +1050,206 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 					</tbody>
 				</table>
 			<?php endif; ?>
+		<?php endif; ?>
+	<?php endif; ?>
+
+	<?php if ( $can_view_care_team ) : ?>
+		<h2><?php echo esc_html__( 'Care Team', 'jm-referral-system' ); ?></h2>
+
+		<?php if ( $can_manage_care_team ) : ?>
+			<form method="post" action="">
+				<?php wp_nonce_field( 'jmrs_save_care_team_' . $referral_id, 'jmrs_care_team_nonce' ); ?>
+				<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+				<input type="hidden" name="jmrs_care_team_id" value="0" />
+				<input type="hidden" name="jmrs_care_team_care_plan_id" value="<?php echo esc_attr( $jmrs_care_team_value( 'care_plan_id' ) ); ?>" />
+
+				<table class="form-table" role="presentation">
+					<tbody>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_team_user_id"><?php echo esc_html__( 'Staff Member', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<select name="jmrs_care_team_user_id" id="jmrs_care_team_user_id" required>
+									<option value=""><?php echo esc_html__( 'Select staff member', 'jm-referral-system' ); ?></option>
+									<?php foreach ( $care_team_assignable_users as $user_row ) : ?>
+										<option value="<?php echo esc_attr( (string) ( $user_row['id'] ?? 0 ) ); ?>" <?php selected( $jmrs_care_team_value( 'user_id' ), (string) ( $user_row['id'] ?? 0 ) ); ?>>
+											<?php echo esc_html( (string) ( $user_row['display_name'] ?? '' ) ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<?php if ( isset( $care_team_errors['user_id'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_team_errors['user_id'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_team_role"><?php echo esc_html__( 'Team Role', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<select name="jmrs_care_team_role" id="jmrs_care_team_role" required>
+									<option value=""><?php echo esc_html__( 'Select role', 'jm-referral-system' ); ?></option>
+									<?php foreach ( $care_team_roles as $role_value => $role_label ) : ?>
+										<option value="<?php echo esc_attr( (string) $role_value ); ?>" <?php selected( $jmrs_care_team_value( 'team_role' ), (string) $role_value ); ?>>
+											<?php echo esc_html( (string) $role_label ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<?php if ( isset( $care_team_errors['team_role'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_team_errors['team_role'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php echo esc_html__( 'Primary', 'jm-referral-system' ); ?></th>
+							<td>
+								<label for="jmrs_care_team_is_primary">
+									<input
+										type="checkbox"
+										name="jmrs_care_team_is_primary"
+										id="jmrs_care_team_is_primary"
+										value="1"
+										<?php checked( $jmrs_care_team_value( 'is_primary' ), '1' ); ?>
+									/>
+									<?php echo esc_html__( 'Primary Carer for this referral', 'jm-referral-system' ); ?>
+								</label>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_team_status"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<select name="jmrs_care_team_status" id="jmrs_care_team_status">
+									<?php foreach ( $care_team_statuses as $status_value => $status_label ) : ?>
+										<option value="<?php echo esc_attr( (string) $status_value ); ?>" <?php selected( $jmrs_care_team_value( 'assignment_status' ), (string) $status_value ); ?>>
+											<?php echo esc_html( (string) $status_label ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+								<?php if ( isset( $care_team_errors['assignment_status'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_team_errors['assignment_status'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_team_start_date"><?php echo esc_html__( 'Start Date', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="date"
+									class="regular-text"
+									name="jmrs_care_team_start_date"
+									id="jmrs_care_team_start_date"
+									value="<?php echo esc_attr( $jmrs_care_team_value( 'start_date' ) ); ?>"
+									required
+								/>
+								<?php if ( isset( $care_team_errors['start_date'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_team_errors['start_date'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_team_end_date"><?php echo esc_html__( 'End Date', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="date"
+									class="regular-text"
+									name="jmrs_care_team_end_date"
+									id="jmrs_care_team_end_date"
+									value="<?php echo esc_attr( $jmrs_care_team_value( 'end_date' ) ); ?>"
+								/>
+								<?php if ( isset( $care_team_errors['end_date'] ) ) : ?>
+									<p class="description"><?php echo esc_html( $care_team_errors['end_date'] ); ?></p>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="jmrs_care_team_notes"><?php echo esc_html__( 'Notes', 'jm-referral-system' ); ?></label>
+							</th>
+							<td>
+								<textarea name="jmrs_care_team_notes" id="jmrs_care_team_notes" class="large-text" rows="3"><?php echo esc_textarea( $jmrs_care_team_value( 'notes' ) ); ?></textarea>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<?php
+				submit_button(
+					__( 'Assign Team Member', 'jm-referral-system' ),
+					'secondary',
+					'jmrs_save_care_team'
+				);
+				?>
+			</form>
+		<?php endif; ?>
+
+		<?php if ( empty( $care_team_members ) ) : ?>
+			<p><?php echo esc_html__( 'No care team members assigned yet.', 'jm-referral-system' ); ?></p>
+		<?php else : ?>
+			<table class="wp-list-table widefat fixed striped table-view-list">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Staff Member', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Team Role', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Primary', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Start Date', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'End Date', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Notes', 'jm-referral-system' ); ?></th>
+						<?php if ( $can_manage_care_team ) : ?>
+							<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
+						<?php endif; ?>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $care_team_members as $member_row ) : ?>
+						<?php
+						$staff_name     = (string) ( $member_row['staff_name'] ?? '' );
+						$role_key       = (string) ( $member_row['team_role'] ?? '' );
+						$role_label     = isset( $care_team_roles[ $role_key ] )
+							? (string) $care_team_roles[ $role_key ]
+							: ucfirst( str_replace( '_', ' ', $role_key ) );
+						$status_key     = (string) ( $member_row['assignment_status'] ?? '' );
+						$status_label   = isset( $care_team_statuses[ $status_key ] )
+							? (string) $care_team_statuses[ $status_key ]
+							: ucfirst( str_replace( '_', ' ', $status_key ) );
+						$is_primary     = ! empty( $member_row['is_primary'] );
+						$start_raw      = (string) ( $member_row['start_date'] ?? '' );
+						$end_raw        = (string) ( $member_row['end_date'] ?? '' );
+						$notes          = (string) ( $member_row['notes'] ?? '' );
+						$edit_url       = (string) ( $member_row['edit_url'] ?? '' );
+						$start_display  = '' !== $start_raw ? mysql2date( get_option( 'date_format' ), $start_raw ) : '';
+						$end_display    = '' !== $end_raw ? mysql2date( get_option( 'date_format' ), $end_raw ) : '—';
+						?>
+						<tr>
+							<td><?php echo '' !== $staff_name ? esc_html( $staff_name ) : esc_html__( 'Unknown', 'jm-referral-system' ); ?></td>
+							<td><?php echo esc_html( $role_label ); ?></td>
+							<td><?php echo $is_primary ? esc_html__( 'Yes', 'jm-referral-system' ) : esc_html__( 'No', 'jm-referral-system' ); ?></td>
+							<td><?php echo esc_html( $status_label ); ?></td>
+							<td><?php echo esc_html( $start_display ); ?></td>
+							<td><?php echo esc_html( $end_display ); ?></td>
+							<td><?php echo '' !== trim( $notes ) ? nl2br( esc_html( $notes ) ) : '—'; ?></td>
+							<?php if ( $can_manage_care_team ) : ?>
+								<td>
+									<?php if ( '' !== $edit_url ) : ?>
+										<a href="<?php echo esc_url( $edit_url ); ?>">
+											<?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?>
+										</a>
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+							<?php endif; ?>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
 		<?php endif; ?>
 	<?php endif; ?>
 
