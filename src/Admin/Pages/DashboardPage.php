@@ -7,6 +7,7 @@ use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\ReferralRepository;
 use JMReferral\Referral\ReferralService;
+use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitService;
 
@@ -18,7 +19,8 @@ class DashboardPage
         private UserProvider $user_provider,
         private ReferralRepository $referral_repository,
         private CareTeamService $care_team_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private ScheduleService $schedule_service
     ) {
     }
 
@@ -63,6 +65,13 @@ class DashboardPage
             $my_active_clients_count = $this->care_team_service->count_active_clients_for_user(
                 get_current_user_id()
             );
+        }
+
+        $show_active_schedules  = Capabilities::current_user_can(Capabilities::MANAGE_SCHEDULES);
+        $active_schedules_count = 0;
+
+        if ($show_active_schedules) {
+            $active_schedules_count = $this->schedule_service->count_active_schedules();
         }
 
         include JMRS_PLUGIN_PATH . 'templates/dashboard/index.php';

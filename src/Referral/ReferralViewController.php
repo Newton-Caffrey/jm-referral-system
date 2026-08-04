@@ -16,6 +16,8 @@ use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Scheduling\ScheduleController;
+use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Services\ServiceTypeService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitController;
@@ -38,7 +40,8 @@ class ReferralViewController
         private ReferralCarePlanRepository $care_plan_repository,
         private ReferralCarePlanReviewService $care_plan_review_service,
         private CareVisitService $care_visit_service,
-        private CareTeamService $care_team_service
+        private CareTeamService $care_team_service,
+        private ScheduleService $schedule_service
     ) {
     }
 
@@ -290,6 +293,78 @@ class ReferralViewController
                     : '';
                 $member_row['edit_url'] = CareTeamController::get_edit_url(absint($member_row['id'] ?? 0));
                 $care_team_members[] = $member_row;
+            }
+        }
+
+        $can_view_schedules = Capabilities::current_user_can(Capabilities::VIEW_SCHEDULES)
+            && $this->access_policy->can_view_referral($referral);
+        $can_manage_schedules = Capabilities::current_user_can(Capabilities::MANAGE_SCHEDULES)
+            && $this->access_policy->can_edit_referral($referral);
+
+        $schedule_repeat_labels  = ScheduleService::repeat_type_labels();
+        $schedule_status_labels  = ScheduleService::status_labels();
+        $schedule_weekday_labels = ScheduleService::weekday_labels();
+        $schedule_form_state     = ScheduleController::get_form_state($referral_id);
+        $schedule_errors         = $schedule_form_state['errors'];
+        $schedule_data           = ! empty($schedule_form_state['data']) && absint($schedule_form_state['schedule_id'] ?? 0) === 0
+            ? array_merge(ScheduleService::empty_form_data(), $schedule_form_state['data'])
+            : ScheduleService::empty_form_data();
+
+        if (null !== $care_plan) {
+            $schedule_data['care_plan_id'] = (string) absint($care_plan['id'] ?? 0);
+        }
+
+        $schedule_team_options = [];
+        if ($can_manage_schedules) {
+            foreach ($care_team_members as $member_row) {
+                if ('active' !== (string) ($member_row['assignment_status'] ?? '')) {
+                    continue;
+                }
+                $assignment_id = absint($member_row['id'] ?? 0);
+                if ($assignment_id <= 0) {
+                    continue;
+                }
+                $role_key   = (string) ($member_row['team_role'] ?? '');
+                $role_label = $care_team_roles[$role_key] ?? $role_key;
+                $staff_name = (string) ($member_row['staff_name'] ?? '');
+                if ('' === $staff_name) {
+                    continue;
+                }
+                $schedule_team_options[] = [
+                    'id'    => $assignment_id,
+                    'label' => $staff_name . ' (' . $role_label . ')',
+                ];
+            }
+        }
+
+        $visit_schedules = [];
+        if ($can_view_schedules) {
+            foreach ($this->schedule_service->get_schedules_for_referral($referral_id) as $schedule_row) {
+                $team_assignment_id = absint($schedule_row['team_assignment_id'] ?? 0);
+                $assigned_label     = '—';
+                if ($team_assignment_id > 0) {
+                    foreach ($care_team_members as $member_row) {
+                        if (absint($member_row['id'] ?? 0) === $team_assignment_id) {
+                            $assigned_label = (string) ($member_row['staff_name'] ?? '—');
+                            break;
+                        }
+                    }
+                    if ('—' === $assigned_label) {
+                        // Team member may be inactive/hidden from list; still resolve via care team service.
+                        foreach ($this->care_team_service->get_members_for_referral($referral_id) as $member_row) {
+                            if (absint($member_row['id'] ?? 0) === $team_assignment_id) {
+                                $uid = absint($member_row['user_id'] ?? 0);
+                                $assigned_label = $uid > 0
+                                    ? $this->user_provider->get_display_name($uid)
+                                    : '—';
+                                break;
+                            }
+                        }
+                    }
+                }
+                $schedule_row['assigned_label'] = $assigned_label;
+                $schedule_row['edit_url']       = ScheduleController::get_edit_url(absint($schedule_row['id'] ?? 0));
+                $visit_schedules[]              = $schedule_row;
             }
         }
 

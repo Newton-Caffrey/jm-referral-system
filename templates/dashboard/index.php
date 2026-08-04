@@ -19,6 +19,8 @@
  * @var array<string, string> $visit_status_labels Visit status labels.
  * @var bool $show_my_active_clients Whether to show My Active Clients for Support Workers.
  * @var int $my_active_clients_count Active care-team client count for the current user.
+ * @var bool $show_active_schedules Whether to show Active Schedules for managers.
+ * @var int $active_schedules_count Count of active visit schedules.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -34,6 +36,8 @@ $upcoming_visits    = is_array( $upcoming_visits ?? null ) ? $upcoming_visits : 
 $visit_status_labels = is_array( $visit_status_labels ?? null ) ? $visit_status_labels : array();
 $show_my_active_clients  = ! empty( $show_my_active_clients );
 $my_active_clients_count = isset( $my_active_clients_count ) ? absint( $my_active_clients_count ) : 0;
+$show_active_schedules   = ! empty( $show_active_schedules );
+$active_schedules_count  = isset( $active_schedules_count ) ? absint( $active_schedules_count ) : 0;
 
 $add_url  = admin_url( 'admin.php?page=jm-referrals-add' );
 $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
@@ -122,6 +126,12 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 			<div class="jmrs-stat">
 				<span class="jmrs-stat-number"><?php echo esc_html( (string) $my_active_clients_count ); ?></span>
 				<span class="jmrs-stat-label"><?php echo esc_html__( 'My Active Clients', 'jm-referral-system' ); ?></span>
+			</div>
+		<?php endif; ?>
+		<?php if ( $show_active_schedules ) : ?>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) $active_schedules_count ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Active Schedules', 'jm-referral-system' ); ?></span>
 			</div>
 		<?php endif; ?>
 	</div>

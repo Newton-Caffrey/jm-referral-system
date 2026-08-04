@@ -93,6 +93,15 @@ $care_team_errors             = is_array( $care_team_errors ?? null ) ? $care_te
 $care_team_roles              = is_array( $care_team_roles ?? null ) ? $care_team_roles : array();
 $care_team_statuses           = is_array( $care_team_statuses ?? null ) ? $care_team_statuses : array();
 $care_team_assignable_users   = is_array( $care_team_assignable_users ?? null ) ? $care_team_assignable_users : array();
+$can_view_schedules           = ! empty( $can_view_schedules );
+$can_manage_schedules         = ! empty( $can_manage_schedules );
+$visit_schedules              = is_array( $visit_schedules ?? null ) ? $visit_schedules : array();
+$schedule_data                = is_array( $schedule_data ?? null ) ? $schedule_data : array();
+$schedule_errors              = is_array( $schedule_errors ?? null ) ? $schedule_errors : array();
+$schedule_repeat_labels       = is_array( $schedule_repeat_labels ?? null ) ? $schedule_repeat_labels : array();
+$schedule_status_labels       = is_array( $schedule_status_labels ?? null ) ? $schedule_status_labels : array();
+$schedule_weekday_labels      = is_array( $schedule_weekday_labels ?? null ) ? $schedule_weekday_labels : array();
+$schedule_team_options        = is_array( $schedule_team_options ?? null ) ? $schedule_team_options : array();
 
 $jmrs_care_plan_value = static function ( string $key ) use ( $care_plan_data ): string {
 	return (string) ( $care_plan_data[ $key ] ?? '' );
@@ -108,6 +117,11 @@ $jmrs_care_visit_value = static function ( string $key ) use ( $care_visit_data 
 
 $jmrs_care_team_value = static function ( string $key ) use ( $care_team_data ): string {
 	return (string) ( $care_team_data[ $key ] ?? '' );
+};
+
+$jmrs_schedule_value = static function ( string $key ) use ( $schedule_data ): string {
+	$value = $schedule_data[ $key ] ?? '';
+	return is_array( $value ) ? '' : (string) $value;
 };
 
 $referral_id      = absint( $referral['id'] ?? 0 );
@@ -1243,6 +1257,120 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 										</a>
 									<?php else : ?>
 										—
+									<?php endif; ?>
+								</td>
+							<?php endif; ?>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+	<?php endif; ?>
+
+	<?php if ( $can_view_schedules ) : ?>
+		<?php
+		$repeat_labels      = $schedule_repeat_labels;
+		$status_labels      = $schedule_status_labels;
+		$weekday_labels     = $schedule_weekday_labels;
+		$team_options       = $schedule_team_options;
+		$selected_days      = is_array( $schedule_data['days_of_week'] ?? null ) ? $schedule_data['days_of_week'] : array();
+		$schedule_errors    = $schedule_errors;
+		?>
+		<h2><?php echo esc_html__( 'Scheduling', 'jm-referral-system' ); ?></h2>
+
+		<?php if ( $can_manage_schedules ) : ?>
+			<form method="post" action="">
+				<?php wp_nonce_field( 'jmrs_save_schedule_' . $referral_id, 'jmrs_schedule_nonce' ); ?>
+				<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+				<input type="hidden" name="jmrs_schedule_id" value="0" />
+				<input type="hidden" name="jmrs_schedule_care_plan_id" value="<?php echo esc_attr( $jmrs_schedule_value( 'care_plan_id' ) ); ?>" />
+
+				<?php include JMRS_PLUGIN_PATH . 'templates/schedules/form-fields.php'; ?>
+
+				<?php
+				submit_button(
+					__( 'Save Schedule', 'jm-referral-system' ),
+					'secondary',
+					'jmrs_save_schedule'
+				);
+				?>
+			</form>
+		<?php endif; ?>
+
+		<?php if ( empty( $visit_schedules ) ) : ?>
+			<p><?php echo esc_html__( 'No schedules created yet.', 'jm-referral-system' ); ?></p>
+		<?php else : ?>
+			<table class="wp-list-table widefat fixed striped table-view-list">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Name', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Repeat', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Time', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Assigned Staff', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Dates', 'jm-referral-system' ); ?></th>
+						<?php if ( $can_manage_schedules ) : ?>
+							<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
+						<?php endif; ?>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $visit_schedules as $schedule_row ) : ?>
+						<?php
+						$schedule_name   = (string) ( $schedule_row['schedule_name'] ?? '' );
+						$repeat_key      = (string) ( $schedule_row['repeat_type'] ?? '' );
+						$repeat_label    = isset( $schedule_repeat_labels[ $repeat_key ] )
+							? (string) $schedule_repeat_labels[ $repeat_key ]
+							: ucfirst( $repeat_key );
+						$interval        = max( 1, absint( $schedule_row['repeat_interval'] ?? 1 ) );
+						$repeat_display  = $repeat_label . ( $interval > 1 ? ' / ' . $interval : '' );
+						$start_time_raw  = (string) ( $schedule_row['start_time'] ?? '' );
+						$end_time_raw    = (string) ( $schedule_row['end_time'] ?? '' );
+						$time_display    = trim(
+							substr( $start_time_raw, 0, 5 )
+							. ( '' !== $end_time_raw ? ' – ' . substr( $end_time_raw, 0, 5 ) : '' )
+						);
+						$status_key      = (string) ( $schedule_row['status'] ?? '' );
+						$status_label    = isset( $schedule_status_labels[ $status_key ] )
+							? (string) $schedule_status_labels[ $status_key ]
+							: ucfirst( $status_key );
+						$assigned_label  = (string) ( $schedule_row['assigned_label'] ?? '—' );
+						$start_raw       = (string) ( $schedule_row['start_date'] ?? '' );
+						$end_raw         = (string) ( $schedule_row['end_date'] ?? '' );
+						$start_display   = '' !== $start_raw ? mysql2date( get_option( 'date_format' ), $start_raw ) : '';
+						$end_display     = '' !== $end_raw ? mysql2date( get_option( 'date_format' ), $end_raw ) : '—';
+						$dates_display   = trim( $start_display . ' → ' . $end_display );
+						$edit_url        = (string) ( $schedule_row['edit_url'] ?? '' );
+						$schedule_id_row = absint( $schedule_row['id'] ?? 0 );
+						?>
+						<tr>
+							<td><?php echo esc_html( $schedule_name ); ?></td>
+							<td><?php echo esc_html( $repeat_display ); ?></td>
+							<td><?php echo esc_html( $time_display ); ?></td>
+							<td><?php echo esc_html( $assigned_label ); ?></td>
+							<td><?php echo esc_html( $status_label ); ?></td>
+							<td><?php echo esc_html( $dates_display ); ?></td>
+							<?php if ( $can_manage_schedules ) : ?>
+								<td>
+									<?php if ( '' !== $edit_url ) : ?>
+										<a href="<?php echo esc_url( $edit_url ); ?>">
+											<?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?>
+										</a>
+									<?php endif; ?>
+									<?php if ( $schedule_id_row > 0 ) : ?>
+										<form method="post" action="" style="display:inline-block; margin-left:8px;">
+											<?php wp_nonce_field( 'jmrs_generate_schedule_visits_' . $schedule_id_row, 'jmrs_generate_schedule_nonce' ); ?>
+											<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+											<input type="hidden" name="jmrs_schedule_id" value="<?php echo esc_attr( (string) $schedule_id_row ); ?>" />
+											<?php
+											submit_button(
+												__( 'Generate Visits', 'jm-referral-system' ),
+												'secondary small',
+												'jmrs_generate_schedule_visits',
+												false
+											);
+											?>
+										</form>
 									<?php endif; ?>
 								</td>
 							<?php endif; ?>

@@ -125,6 +125,16 @@ class Tables
     }
 
     /**
+     * Returns the visit schedules table name with the WordPress prefix.
+     */
+    public static function visit_schedules_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_visit_schedules';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -147,6 +157,7 @@ class Tables
         self::create_care_plan_reviews_table($charset);
         self::create_care_visits_table($charset);
         self::create_care_team_table($charset);
+        self::create_visit_schedules_table($charset);
     }
 
     /**
@@ -501,6 +512,42 @@ class Tables
             KEY care_plan_id (care_plan_id),
             KEY user_id (user_id),
             KEY assignment_status (assignment_status)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the visit schedules table.
+     */
+    private static function create_visit_schedules_table(string $charset): void
+    {
+        $table = self::visit_schedules_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            care_plan_id BIGINT UNSIGNED NULL,
+            team_assignment_id BIGINT UNSIGNED NULL,
+            schedule_name VARCHAR(255) NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NULL,
+            repeat_type VARCHAR(50) NOT NULL,
+            repeat_interval INT UNSIGNED NOT NULL DEFAULT 1,
+            days_of_week VARCHAR(50) NULL,
+            start_time TIME NOT NULL,
+            end_time TIME NOT NULL,
+            visit_type VARCHAR(100) NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'active',
+            notes LONGTEXT NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY care_plan_id (care_plan_id),
+            KEY team_assignment_id (team_assignment_id),
+            KEY status (status)
         ) {$charset};";
 
         dbDelta($sql);

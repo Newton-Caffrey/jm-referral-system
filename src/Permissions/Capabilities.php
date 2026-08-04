@@ -21,6 +21,8 @@ class Capabilities
     public const MANAGE_VISITS = 'jmrs_manage_visits';
     public const VIEW_CARE_TEAM = 'jmrs_view_care_team';
     public const MANAGE_CARE_TEAM = 'jmrs_manage_care_team';
+    public const VIEW_SCHEDULES = 'jmrs_view_schedules';
+    public const MANAGE_SCHEDULES = 'jmrs_manage_schedules';
     public const MANAGE_SERVICE_TYPES = 'jmrs_manage_service_types';
     public const MANAGE_WORKFLOW_STAGES = 'jmrs_manage_workflow_stages';
     public const MANAGE_SETTINGS = 'jmrs_manage_settings';
@@ -50,6 +52,8 @@ class Capabilities
             self::MANAGE_VISITS,
             self::VIEW_CARE_TEAM,
             self::MANAGE_CARE_TEAM,
+            self::VIEW_SCHEDULES,
+            self::MANAGE_SCHEDULES,
             self::MANAGE_SERVICE_TYPES,
             self::MANAGE_WORKFLOW_STAGES,
             self::MANAGE_SETTINGS,

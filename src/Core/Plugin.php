@@ -38,6 +38,9 @@ use JMReferral\Referral\ReferralRepository;
 use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
+use JMReferral\Scheduling\ScheduleController;
+use JMReferral\Scheduling\ScheduleRepository;
+use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Services\ServiceTypeController;
 use JMReferral\Services\ServiceTypeRepository;
 use JMReferral\Services\ServiceTypeService;
@@ -67,6 +70,8 @@ class Plugin
     private ?CareVisitService $care_visit_service = null;
     private ?CareTeamController $care_team_controller = null;
     private ?CareTeamService $care_team_service = null;
+    private ?ScheduleController $schedule_controller = null;
+    private ?ScheduleService $schedule_service = null;
 
     public function run(): void
     {
@@ -94,7 +99,9 @@ class Plugin
             $this->care_visit_controller,
             $this->care_visit_service,
             $this->care_team_controller,
-            $this->care_team_service
+            $this->care_team_service,
+            $this->schedule_controller,
+            $this->schedule_service
         );
         $menu->register();
     }
@@ -159,6 +166,15 @@ class Plugin
             $activity_service,
             $this->access_policy,
             $this->user_provider
+        );
+
+        $this->schedule_service = new ScheduleService(
+            new ScheduleRepository(),
+            $repository,
+            $care_plan_repository,
+            new CareTeamRepository(),
+            $activity_service,
+            $this->access_policy
         );
 
         $visit_repository         = new CareVisitRepository();
@@ -243,7 +259,8 @@ class Plugin
             $care_plan_repository,
             $care_plan_review_service,
             $this->care_visit_service,
-            $this->care_team_service
+            $this->care_team_service,
+            $this->schedule_service
         );
 
         $document_controller = new ReferralDocumentController(
@@ -285,6 +302,14 @@ class Plugin
             $this->user_provider
         );
 
+        $this->schedule_controller = new ScheduleController(
+            $this->schedule_service,
+            $repository,
+            $this->access_policy,
+            $this->care_team_service,
+            $this->user_provider
+        );
+
         $create_controller->register();
         $this->list_controller->register();
         $this->edit_controller->register();
@@ -297,6 +322,7 @@ class Plugin
         $this->care_plan_review_controller->register();
         $this->care_visit_controller->register();
         $this->care_team_controller->register();
+        $this->schedule_controller->register();
         $this->service_type_controller->register();
         $this->workflow_stage_controller->register();
     }

@@ -31,6 +31,9 @@ use JMReferral\Referral\ReferralRepository;
 use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
+use JMReferral\Scheduling\ScheduleController;
+use JMReferral\Scheduling\ScheduleRepository;
+use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Services\ServiceTypeController;
 use JMReferral\Services\ServiceTypeRepository;
 use JMReferral\Services\ServiceTypeService;
@@ -55,6 +58,7 @@ class Menu
     private ?ReferralCarePlanReviewController $care_plan_review_controller;
     private CareVisitController $care_visit_controller;
     private CareTeamController $care_team_controller;
+    private ScheduleController $schedule_controller;
 
     public function __construct(
         ?ReferralListController $list_controller = null,
@@ -72,7 +76,9 @@ class Menu
         ?CareVisitController $care_visit_controller = null,
         ?CareVisitService $care_visit_service = null,
         ?CareTeamController $care_team_controller = null,
-        ?CareTeamService $care_team_service = null
+        ?CareTeamService $care_team_service = null,
+        ?ScheduleController $schedule_controller = null,
+        ?ScheduleService $schedule_service = null
     ) {
         $repository      = new ReferralRepository();
         $access_policy ??= new AccessPolicy();
@@ -149,6 +155,15 @@ class Menu
             $user_provider
         );
 
+        $schedule_service ??= new ScheduleService(
+            new ScheduleRepository(),
+            $repository,
+            $care_plan_repository,
+            new CareTeamRepository(),
+            $activity_service,
+            $access_policy
+        );
+
         $care_visit_service ??= new CareVisitService(
             new CareVisitRepository(),
             $repository,
@@ -173,7 +188,8 @@ class Menu
             $care_plan_repository,
             $care_plan_review_service,
             $care_visit_service,
-            $care_team_service
+            $care_team_service,
+            $schedule_service
         );
 
         $this->dashboard_page            = new DashboardPage(
@@ -182,7 +198,8 @@ class Menu
             $user_provider,
             $repository,
             $care_team_service,
-            $access_policy
+            $access_policy,
+            $schedule_service
         );
         $this->referrals_page            = new ReferralsPage($list_controller);
         $this->add_referral_page         = new AddReferralPage($user_provider, $service_type_service);
@@ -207,6 +224,13 @@ class Menu
             $care_team_service,
             $repository,
             $access_policy,
+            $user_provider
+        );
+        $this->schedule_controller = $schedule_controller ?? new ScheduleController(
+            $schedule_service,
+            $repository,
+            $access_policy,
+            $care_team_service,
             $user_provider
         );
     }
@@ -347,6 +371,15 @@ class Menu
             Capabilities::MANAGE_CARE_TEAM,
             'jm-referrals-care-team-edit',
             [$this->care_team_controller, 'render_edit']
+        );
+
+        add_submenu_page(
+            null,
+            __('Edit Schedule', 'jm-referral-system'),
+            __('Edit Schedule', 'jm-referral-system'),
+            Capabilities::MANAGE_SCHEDULES,
+            'jm-referrals-schedule-edit',
+            [$this->schedule_controller, 'render_edit']
         );
 
         add_submenu_page(

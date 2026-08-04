@@ -277,6 +277,30 @@ class ReferralActivityService
     }
 
     /**
+     * Logs that a visit schedule was created.
+     */
+    public function log_schedule_created(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'schedule_created',
+            __('Visit schedule created', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a visit schedule was updated.
+     */
+    public function log_schedule_updated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'schedule_updated',
+            __('Visit schedule updated', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void
