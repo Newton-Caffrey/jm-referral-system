@@ -4,6 +4,7 @@ namespace JMReferral\Admin\Pages;
 
 use JMReferral\Documents\PrivateDocumentStorage;
 use JMReferral\Documents\ReferralDocumentService;
+use JMReferral\Frontend\PublicReferralSettings;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\ReferralDependencyRepository;
 
@@ -20,6 +21,8 @@ class SettingsPage
         if (! Capabilities::current_user_can(Capabilities::MANAGE_SETTINGS)) {
             wp_die(esc_html__('You do not have permission to manage settings.', 'jm-referral-system'));
         }
+
+        $this->maybe_save_public_referral_settings();
 
         $counts = [
             'legacy'  => 0,
@@ -40,6 +43,8 @@ class SettingsPage
 
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Settings', 'jm-referral-system') . '</h1>';
+
+        $this->render_public_referral_settings();
 
         echo '<h2>' . esc_html__('Private Document Migration', 'jm-referral-system') . '</h2>';
 
@@ -167,5 +172,107 @@ class SettingsPage
         echo '</p>';
 
         echo '</div>';
+    }
+
+    private function maybe_save_public_referral_settings(): void
+    {
+        if (! isset($_POST['jmrs_save_public_referral_settings'])) {
+            return;
+        }
+
+        check_admin_referer('jmrs_save_public_referral_settings', 'jmrs_public_referral_settings_nonce');
+
+        PublicReferralSettings::update(
+            [
+                'enabled'            => ! empty($_POST['jmrs_public_form_enabled']),
+                'privacy_notice_url' => isset($_POST['jmrs_privacy_notice_url'])
+                    ? wp_unslash((string) $_POST['jmrs_privacy_notice_url'])
+                    : '',
+                'consent_version'    => isset($_POST['jmrs_public_consent_version'])
+                    ? wp_unslash((string) $_POST['jmrs_public_consent_version'])
+                    : PublicReferralSettings::DEFAULT_CONSENT_VERSION,
+                'notification_email' => isset($_POST['jmrs_public_notification_email'])
+                    ? wp_unslash((string) $_POST['jmrs_public_notification_email'])
+                    : '',
+                'success_message'    => isset($_POST['jmrs_public_success_message'])
+                    ? wp_unslash((string) $_POST['jmrs_public_success_message'])
+                    : '',
+                'allow_uploads'      => ! empty($_POST['jmrs_public_allow_uploads']),
+                'max_upload_count'   => isset($_POST['jmrs_public_max_upload_count'])
+                    ? absint(wp_unslash((string) $_POST['jmrs_public_max_upload_count']))
+                    : PublicReferralSettings::DEFAULT_MAX_UPLOAD_COUNT,
+                'max_upload_size_mb' => isset($_POST['jmrs_public_max_upload_size_mb'])
+                    ? absint(wp_unslash((string) $_POST['jmrs_public_max_upload_size_mb']))
+                    : PublicReferralSettings::DEFAULT_MAX_UPLOAD_SIZE_MB,
+            ]
+        );
+
+        echo '<div class="notice notice-success is-dismissible"><p>';
+        echo esc_html__('Public referral intake settings saved successfully.', 'jm-referral-system');
+        echo '</p></div>';
+    }
+
+    private function render_public_referral_settings(): void
+    {
+        $settings = PublicReferralSettings::all();
+
+        echo '<h2>' . esc_html__('Public Referral Intake', 'jm-referral-system') . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'Allow members of the public to submit referrals from the website using the shortcode [jmrs_public_referral_form]. The form is disabled by default.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+
+        echo '<form method="post" action="' . esc_url(admin_url('admin.php?page=jm-referrals-settings')) . '">';
+        wp_nonce_field('jmrs_save_public_referral_settings', 'jmrs_public_referral_settings_nonce');
+
+        echo '<table class="form-table" role="presentation"><tbody>';
+
+        echo '<tr><th scope="row">' . esc_html__('Enable Public Referral Form', 'jm-referral-system') . '</th><td>';
+        echo '<label><input type="checkbox" name="jmrs_public_form_enabled" value="1" ' . checked(! empty($settings['enabled']), true, false) . ' /> ';
+        echo esc_html__('Accept submissions from the public shortcode form', 'jm-referral-system') . '</label>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_privacy_notice_url">' . esc_html__('Privacy Notice URL', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="url" class="regular-text" name="jmrs_privacy_notice_url" id="jmrs_privacy_notice_url" value="' . esc_attr((string) $settings['privacy_notice_url']) . '" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_consent_version">' . esc_html__('Public Consent Version', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_public_consent_version" id="jmrs_public_consent_version" value="' . esc_attr((string) $settings['consent_version']) . '" />';
+        echo '<p class="description">' . esc_html__('Stored with each public submission as operational evidence (not a full legal consent system).', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_notification_email">' . esc_html__('Public Referral Notification Email', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="email" class="regular-text" name="jmrs_public_notification_email" id="jmrs_public_notification_email" value="' . esc_attr((string) $settings['notification_email']) . '" />';
+        echo '<p class="description">' . esc_html__('Falls back to the WordPress admin email when empty.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_success_message">' . esc_html__('Success Message', 'jm-referral-system') . '</label></th><td>';
+        echo '<textarea class="large-text" rows="3" name="jmrs_public_success_message" id="jmrs_public_success_message">' . esc_textarea((string) $settings['success_message']) . '</textarea>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row">' . esc_html__('Allow Public Document Uploads', 'jm-referral-system') . '</th><td>';
+        echo '<label><input type="checkbox" name="jmrs_public_allow_uploads" value="1" ' . checked(! empty($settings['allow_uploads']), true, false) . ' /> ';
+        echo esc_html__('Allow supporting documents on the public form (private storage only)', 'jm-referral-system') . '</label>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_max_upload_count">' . esc_html__('Maximum Public Upload Count', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="number" min="1" max="10" name="jmrs_public_max_upload_count" id="jmrs_public_max_upload_count" value="' . esc_attr((string) $settings['max_upload_count']) . '" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_max_upload_size_mb">' . esc_html__('Maximum Public Upload Size (MB)', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="number" min="1" max="20" name="jmrs_public_max_upload_size_mb" id="jmrs_public_max_upload_size_mb" value="' . esc_attr((string) $settings['max_upload_size_mb']) . '" />';
+        echo '</td></tr>';
+
+        echo '</tbody></table>';
+
+        submit_button(
+            __('Save Public Referral Settings', 'jm-referral-system'),
+            'primary',
+            'jmrs_save_public_referral_settings',
+            false
+        );
+        echo '</form>';
     }
 }

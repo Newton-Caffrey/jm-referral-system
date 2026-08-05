@@ -10,6 +10,27 @@
 
 ---
 
+# Phase 5.6 addendum (2026-08-05)
+
+This document remains the historical Phase 5.1 audit. Critical and priority High items targeted for v1.0 have been addressed in Phases 5.2–5.5. Phase 5.6 confirms release readiness.
+
+| Topic | Status at v1.0.0 |
+| --- | --- |
+| Private documents | **Remediated** (new uploads private; legacy migration tool) |
+| Email template path | **Remediated** (`EmailTemplateResolver`) |
+| Archive-first retention / safe delete / uninstall | **Remediated** (DB `2.15.0`; opt-in wipe) |
+| List/View pagination, generation batching, chunked CSV, indexes | **Remediated** (DB `2.16.0`) |
+| UX / accessibility polish | **Remediated** (Phase 5.5) |
+| Plugin version vs CHANGELOG | **Aligned** — product `1.0.0`, DB `2.16.0` |
+| Automated tests | **Still open** — see `docs/KNOWN_LIMITATIONS.md` |
+| Chart.js local vendor file | **Still open** — CDN fallback if vendor missing |
+| Legacy Media Library original cleanup | **Still open** — manual / later phase |
+
+**Current release docs:** `docs/RELEASE_CHECKLIST.md`, `docs/KNOWN_LIMITATIONS.md`  
+**Release recommendation (Phase 5.6):** **Ready with recommendations** — suitable for controlled production with staging smoke tests, backups, and awareness of known limitations.
+
+---
+
 # Executive Summary
 
 The JM Referral System is a substantial WordPress admin plugin covering referrals through clinical operations (assessments, care plans, care team, schedules, visits, MAR), operational alerts, and reporting. Controller-level security is **generally consistent**: nonce + capability checks are present on nearly all mutating actions, and Support Worker record scoping is centralised in `AccessPolicy`.
@@ -21,6 +42,8 @@ However, the plugin is **not production-ready for live health/care data** until 
 3. Referral delete / uninstall leaving child PHI in the database and on disk.
 4. Unpaginated referral lists/exports and an N+1-heavy referral View page that will not scale.
 5. Version labelling that presents the plugin as `1.0.0` while the changelog documents `0.4.0`.
+
+> **Note (5.6):** Items 1–5 above describe the Phase 5.1 state. See the Phase 5.6 addendum for remediation status.
 
 **Finding counts**
 
@@ -204,6 +227,7 @@ Do **not** place live client health data into production until Critical findings
 | **Recommended fix** | Single strategy: package semver ≠ DB schema version; align header with CHANGELOG until true 1.0. |
 | **Hardening phase** | 5.9 (decide in 5.2 docs) |
 | **Break risk** | Low if only labels change. |
+| **Status (5.6)** | **Resolved for v1.0.0** — plugin `1.0.0`, CHANGELOG `[1.0.0]`, DB `2.16.0` (independent schema version). |
 
 ### AUDIT-H-009 — Zero automated tests
 
@@ -425,7 +449,8 @@ Do **not** place live client health data into production until Critical findings
 | `jmrs_medications` | Med list | Medium | referral_id | Orphan | No dedup unique |
 | `jmrs_medication_administrations` | MAR | High | UNIQUE (med, visit, scheduled_time) | Orphan | NULL scheduled_time duplicate gap |
 
-**Schema version:** `Migrator::DB_VERSION = 2.13.0`  
+**Schema version (at audit):** `Migrator::DB_VERSION = 2.13.0`  
+**Schema version (at v1.0.0):** `2.16.0`  
 **Migration model:** `dbDelta` recreate-all tables each upgrade — safe additive; weak for drops/renames.  
 **FKs:** None.
 
@@ -551,21 +576,19 @@ Do **not** place live client health data into production until Critical findings
 
 # Versioning and Release Management
 
-| Source | Value | Issue |
-| --- | --- | --- |
-| Plugin header / `JMRS_VERSION` | `1.0.0` | Premature production label |
-| CHANGELOG | `[0.4.0] - 2026-08-04` | Marketing/dev semver |
-| DB schema | `2.13.0` | Independent — OK if documented |
-| Composer | no package version | Acceptable for WP plugin |
-| README roadmap phases | Numbering differs from ROADMAP | Doc drift |
-| Asset cache bust | `filemtime` / Chart `4.4.6` | Reasonable |
+| Source | Value (at 5.1) | Value (at v1.0.0) | Notes |
+| --- | --- | --- | --- |
+| Plugin header / `JMRS_VERSION` | `1.0.0` (premature) | `1.0.0` | Aligned with CHANGELOG after Phase 5.6 |
+| CHANGELOG | `[0.4.0]` | `[1.0.0] - 2026-08-05` | Release notes published |
+| DB schema | `2.13.0` | `2.16.0` | Independent monotonic schema version |
+| Composer | no package version | unchanged | Acceptable for WP plugin |
+| Release docs | — | `RELEASE_CHECKLIST` / `KNOWN_LIMITATIONS` | Added in Phase 5.6 |
 
-### Recommended versioning strategy (do not apply in this phase)
+### Recommended versioning strategy
 
 1. **Plugin semver** (`JMRS_VERSION` + header + CHANGELOG + Git tags) — product release.
-2. **DB schema version** (`jmrs_db_version`) — independent monotonic string.
-3. Do **not** call the product `1.0.0` until Phase 5.9 exit criteria pass.
-4. Until then, keep header aligned with CHANGELOG (e.g. `0.4.x` / `0.5.0`).
+2. **DB schema version** (`jmrs_db_version`) — independent monotonic string; do not bump without schema change.
+3. Keep header, CHANGELOG, and release docs in lockstep on each tagged release.
 
 ---
 
@@ -623,14 +646,23 @@ Do **not** place live client health data into production until Critical findings
 | **Order** | Fourth |
 | **Tests** | Keyboard/a11y spot checks; role UI matrix |
 
-## Phase 5.6: Automated Tests
+## Phase 5.6: Version 1.0 Release Readiness
+
+| | |
+| --- | --- |
+| **Scope** | Architecture/security/DB/performance/UX/a11y/docs/installer review; release checklist; known limitations; version alignment |
+| **Modules** | Docs + small cleanups only (no new business features) |
+| **Risk** | Low |
+| **Progress** | **Implemented** — `docs/RELEASE_CHECKLIST.md`, `docs/KNOWN_LIMITATIONS.md`, CHANGELOG `[1.0.0]`, product `1.0.0`, DB unchanged `2.16.0` |
+
+## Phase 5.6b: Automated Tests (post-1.0)
 
 | | |
 | --- | --- |
 | **Scope** | PHPUnit bootstrap; AccessPolicy; MAR permissions; schedule days; CSV escape; critical services |
 | **Modules** | New `tests/` |
 | **Risk** | Low |
-| **Order** | Parallel after 5.2 |
+| **Order** | Post-1.0 backlog |
 | **Tests** | CI on PR |
 
 ## Phase 5.7: Deployment, Backup and Recovery

@@ -78,3 +78,9 @@ This review covers keyboard use, semantics, notices, tables, forms, and charts a
 4. Sticky table first column on mobile for referral list.
 5. Prefer reduced-motion for any future animations (`prefers-reduced-motion`).
 6. Run axe DevTools on staging after each UI-heavy release.
+
+---
+
+## Phase 5.6 confirmation
+
+No accessibility regressions introduced in the release-readiness pass. Remaining limits match `docs/KNOWN_LIMITATIONS.md` (browser `confirm()`, chart canvas, dense Referral View).

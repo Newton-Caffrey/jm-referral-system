@@ -153,6 +153,31 @@ $referral_source  = (string) ( $referral['referral_source'] ?? '' );
 $source_label     = '' !== $referral_source
 	? \JMReferral\Referral\ReferralSources::label( $referral_source )
 	: '';
+$submission_channel = (string) ( $referral['submission_channel'] ?? 'admin' );
+$channel_label      = \JMReferral\Frontend\SubmissionChannels::label( $submission_channel );
+$is_public_referral = \JMReferral\Frontend\SubmissionChannels::is_public( $submission_channel );
+$referrer_type      = (string) ( $referral['referrer_type'] ?? '' );
+$referrer_type_label = '' !== $referrer_type
+	? \JMReferral\Frontend\ReferrerTypes::label( $referrer_type )
+	: '';
+$referrer_organisation  = (string) ( $referral['referrer_organisation'] ?? '' );
+$referrer_phone         = (string) ( $referral['referrer_phone'] ?? '' );
+$relationship_to_client = (string) ( $referral['relationship_to_client'] ?? '' );
+$public_consent_at      = (string) ( $referral['public_consent_at'] ?? '' );
+$public_consent_display = '' !== $public_consent_at
+	? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $public_consent_at )
+	: '';
+$public_consent_version = (string) ( $referral['public_consent_version'] ?? '' );
+$client_first_name      = (string) ( $referral['client_first_name'] ?? '' );
+$client_last_name       = (string) ( $referral['client_last_name'] ?? '' );
+$client_dob             = (string) ( $referral['client_date_of_birth'] ?? '' );
+$client_dob_display     = '' !== $client_dob
+	? mysql2date( get_option( 'date_format' ), $client_dob )
+	: '';
+$address_line_1 = (string) ( $referral['address_line_1'] ?? '' );
+$address_line_2 = (string) ( $referral['address_line_2'] ?? '' );
+$city           = (string) ( $referral['city'] ?? '' );
+$postcode       = (string) ( $referral['postcode'] ?? '' );
 $care_start_date  = (string) ( $referral['care_start_date'] ?? '' );
 $care_start_display = '' !== $care_start_date
 	? mysql2date( get_option( 'date_format' ), $care_start_date )
@@ -338,6 +363,53 @@ $archived_display = '' !== $archived_at
 				<th scope="row"><?php echo esc_html__( 'Referral Source', 'jm-referral-system' ); ?></th>
 				<td><?php echo '' !== $source_label ? esc_html( $source_label ) : '—'; ?></td>
 			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Submission Channel', 'jm-referral-system' ); ?></th>
+				<td><?php echo esc_html( $channel_label ); ?></td>
+			</tr>
+			<?php if ( $is_public_referral ) : ?>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Referrer Type', 'jm-referral-system' ); ?></th>
+				<td><?php echo '' !== $referrer_type_label ? esc_html( $referrer_type_label ) : '—'; ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Organisation', 'jm-referral-system' ); ?></th>
+				<td><?php echo '' !== $referrer_organisation ? esc_html( $referrer_organisation ) : '—'; ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Referrer Phone', 'jm-referral-system' ); ?></th>
+				<td><?php echo '' !== $referrer_phone ? esc_html( $referrer_phone ) : '—'; ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Relationship to Client', 'jm-referral-system' ); ?></th>
+				<td><?php echo '' !== $relationship_to_client ? esc_html( $relationship_to_client ) : '—'; ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Consent Date', 'jm-referral-system' ); ?></th>
+				<td><?php echo '' !== $public_consent_display ? esc_html( $public_consent_display ) : '—'; ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Consent Version', 'jm-referral-system' ); ?></th>
+				<td><?php echo '' !== $public_consent_version ? esc_html( $public_consent_version ) : '—'; ?></td>
+			</tr>
+			<?php if ( '' !== $client_first_name || '' !== $client_last_name || '' !== $client_dob_display || '' !== $address_line_1 || '' !== $city || '' !== $postcode ) : ?>
+			<tr>
+				<th scope="row"><?php echo esc_html__( 'Client address / DOB', 'jm-referral-system' ); ?></th>
+				<td>
+					<?php if ( '' !== $client_first_name || '' !== $client_last_name ) : ?>
+						<?php echo esc_html( trim( $client_first_name . ' ' . $client_last_name ) ); ?><br />
+					<?php endif; ?>
+					<?php if ( '' !== $client_dob_display ) : ?>
+						<?php echo esc_html__( 'DOB:', 'jm-referral-system' ); ?> <?php echo esc_html( $client_dob_display ); ?><br />
+					<?php endif; ?>
+					<?php
+					$address_bits = array_filter( array( $address_line_1, $address_line_2, $city, $postcode ) );
+					echo '' !== implode( ', ', $address_bits ) ? esc_html( implode( ', ', $address_bits ) ) : '—';
+					?>
+				</td>
+			</tr>
+			<?php endif; ?>
+			<?php endif; ?>
 			<tr>
 				<th scope="row"><?php echo esc_html__( 'Created Date', 'jm-referral-system' ); ?></th>
 				<td><?php echo esc_html( $created_display ); ?></td>

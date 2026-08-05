@@ -108,6 +108,12 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 
 ## In Progress 🚧
 
+### Public Referral Intake
+
+- [x] Phase 6.1A: shortcode form, settings, spam controls, private uploads, notifications (`docs/PUBLIC_REFERRAL_INTAKE.md`)
+- [ ] Phase 6.1B: multi-step wizard UX
+- [ ] CAPTCHA option / tracking portal / public edit (later)
+
 ### Medication Administration (advanced)
 
 - [ ] Stock control, controlled-drug registers, PRN, eMAR export
@@ -118,16 +124,24 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [ ] Scheduled/email report delivery
 - [ ] Deeper referral analytics exports
 
-### Hardening (remaining)
+### Production Hardening ✅ (v1.0.0)
 
+- [x] Production audit (`docs/PRODUCTION_AUDIT.md`, Phase 5.1)
+- [x] Private documents + security hardening (Phase 5.2)
+- [x] Data retention & safe deletion (Phase 5.3)
 - [x] Performance & scalability audit (`docs/PERFORMANCE_AUDIT.md`, Phase 5.4.1)
 - [x] List pagination + dashboard alert/enrichment fixes (Phase 5.4.2A)
 - [x] Referral View pagination / N+1 / generation batching / chunked CSV / indexes (Phase 5.4.2B)
 - [x] UX polish & accessibility (Phase 5.5) — shared admin CSS/JS, badges, confirms, docs
+- [x] Version 1.0 release readiness (Phase 5.6) — checklist, known limitations, docs alignment
+
+### Hardening (post-1.0)
+
 - [ ] Remaining performance: search strategy, Menu DI reuse, report DATE() predicates, View docs/schedules pagination
-- [ ] Chart.js local pin
+- [ ] Chart.js local vendor pin (CDN fallback remains if vendor file missing)
 - [ ] Legacy Media Library cleanup after private migration
 - [ ] Timed retention purge (only after legal/compliance sign-off)
+- [ ] Automated test harness (PHPUnit / CI)
 
 ---
 
@@ -173,9 +187,12 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 2 — Security | Roles, capabilities, workflow, service types, sources, access policy | ✅ Complete |
 | Phase 3 — Clinical Operations | Documents, assessments, care plans, care team, scheduling, generated visits | ✅ Complete |
 | Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, operational alerts, and MAR foundation | ✅ Complete |
-| Phase 5 — Reporting | Reporting foundation KPIs; advanced reports, workload, analytics next | 🚧 In progress |
-| Phase 5.x — Production Hardening | Audit (5.1); private documents (5.2.1); further security/performance phases | 🚧 In progress |
+| Phase 5 — Reporting | Reporting foundation KPIs; advanced reports, workload, analytics next | ✅ Foundation complete |
+| Phase 5.x — Production Hardening | Audit → private docs → retention → performance → UX/a11y → v1.0 readiness | ✅ Complete (v1.0.0) |
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
-| Phase 7 — Production Hardening | Remaining performance, automated testing, v1.0 | 🚀 Future |
+| Phase 6.1 — Public referral intake | 6.1A foundation done; 6.1B wizard next | 🚧 In progress |
+| Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Backlog |
+
+**Current release:** plugin `1.0.0` · DB `2.17.0` (after public intake migration) · see `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md`.
 
 See `CHANGELOG.md` for release detail and `README.md` for current system documentation.

@@ -2,6 +2,8 @@
 
 namespace JMReferral\Referral;
 
+use JMReferral\Frontend\ReferrerTypes;
+use JMReferral\Frontend\SubmissionChannels;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Services\ServiceTypeService;
@@ -89,6 +91,20 @@ class ReferralExportController
                 'Priority',
                 'Status',
                 'Assigned To',
+                'Referral Source',
+                'Submission Channel',
+                'Referrer Type',
+                'Referrer Organisation',
+                'Relationship to Client',
+                'Consent At',
+                'Consent Version',
+                'Client First Name',
+                'Client Last Name',
+                'Client Date of Birth',
+                'Address Line 1',
+                'Address Line 2',
+                'City',
+                'Postcode',
                 'Care Start Date',
                 'Preferred Contact Method',
                 'Care Requirements',
@@ -182,6 +198,14 @@ class ReferralExportController
                 $archived_at = (string) ($referral['archived_at'] ?? '');
                 $is_archived = '' !== $archived_at;
 
+                $source_value = (string) ($referral['referral_source'] ?? '');
+                $source_label = '' !== $source_value
+                    ? ReferralSources::label($source_value)
+                    : '';
+
+                $channel = (string) ($referral['submission_channel'] ?? 'admin');
+                $referrer_type = (string) ($referral['referrer_type'] ?? '');
+
                 CsvExportHelper::put_row(
                     $output,
                     [
@@ -194,6 +218,20 @@ class ReferralExportController
                         (string) ($referral['priority'] ?? ''),
                         (string) ($referral['status'] ?? ''),
                         $assigned_to_name,
+                        $source_label,
+                        SubmissionChannels::label($channel),
+                        '' !== $referrer_type ? ReferrerTypes::label($referrer_type) : '',
+                        (string) ($referral['referrer_organisation'] ?? ''),
+                        (string) ($referral['relationship_to_client'] ?? ''),
+                        (string) ($referral['public_consent_at'] ?? ''),
+                        (string) ($referral['public_consent_version'] ?? ''),
+                        (string) ($referral['client_first_name'] ?? ''),
+                        (string) ($referral['client_last_name'] ?? ''),
+                        (string) ($referral['client_date_of_birth'] ?? ''),
+                        (string) ($referral['address_line_1'] ?? ''),
+                        (string) ($referral['address_line_2'] ?? ''),
+                        (string) ($referral['city'] ?? ''),
+                        (string) ($referral['postcode'] ?? ''),
                         (string) ($referral['care_start_date'] ?? ''),
                         $contact_label,
                         (string) ($referral['care_requirements'] ?? ''),

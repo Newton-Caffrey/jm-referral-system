@@ -11,7 +11,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.16.0';
+    public const DB_VERSION = '2.17.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -139,6 +139,14 @@ class Migrator
             // Archive columns on referrals via Tables::create(); sync archive/restore caps.
             Capabilities::grant_to_administrators();
             Roles::register();
+        }
+
+        if (version_compare($from_version, '2.16.0', '<')) {
+            // Performance composite indexes added via Tables::create() / dbDelta.
+        }
+
+        if (version_compare($from_version, '2.17.0', '<')) {
+            // Public referral intake columns added via Tables::create() / dbDelta.
         }
     }
 

@@ -188,6 +188,146 @@ class ReferralDocumentService
     }
 
     /**
+     * Public intake upload: private storage only, no capability / AccessPolicy checks.
+     *
+     * @param array<string, mixed> $file $_FILES entry.
+     * @return array{id: int}|array{errors: array<string, string>}|false
+     */
+    public function upload_for_public_intake(int $referral_id, array $file, int $max_bytes): array|false
+    {
+        $errors = $this->validate_public_upload($referral_id, $file, $max_bytes);
+
+        if (! empty($errors)) {
+            return ['errors' => $errors];
+        }
+
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'errors' => [
+                    'referral_id' => __('Referral not found.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $ready = $this->private_storage->ensure_ready();
+
+        if (is_wp_error($ready)) {
+            return [
+                'errors' => [
+                    'file' => __('Unable to prepare private document storage.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $original_name = $this->sanitize_original_name((string) ($file['name'] ?? ''));
+        $tmp_name      = (string) ($file['tmp_name'] ?? '');
+
+        $check = wp_check_filetype_and_ext($tmp_name, (string) ($file['name'] ?? ''), self::ALLOWED_MIMES);
+
+        if (empty($check['type']) || empty($check['ext']) || ! $this->is_allowed_mime((string) $check['type'])) {
+            return [
+                'errors' => [
+                    'file' => __('That file type is not allowed.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $ext       = strtolower((string) $check['ext']);
+        $mime_type = (string) $check['type'];
+
+        $month_dir = $this->private_storage->ensure_month_directory();
+
+        if ('' === $month_dir) {
+            return [
+                'errors' => [
+                    'file' => __('Unable to prepare private document storage.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+
+        $stored_name = $this->private_storage->generate_stored_name($ext);
+        $stored_name = wp_unique_filename($month_dir, $stored_name);
+        $dest_path   = trailingslashit($month_dir) . $stored_name;
+
+        if (! @move_uploaded_file($tmp_name, $dest_path)) {
+            return [
+                'errors' => [
+                    'file' => __('The upload failed. Please try again.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod
+        @chmod($dest_path, 0640);
+
+        $file_size = is_readable($dest_path) ? (int) filesize($dest_path) : 0;
+
+        if ($file_size <= 0 || $file_size > $max_bytes) {
+            $this->safe_unlink($dest_path);
+
+            return [
+                'errors' => [
+                    'file' => __('The file exceeds the maximum allowed size.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $checksum = hash_file('sha256', $dest_path);
+
+        if (! is_string($checksum) || 64 !== strlen($checksum)) {
+            $this->safe_unlink($dest_path);
+
+            return [
+                'errors' => [
+                    'file' => __('Unable to verify the uploaded file.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $relative_path = $this->private_storage->build_relative_path($stored_name);
+
+        if (null === $this->private_storage->normalize_relative_path($relative_path)) {
+            $this->safe_unlink($dest_path);
+
+            return [
+                'errors' => [
+                    'file' => __('Unable to store the uploaded file.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $document_id = $this->document_repository->create(
+            [
+                'referral_id'     => $referral_id,
+                'attachment_id'   => 0,
+                'original_name'   => $original_name,
+                'mime_type'       => $mime_type,
+                'file_size'       => $file_size,
+                'uploaded_by'     => 0,
+                'created_at'      => current_time('mysql'),
+                'storage_type'    => PrivateDocumentStorage::STORAGE_PRIVATE,
+                'relative_path'   => $relative_path,
+                'stored_name'     => $stored_name,
+                'checksum_sha256' => $checksum,
+            ]
+        );
+
+        if (false === $document_id) {
+            $this->safe_unlink($dest_path);
+
+            return false;
+        }
+
+        $this->activity_service->log_document_uploaded($referral_id, $original_name);
+
+        return ['id' => $document_id];
+    }
+
+    /**
      * Returns documents for a referral when the user may download them.
      *
      * @return array<int, array<string, mixed>>|array{errors: array<string, string>}
@@ -623,6 +763,86 @@ class ReferralDocumentService
 
         // Reject obvious double-extension executables (e.g. file.php.pdf still allowed by type;
         // block names containing null or path separators after sanitization checks).
+        if (str_contains($name, '/') || str_contains($name, '\\') || str_contains($name, "\0")) {
+            $errors['file'] = __('The upload is invalid.', 'jm-referral-system');
+            return $errors;
+        }
+
+        $tmp_name = (string) ($file['tmp_name'] ?? '');
+
+        if ('' === $tmp_name || ! is_uploaded_file($tmp_name)) {
+            $errors['file'] = __('The upload is invalid.', 'jm-referral-system');
+            return $errors;
+        }
+
+        $check = wp_check_filetype_and_ext($tmp_name, $name, self::ALLOWED_MIMES);
+
+        if (empty($check['type']) || empty($check['ext']) || ! $this->is_allowed_mime((string) $check['type'])) {
+            $errors['file'] = __('That file type is not allowed.', 'jm-referral-system');
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Public intake file validation (no capability checks).
+     *
+     * @param array<string, mixed> $file
+     * @return array<string, string>
+     */
+    private function validate_public_upload(int $referral_id, array $file, int $max_bytes): array
+    {
+        $errors = [];
+
+        $referral = $this->referral_repository->find($referral_id);
+
+        if ($referral_id <= 0 || null === $referral) {
+            $errors['referral_id'] = __('Referral not found.', 'jm-referral-system');
+            return $errors;
+        }
+
+        if (empty($file) || ! isset($file['error'])) {
+            $errors['file'] = __('Please choose a file to upload.', 'jm-referral-system');
+            return $errors;
+        }
+
+        $error_code = (int) $file['error'];
+
+        if (UPLOAD_ERR_NO_FILE === $error_code) {
+            $errors['file'] = __('Please choose a file to upload.', 'jm-referral-system');
+            return $errors;
+        }
+
+        if (UPLOAD_ERR_INI_SIZE === $error_code || UPLOAD_ERR_FORM_SIZE === $error_code) {
+            $errors['file'] = __('The file exceeds the maximum allowed size.', 'jm-referral-system');
+            return $errors;
+        }
+
+        if (UPLOAD_ERR_OK !== $error_code) {
+            $errors['file'] = __('The upload failed. Please try again.', 'jm-referral-system');
+            return $errors;
+        }
+
+        $size = absint($file['size'] ?? 0);
+
+        if ($size <= 0) {
+            $errors['file'] = __('The uploaded file is empty.', 'jm-referral-system');
+            return $errors;
+        }
+
+        if ($size > $max_bytes) {
+            $errors['file'] = __('The file exceeds the maximum allowed size.', 'jm-referral-system');
+            return $errors;
+        }
+
+        $name = str_replace("\0", '', (string) ($file['name'] ?? ''));
+        $ext  = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+        if ('' === $ext || ! isset(self::ALLOWED_MIMES[$ext])) {
+            $errors['file'] = __('Allowed file types are PDF, DOC, DOCX, JPG, JPEG, and PNG.', 'jm-referral-system');
+            return $errors;
+        }
+
         if (str_contains($name, '/') || str_contains($name, '\\') || str_contains($name, "\0")) {
             $errors['file'] = __('The upload is invalid.', 'jm-referral-system');
             return $errors;

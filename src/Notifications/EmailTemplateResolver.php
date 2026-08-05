@@ -18,6 +18,8 @@ class EmailTemplateResolver
         'referral-created',
         'referral-assigned',
         'status-changed',
+        'public-referral-received',
+        'public-referral-confirmation',
     ];
 
     /**

@@ -1,0 +1,254 @@
+/**
+ * Public referral intake — scoped frontend styles.
+ * Root: .jmrs-public-referral
+ */
+
+.jmrs-public-referral {
+	--jmrs-pub-primary: #0b5f4b;
+	--jmrs-pub-primary-hover: #094c3c;
+	--jmrs-pub-text: #1a1f1c;
+	--jmrs-pub-muted: #5c675f;
+	--jmrs-pub-border: #c9d2cc;
+	--jmrs-pub-bg: #f6f8f7;
+	--jmrs-pub-surface: #ffffff;
+	--jmrs-pub-error: #9b1c1c;
+	--jmrs-pub-error-bg: #fcebeb;
+	--jmrs-pub-success: #0b5f4b;
+	--jmrs-pub-success-bg: #e7f4ef;
+	--jmrs-pub-focus: #1a73e8;
+	--jmrs-pub-radius: 6px;
+	--jmrs-pub-space: 1.25rem;
+
+	box-sizing: border-box;
+	color: var(--jmrs-pub-text);
+	font-size: 1rem;
+	line-height: 1.55;
+	max-width: 44rem;
+	margin: 0 auto;
+	padding: var(--jmrs-pub-space);
+	background: var(--jmrs-pub-surface);
+	border: 1px solid var(--jmrs-pub-border);
+	border-radius: calc(var(--jmrs-pub-radius) + 2px);
+}
+
+.jmrs-public-referral *,
+.jmrs-public-referral *::before,
+.jmrs-public-referral *::after {
+	box-sizing: border-box;
+}
+
+.jmrs-public-referral__title {
+	margin: 0 0 0.5rem;
+	font-size: 1.75rem;
+	line-height: 1.25;
+	color: var(--jmrs-pub-text);
+}
+
+.jmrs-public-referral__subtitle {
+	margin: 1.5rem 0 0.5rem;
+	font-size: 1.15rem;
+}
+
+.jmrs-public-referral__intro,
+.jmrs-public-referral__help {
+	margin: 0 0 1rem;
+	color: var(--jmrs-pub-muted);
+	font-size: 0.95rem;
+}
+
+.jmrs-public-referral__req {
+	color: var(--jmrs-pub-error);
+	font-weight: 700;
+}
+
+.jmrs-public-referral__section {
+	margin: 0 0 1.5rem;
+	padding: 1rem 1rem 0.25rem;
+	border: 1px solid var(--jmrs-pub-border);
+	border-radius: var(--jmrs-pub-radius);
+	background: var(--jmrs-pub-bg);
+}
+
+.jmrs-public-referral__section legend {
+	padding: 0 0.35rem;
+	font-weight: 700;
+	font-size: 1.05rem;
+}
+
+.jmrs-public-referral__field {
+	margin: 0 0 1rem;
+}
+
+.jmrs-public-referral__row {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0 1rem;
+}
+
+@media (min-width: 640px) {
+	.jmrs-public-referral__row {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+.jmrs-public-referral__field label,
+.jmrs-public-referral__label {
+	display: block;
+	margin-bottom: 0.35rem;
+	font-weight: 600;
+}
+
+.jmrs-public-referral__field input[type="text"],
+.jmrs-public-referral__field input[type="email"],
+.jmrs-public-referral__field input[type="tel"],
+.jmrs-public-referral__field input[type="date"],
+.jmrs-public-referral__field input[type="file"],
+.jmrs-public-referral__field select,
+.jmrs-public-referral__field textarea {
+	width: 100%;
+	max-width: 100%;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid var(--jmrs-pub-border);
+	border-radius: var(--jmrs-pub-radius);
+	background: var(--jmrs-pub-surface);
+	color: var(--jmrs-pub-text);
+	font: inherit;
+}
+
+.jmrs-public-referral__field textarea {
+	resize: vertical;
+	min-height: 6rem;
+}
+
+.jmrs-public-referral__field input:focus,
+.jmrs-public-referral__field select:focus,
+.jmrs-public-referral__field textarea:focus,
+.jmrs-public-referral__submit:focus,
+.jmrs-public-referral__print:focus,
+.jmrs-public-referral__notice a:focus {
+	outline: 3px solid var(--jmrs-pub-focus);
+	outline-offset: 2px;
+}
+
+.jmrs-public-referral__field input[aria-invalid="true"],
+.jmrs-public-referral__field select[aria-invalid="true"],
+.jmrs-public-referral__field textarea[aria-invalid="true"] {
+	border-color: var(--jmrs-pub-error);
+}
+
+.jmrs-public-referral__field-error {
+	margin: 0.35rem 0 0;
+	color: var(--jmrs-pub-error);
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.jmrs-public-referral__radios {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1.25rem;
+}
+
+.jmrs-public-referral__radios label,
+.jmrs-public-referral__checkbox label {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+	font-weight: 500;
+	cursor: pointer;
+}
+
+.jmrs-public-referral__checkbox input {
+	margin-top: 0.2rem;
+}
+
+.jmrs-public-referral__actions {
+	margin-top: 1rem;
+}
+
+.jmrs-public-referral__submit,
+.jmrs-public-referral__print {
+	display: inline-block;
+	padding: 0.7rem 1.25rem;
+	border: 0;
+	border-radius: var(--jmrs-pub-radius);
+	background: var(--jmrs-pub-primary);
+	color: #fff;
+	font: inherit;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.jmrs-public-referral__submit:hover,
+.jmrs-public-referral__print:hover {
+	background: var(--jmrs-pub-primary-hover);
+}
+
+.jmrs-public-referral__submit:disabled {
+	opacity: 0.7;
+	cursor: wait;
+}
+
+.jmrs-public-referral__notice {
+	padding: 1rem 1.1rem;
+	border-radius: var(--jmrs-pub-radius);
+	margin-bottom: 1.25rem;
+}
+
+.jmrs-public-referral__notice--error {
+	background: var(--jmrs-pub-error-bg);
+	border: 1px solid var(--jmrs-pub-error);
+	color: var(--jmrs-pub-error);
+}
+
+.jmrs-public-referral__notice--error a {
+	color: var(--jmrs-pub-error);
+	font-weight: 600;
+}
+
+.jmrs-public-referral__notice--success {
+	background: var(--jmrs-pub-success-bg);
+	border: 1px solid var(--jmrs-pub-success);
+	color: var(--jmrs-pub-text);
+}
+
+.jmrs-public-referral__notice--info {
+	background: var(--jmrs-pub-bg);
+	border: 1px solid var(--jmrs-pub-border);
+}
+
+.jmrs-public-referral__ref-code {
+	display: inline-block;
+	margin-left: 0.35rem;
+	padding: 0.2rem 0.45rem;
+	background: var(--jmrs-pub-surface);
+	border: 1px solid var(--jmrs-pub-border);
+	border-radius: 4px;
+	font-size: 1.05rem;
+	letter-spacing: 0.02em;
+}
+
+.jmrs-public-referral__next-steps {
+	margin: 0 0 1rem;
+	padding-left: 1.25rem;
+}
+
+.jmrs-public-referral__hp {
+	position: absolute !important;
+	left: -10000px !important;
+	width: 1px !important;
+	height: 1px !important;
+	overflow: hidden !important;
+}
+
+@media print {
+	.jmrs-public-referral__print,
+	.jmrs-public-referral__actions {
+		display: none !important;
+	}
+
+	.jmrs-public-referral {
+		border: 0;
+		max-width: none;
+	}
+}

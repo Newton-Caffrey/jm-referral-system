@@ -61,16 +61,30 @@ class ReferralService
             'service_required'         => $service_required,
             'service_type_id'          => $service_type_id > 0 ? $service_type_id : null,
             'workflow_stage_id'        => $workflow_stage_id > 0 ? $workflow_stage_id : null,
-            'referrer_name'            => $input['referrer_name'] !== '' ? $input['referrer_name'] : null,
-            'referrer_email'           => $input['referrer_email'] !== '' ? $input['referrer_email'] : null,
+            'referrer_name'            => ($input['referrer_name'] ?? '') !== '' ? $input['referrer_name'] : null,
+            'referrer_email'           => ($input['referrer_email'] ?? '') !== '' ? $input['referrer_email'] : null,
             'priority'                 => $input['priority'],
-            'notes'                    => $input['notes'] !== '' ? $input['notes'] : null,
+            'notes'                    => ($input['notes'] ?? '') !== '' ? $input['notes'] : null,
             'status'                   => $status,
             'assigned_to'              => $assigned_to > 0 ? $assigned_to : null,
             'referral_source'          => '' !== $referral_source ? $referral_source : null,
             'care_start_date'          => '' !== $care_start_date ? $care_start_date : null,
             'preferred_contact_method' => '' !== $preferred_contact_method ? $preferred_contact_method : null,
             'care_requirements'        => '' !== $care_requirements ? $care_requirements : null,
+            'client_first_name'        => $this->nullable_string($input['client_first_name'] ?? ''),
+            'client_last_name'         => $this->nullable_string($input['client_last_name'] ?? ''),
+            'client_date_of_birth'     => $this->nullable_string($input['client_date_of_birth'] ?? ''),
+            'address_line_1'           => $this->nullable_string($input['address_line_1'] ?? ''),
+            'address_line_2'           => $this->nullable_string($input['address_line_2'] ?? ''),
+            'city'                     => $this->nullable_string($input['city'] ?? ''),
+            'postcode'                 => $this->nullable_string($input['postcode'] ?? ''),
+            'referrer_type'            => $this->nullable_string($input['referrer_type'] ?? ''),
+            'referrer_organisation'    => $this->nullable_string($input['referrer_organisation'] ?? ''),
+            'referrer_phone'           => $this->nullable_string($input['referrer_phone'] ?? ''),
+            'relationship_to_client'   => $this->nullable_string($input['relationship_to_client'] ?? ''),
+            'submission_channel'       => $this->normalize_submission_channel($input['submission_channel'] ?? 'admin'),
+            'public_consent_at'        => $this->nullable_string($input['public_consent_at'] ?? ''),
+            'public_consent_version'   => $this->nullable_string($input['public_consent_version'] ?? ''),
             'created_at'               => $now,
             'updated_at'               => $now,
         ];
@@ -372,6 +386,24 @@ class ReferralService
         }
 
         return (string) $stage['name'];
+    }
+
+    private function nullable_string(string $value): ?string
+    {
+        $value = trim($value);
+
+        return '' !== $value ? $value : null;
+    }
+
+    private function normalize_submission_channel(string $channel): string
+    {
+        $channel = sanitize_key($channel);
+
+        if ('public_website' === $channel) {
+            return 'public_website';
+        }
+
+        return 'admin';
     }
 
     /**

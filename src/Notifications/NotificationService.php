@@ -2,6 +2,8 @@
 
 namespace JMReferral\Notifications;
 
+use JMReferral\Frontend\PublicReferralSettings;
+use JMReferral\Frontend\ReferrerTypes;
 use JMReferral\Referral\ReferralViewController;
 use JMReferral\Users\UserProvider;
 
@@ -10,6 +12,8 @@ class NotificationService
     private const TEMPLATE_CREATED  = 'referral-created';
     private const TEMPLATE_ASSIGNED = 'referral-assigned';
     private const TEMPLATE_STATUS   = 'status-changed';
+    private const TEMPLATE_PUBLIC_RECEIVED = 'public-referral-received';
+    private const TEMPLATE_PUBLIC_CONFIRM  = 'public-referral-confirmation';
 
     public function __construct(
         private EmailNotificationService $email_service,
@@ -113,6 +117,61 @@ class NotificationService
     }
 
     /**
+     * Notifies the configured operations inbox about a public website referral.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function notify_public_referral_received(array $referral): void
+    {
+        $email = PublicReferralSettings::notification_email();
+
+        if ('' === $email) {
+            return;
+        }
+
+        $context = $this->build_public_ops_context($referral);
+
+        $subject = sprintf(
+            /* translators: %s: referral number */
+            __('New website referral: %s', 'jm-referral-system'),
+            $context['referral_number']
+        );
+
+        $this->email_service->send($email, $subject, self::TEMPLATE_PUBLIC_RECEIVED, $context);
+    }
+
+    /**
+     * Sends a confirmation email to the public referrer when an email was supplied.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function notify_public_referral_confirmation(array $referral): void
+    {
+        $email = (string) ($referral['referrer_email'] ?? '');
+
+        if ('' === $email || ! is_email($email)) {
+            return;
+        }
+
+        $context = [
+            'referral_number' => (string) ($referral['referral_number'] ?? ''),
+            'referrer_name'   => (string) ($referral['referrer_name'] ?? ''),
+            'site_name'       => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
+            'site_url'        => home_url('/'),
+            'admin_email'     => (string) get_option('admin_email'),
+        ];
+
+        $subject = sprintf(
+            /* translators: 1: site name, 2: referral number */
+            __('[%1$s] We received your referral (%2$s)', 'jm-referral-system'),
+            $context['site_name'],
+            $context['referral_number']
+        );
+
+        $this->email_service->send($email, $subject, self::TEMPLATE_PUBLIC_CONFIRM, $context);
+    }
+
+    /**
      * @param array<string, mixed> $referral
      * @return array<string, string>
      */
@@ -129,6 +188,26 @@ class NotificationService
             'view_url'         => ReferralViewController::get_view_url($referral_id),
             'site_name'        => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
         ];
+    }
+
+    /**
+     * Summary context for ops — no full care requirements body.
+     *
+     * @param array<string, mixed> $referral
+     * @return array<string, string>
+     */
+    private function build_public_ops_context(array $referral): array
+    {
+        $base = $this->build_context($referral);
+        $referrer_type = (string) ($referral['referrer_type'] ?? '');
+
+        return array_merge($base, [
+            'referrer_name' => (string) ($referral['referrer_name'] ?? ''),
+            'referrer_type' => '' !== $referrer_type
+                ? ReferrerTypes::label($referrer_type)
+                : '',
+            'public_priority' => $this->format_label((string) ($referral['priority'] ?? '')),
+        ]);
     }
 
     private function format_label(string $value): string

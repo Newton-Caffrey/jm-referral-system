@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 6.1A: public referral intake shortcode `[jmrs_public_referral_form]`
+- Public intake settings (enable, privacy URL, consent version, notification email, success message, uploads)
+- Public referrer/client/consent fields and `submission_channel` (DB `2.17.0`)
+- Ops + referrer confirmation email templates for website submissions
+- `docs/PUBLIC_REFERRAL_INTAKE.md`
+
+### Changed
+
+- Referral create path accepts public-intake columns without forking admin create
+- Referral View / list / CSV export surface website channel and public fields
+- CSV export includes referral source and public-intake columns
+
+### Security
+
+- Public form: nonce, honeypot, minimum completion time, hashed rate limit (no raw IP storage)
+- Public uploads use private storage only; never Media Library
+
+## [1.0.0] - 2026-08-05
+
+First production release of the JM Referral System. Plugin version `1.0.0`. Database schema remains `2.16.0` (no schema change in this release).
+
+### Added
+
+- Phase 5.6: `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md`
 - Phase 5.5: shared admin CSS/JS (`assets/css/admin.css`, `assets/js/admin.js`) on all plugin screens
 - Phase 5.5: `UiHelper` badges and empty states; `docs/UI_STYLE_GUIDE.md` and `docs/ACCESSIBILITY_REVIEW.md`
 - Phase 5.4.2B: Referral View visit pagination (20/50/100) with SQL LIMIT/OFFSET
@@ -35,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Phase 5.6: release docs aligned; product version locked to `1.0.0`; DB version unchanged at `2.16.0`
 - Consistent notice wording (`… successfully.` / `Please fix the following errors:`)
 - Standardized primary/secondary/danger buttons, confirms (`data-jmrs-confirm`), and double-submit busy labels
 - Priority/status/archive/alert badges and improved empty states on list, view, and alerts
@@ -61,7 +86,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Phase 5.6: notes on archived referrals require `can_mutate_referral` (archive read-only alignment)
 - Phase 5.5 double-submit guard: preserve clicked submit button name/value via hidden input before disabling (fixes Update Referral and other named submit actions)
+- Removed unused `MedicationAdministrationController` stub and dead `get_dashboard_alerts()` wrapper
 
 ### Security
 

@@ -66,7 +66,7 @@ class ReferralNoteService
 
         if (null === $referral) {
             $errors['referral_id'] = __('Referral not found.', 'jm-referral-system');
-        } elseif (! $this->access_policy->can_view_referral($referral)) {
+        } elseif (! $this->access_policy->can_mutate_referral($referral)) {
             $errors['referral_id'] = __('You do not have permission to add notes to this referral.', 'jm-referral-system');
         }
 

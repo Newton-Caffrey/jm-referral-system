@@ -212,6 +212,8 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 					$source_label     = '' !== $source_value
 						? \JMReferral\Referral\ReferralSources::label( $source_value )
 						: '';
+					$submission_channel = (string) ( $referral['submission_channel'] ?? 'admin' );
+					$is_website_channel = \JMReferral\Frontend\SubmissionChannels::is_public( $submission_channel );
 					$assigned_to_name = (string) ( $referral['assigned_to_name'] ?? '' );
 					$created_at       = (string) ( $referral['created_at'] ?? '' );
 					$created_display  = '' !== $created_at
@@ -238,7 +240,12 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 						<td><?php echo '' !== $workflow_stage_name ? esc_html( $workflow_stage_name ) : '—'; ?></td>
 						<td><?php echo \JMReferral\Support\UiHelper::priority_badge( $priority_value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 						<td><?php echo \JMReferral\Support\UiHelper::status_badge( $status_value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
-						<td><?php echo '' !== $source_label ? esc_html( $source_label ) : '—'; ?></td>
+						<td>
+							<?php echo '' !== $source_label ? esc_html( $source_label ) : '—'; ?>
+							<?php if ( $is_website_channel ) : ?>
+								<br /><?php echo \JMReferral\Support\UiHelper::badge( __( 'Website', 'jm-referral-system' ), 'info' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?>
+							<?php endif; ?>
+						</td>
 						<td><?php echo '' !== $assigned_to_name ? esc_html( $assigned_to_name ) : esc_html__( 'Unassigned', 'jm-referral-system' ); ?></td>
 						<td><?php echo esc_html( $created_display ); ?></td>
 						<td>

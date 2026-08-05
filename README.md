@@ -1,5 +1,7 @@
 # JM Referral System
 
+**Version:** 1.0.0 · **Database schema:** 2.17.0
+
 A secure WordPress plugin for healthcare referral and domiciliary care management, built for J&M Healthcare.
 
 ---
@@ -9,6 +11,8 @@ A secure WordPress plugin for healthcare referral and domiciliary care managemen
 JM Referral System is a healthcare referral and care management platform designed for domiciliary care providers. It takes a referral from initial intake through assessment, care planning, team assignment, visit scheduling, and day-to-day care delivery — with role-based access, audit logging, and record-level permissions throughout.
 
 The plugin runs inside WordPress admin, uses a modular PHP architecture (Repository → Service → Controller), and manages its own database tables via a versioned migration system.
+
+Before go-live, use `docs/RELEASE_CHECKLIST.md`. Remaining constraints are listed in `docs/KNOWN_LIMITATIONS.md`.
 
 ---
 
@@ -21,6 +25,7 @@ The plugin runs inside WordPress admin, uses a modular PHP architecture (Reposit
 - Staff assignment and reassignment
 - Search, filtering, and status tracking
 - Full referral detail view with related clinical and operational modules
+- **Public website intake (Phase 6.1A):** shortcode `[jmrs_public_referral_form]` for unauthenticated referrals (see `docs/PUBLIC_REFERRAL_INTAKE.md`)
 
 ### Workflow Management
 
@@ -127,7 +132,14 @@ The plugin runs inside WordPress admin, uses a modular PHP architecture (Reposit
 ### CSV Export
 
 - Export referrals to CSV for reporting and offline review
-- Gated by the export capability
+- Gated by the export capability; formula-injection protection on string cells
+- Chunked streaming for large filtered exports
+
+### Data Retention
+
+- Archive / restore for referrals with clinical history (archive-first; no cascading clinical delete)
+- Safe permanent delete only when a referral has no blocking dependents
+- Active / Archived / All list filter; archived records excluded from ops defaults
 
 ### Reports
 
@@ -360,14 +372,18 @@ Prefer additive schema changes. Do not remove or rewrite existing clinical data 
 
 | Doc | Purpose |
 | --- | --- |
+| `docs/PUBLIC_REFERRAL_INTAKE.md` | Public shortcode form, settings, security, notifications |
+| `docs/RELEASE_CHECKLIST.md` | Pre-production install, upgrade, and smoke checklist |
+| `docs/KNOWN_LIMITATIONS.md` | Genuine remaining limitations for v1.0 |
 | `docs/DATA_RETENTION_POLICY.md` | Archive-first retention and deletion rules |
+| `docs/PRODUCTION_AUDIT.md` | Phase 5.1 audit + later remediation notes |
 | `docs/PERFORMANCE_AUDIT.md` | Performance findings and mitigations |
 | `docs/UI_STYLE_GUIDE.md` | Buttons, badges, tables, forms, colours |
 | `docs/ACCESSIBILITY_REVIEW.md` | Keyboard, screen reader, remaining a11y limits |
 
 ### Testing
 
-Automated test coverage is planned for a later production phase. For now, verify changes manually against:
+No automated PHPUnit suite in v1.0. Use `docs/RELEASE_CHECKLIST.md` and verify manually against:
 
 - Role matrix (Administrator, Referral Manager, Care Coordinator, Assessor, Support Worker)
 - Referral create → assessment → care plan → team → schedule → generate visits
@@ -387,13 +403,11 @@ Automated test coverage is planned for a later production phase. For now, verify
 | --- | --- | --- |
 | **1 — Foundation** | Plugin architecture, referrals, dashboard, notes, export, notifications | Complete |
 | **2 — Security** | Roles, capabilities, workflow, service types, sources, record-level access | Complete |
-| **3 — Clinical operations** | Documents, assessments, care plans, scheduling, visits | Largely complete |
-| **4 — Reporting** | Reports foundation, trends/analytics, charts, CSV exports, print | In progress |
-| **5 — Production** | Retention, performance, UX polish & accessibility | In progress / largely delivered |
+| **3 — Clinical operations** | Documents, assessments, care plans, scheduling, visits, MAR, alerts | Complete |
+| **4 — Reporting** | Reports foundation, trends/analytics, charts, CSV exports, print | Foundation complete |
+| **5 — Production** | Audit, private docs, retention, performance, UX/a11y, v1.0 release readiness | Complete (v1.0.0) |
 
-Near-term scheduling enhancements (not yet in scope) may include automatic cron generation, schedule-change synchronisation of future visits, calendar UI, and conflict detection.
-
-See `ROADMAP.md` and `CHANGELOG.md` for project tracking detail.
+Post-1.0 backlog (cron generation, calendar UI, portals, automated tests, timed retention) is tracked in `ROADMAP.md` and `docs/KNOWN_LIMITATIONS.md`.
 
 ---
 

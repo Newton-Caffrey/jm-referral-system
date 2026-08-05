@@ -119,23 +119,6 @@ class OperationalAlertService
     }
 
     /**
-     * @return array{
-     *   alerts: array<int, array<string, mixed>>,
-     *   grouped: array{critical: array<int, array<string, mixed>>, warning: array<int, array<string, mixed>>, information: array<int, array<string, mixed>>},
-     *   counts: array{critical: int, warning: int, information: int, total: int},
-     *   view_all_url: string
-     * }|null
-     */
-    public function get_dashboard_alerts(): ?array
-    {
-        if (! $this->current_user_can_view()) {
-            return null;
-        }
-
-        return $this->format_dashboard_alerts($this->get_alerts());
-    }
-
-    /**
      * Builds the dashboard-sized alert payload from a full get_alerts() result.
      * Allows DashboardPage to calculate alerts once and reuse counts elsewhere.
      *

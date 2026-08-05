@@ -23,6 +23,9 @@ use JMReferral\Documents\PrivateDocumentStorage;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Documents\ReferralDocumentService;
+use JMReferral\Frontend\PublicReferralController;
+use JMReferral\Frontend\PublicReferralService;
+use JMReferral\Frontend\PublicReferralShortcode;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
 use JMReferral\Permissions\AccessPolicy;
@@ -57,7 +60,6 @@ use JMReferral\Visits\CareVisitService;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskRepository;
 use JMReferral\Visits\VisitTaskService;
-use JMReferral\Medication\MedicationAdministrationController;
 use JMReferral\Medication\MedicationAdministrationRepository;
 use JMReferral\Medication\MedicationAdministrationService;
 use JMReferral\Medication\MedicationController;
@@ -281,6 +283,22 @@ class Plugin
             $this->workflow_stage_service,
             $this->access_policy
         );
+
+        $public_referral_service = new PublicReferralService(
+            $this->service,
+            $repository,
+            $this->service_type_service,
+            $document_service,
+            $notification_service
+        );
+        $public_referral_controller = new PublicReferralController(
+            $public_referral_service,
+            $this->service_type_service
+        );
+        $public_referral_shortcode = new PublicReferralShortcode($public_referral_controller);
+        $public_referral_controller->register();
+        $public_referral_shortcode->register();
+
         $validator         = new ReferralValidator(
             $this->user_provider,
             $this->service_type_service,
@@ -406,7 +424,6 @@ class Plugin
             $repository,
             $this->access_policy
         );
-        new MedicationAdministrationController($this->medication_administration_service);
 
         $create_controller->register();
         $this->list_controller->register();

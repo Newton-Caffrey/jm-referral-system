@@ -26,7 +26,7 @@ The plugin is functionally rich and correctly layered (Repository â†’ Service â†
 
 **Still open hotspots:** leading-wildcard search; Menu DI duplication; report `DATE()` predicates; unbounded documents/schedules on View.
 
-**Good news:** Document downloads stream via `readfile()` (bounded by 10 MB upload cap). Report CSV exports are aggregate rows (low memory) and reuse `get_report_data()` shape for page/charts/CSV. Alert rules already use `LIMIT 200`. Care-plan review/version uniqueness and visit `generation_key` UNIQUE keys exist.
+**Phase 5.6:** No further performance code changes. Remaining items documented in `docs/KNOWN_LIMITATIONS.md`. Verdict for v1.0: acceptable for controlled production at pilot/small-medium scale after checklist smoke tests.
 
 ---
 
