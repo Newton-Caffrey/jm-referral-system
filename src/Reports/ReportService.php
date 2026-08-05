@@ -575,6 +575,66 @@ class ReportService
     }
 
     /**
+     * Chart configuration keyed by dataset id.
+     *
+     * @return array<string, array{type: string, indexAxis?: string, limit?: int}>
+     */
+    public static function chart_definitions(): array
+    {
+        return [
+            'referrals_by_month'                     => ['type' => 'line'],
+            'referrals_by_service_type'              => ['type' => 'bar'],
+            'referrals_by_workflow_stage'            => ['type' => 'doughnut'],
+            'referrals_by_priority'                  => ['type' => 'bar'],
+            'visits_by_status_detail'                => ['type' => 'doughnut'],
+            'visits_status_comparison'               => ['type' => 'doughnut'],
+            'visits_by_type'                         => ['type' => 'bar'],
+            'administrations_by_status'              => ['type' => 'doughnut'],
+            'exception_trend_by_month'               => ['type' => 'line'],
+            'tasks_by_status'                        => ['type' => 'doughnut'],
+            'top_task_exception_types'               => ['type' => 'bar'],
+            'visits_completed_per_staff'             => ['type' => 'bar', 'indexAxis' => 'y', 'limit' => 10],
+            'medication_administrations_per_staff'   => ['type' => 'bar', 'indexAxis' => 'y', 'limit' => 10],
+            'active_care_team_assignments'           => ['type' => 'bar', 'indexAxis' => 'y'],
+            'operational_alerts_by_type'             => ['type' => 'bar'],
+            'high_priority_referrals'                => ['type' => 'bar'],
+        ];
+    }
+
+    /**
+     * Builds a chart payload for wp_localize_script from report sections.
+     *
+     * @param array<int, array<string, mixed>> $sections
+     * @return array<int, array<string, mixed>>
+     */
+    public static function charts_for_script(array $sections): array
+    {
+        $charts = [];
+
+        foreach ($sections as $section) {
+            $datasets = is_array($section['datasets'] ?? null) ? $section['datasets'] : [];
+            foreach ($datasets as $dataset) {
+                if (empty($dataset['chart_enabled'])) {
+                    continue;
+                }
+
+                $chart = is_array($dataset['chart'] ?? null) ? $dataset['chart'] : [];
+                $charts[] = [
+                    'id'        => (string) ($dataset['id'] ?? ''),
+                    'title'     => (string) ($dataset['title'] ?? ''),
+                    'type'      => (string) ($dataset['chart_type'] ?? 'bar'),
+                    'indexAxis' => (string) ($dataset['chart_index_axis'] ?? 'x'),
+                    'labels'    => is_array($chart['labels'] ?? null) ? $chart['labels'] : [],
+                    'values'    => is_array($chart['values'] ?? null) ? $chart['values'] : [],
+                    'max'       => $chart['max'] ?? 0,
+                ];
+            }
+        }
+
+        return $charts;
+    }
+
+    /**
      * @param array<string, int|float> $pairs label => value
      * @return array<string, mixed>
      */
@@ -600,23 +660,78 @@ class ReportService
             }
         }
 
+        $definitions = self::chart_definitions();
+        $definition  = $definitions[$id] ?? null;
+        $chart_labels = $labels;
+        $chart_values = $values;
+        $chart_max    = $max;
+
+        if (is_array($definition) && isset($definition['limit'])) {
+            $limited = $this->limit_chart_pairs($pairs, (int) $definition['limit']);
+            $chart_labels = $limited['labels'];
+            $chart_values = $limited['values'];
+            $chart_max    = $limited['max'];
+        }
+
+        $has_chart_data = false;
+        foreach ($chart_values as $chart_value) {
+            if ((float) $chart_value > 0) {
+                $has_chart_data = true;
+                break;
+            }
+        }
+
         return [
-            'id'     => $id,
-            'title'  => $title,
-            'note'   => '',
-            'rows'   => $rows,
-            'chart'  => [
-                'labels' => $labels,
-                'values' => $values,
-                'max'    => $max,
+            'id'               => $id,
+            'title'            => $title,
+            'note'             => '',
+            'rows'             => $rows,
+            'chart_enabled'    => null !== $definition,
+            'chart_has_data'   => $has_chart_data,
+            'chart_type'       => is_array($definition) ? (string) ($definition['type'] ?? 'bar') : '',
+            'chart_index_axis' => is_array($definition) ? (string) ($definition['indexAxis'] ?? 'x') : 'x',
+            'chart'            => [
+                'labels' => $chart_labels,
+                'values' => $chart_values,
+                'max'    => $chart_max,
             ],
-            'export' => [
+            'export'           => [
                 'columns' => [
                     __('Label', 'jm-referral-system'),
                     __('Value', 'jm-referral-system'),
                 ],
                 'rows'    => $export,
             ],
+        ];
+    }
+
+    /**
+     * @param array<string, int|float> $pairs
+     * @return array{labels: array<int, string>, values: array<int, float>, max: float}
+     */
+    private function limit_chart_pairs(array $pairs, int $limit): array
+    {
+        $limit = max(1, $limit);
+        arsort($pairs, SORT_NUMERIC);
+        $pairs = array_slice($pairs, 0, $limit, true);
+
+        $labels = [];
+        $values = [];
+        $max    = 0.0;
+
+        foreach ($pairs as $label => $value) {
+            $numeric    = is_numeric($value) ? (float) $value : 0.0;
+            $labels[]   = (string) $label;
+            $values[]   = $numeric;
+            if ($numeric > $max) {
+                $max = $numeric;
+            }
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values,
+            'max'    => $max,
         ];
     }
 

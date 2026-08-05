@@ -59,6 +59,9 @@ Milestone release covering the foundation, security, and clinical operations del
 - Capability `jmrs_view_reports` for Administrators, JM Administrators, Referral Managers, and Care Coordinators
 - Dashboard Reports shortcut card
 - Report trends and analytics sections (referral, visit, medication, task, staff, compliance) with chart-ready datasets
+- Chart.js visualisations on the Reports page (page-scoped enqueue; Chart.js 4.4.6 local or pinned CDN)
+- Full report and per-section CSV exports with nonce protection
+- Print-friendly Reports layout
 
 ### Changed
 

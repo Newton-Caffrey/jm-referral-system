@@ -39,6 +39,7 @@ use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
 use JMReferral\Reports\ReportController;
+use JMReferral\Reports\ReportExportController;
 use JMReferral\Reports\ReportRepository;
 use JMReferral\Reports\ReportService;
 use JMReferral\Scheduling\ScheduleController;
@@ -64,6 +65,7 @@ class Menu
     private DashboardPage $dashboard_page;
     private OperationalAlertsPage $operational_alerts_page;
     private ReportController $report_controller;
+    private ReportExportController $report_export_controller;
     private ReferralsPage $referrals_page;
     private AddReferralPage $add_referral_page;
     private SettingsPage $settings_page;
@@ -227,7 +229,8 @@ class Menu
             $operational_alert_service,
             $user_provider
         );
-        $this->report_controller = new ReportController($report_service);
+        $this->report_controller        = new ReportController($report_service);
+        $this->report_export_controller = new ReportExportController($report_service);
 
         $care_visit_service ??= new CareVisitService(
             $visit_repository,
@@ -341,6 +344,9 @@ class Menu
 
     public function register(): void
     {
+        $this->report_controller->register();
+        $this->report_export_controller->register();
+
         add_menu_page(
             __('J&M Referrals', 'jm-referral-system'),
             __('J&M Referrals', 'jm-referral-system'),

@@ -1,0 +1,212 @@
+/* Reports page (screen only; also used for print). */
+
+.jmrs-report-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: 12px 0 16px;
+}
+
+.jmrs-report-filters {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	padding: 12px 16px;
+	margin: 0 0 20px;
+}
+
+.jmrs-report-filters .jmrs-filter-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: flex-end;
+}
+
+.jmrs-report-filters label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.jmrs-report-filters .description {
+	margin: 4px 0 0;
+	color: #b32d2e;
+}
+
+.jmrs-report-section {
+	margin: 0 0 28px;
+}
+
+.jmrs-report-section h2 {
+	margin: 0 0 12px;
+	font-size: 1.15em;
+}
+
+.jmrs-report-section-header {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	justify-content: space-between;
+	margin: 0 0 12px;
+}
+
+.jmrs-report-section-header h2 {
+	margin: 0;
+}
+
+.jmrs-report-section h3 {
+	margin: 0 0 8px;
+	font-size: 1em;
+}
+
+.jmrs-report-kpis {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 12px;
+}
+
+.jmrs-report-kpi {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	padding: 14px;
+	break-inside: avoid;
+	page-break-inside: avoid;
+}
+
+.jmrs-report-kpi-number {
+	display: block;
+	font-size: 26px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: #1d2327;
+}
+
+.jmrs-report-kpi-label {
+	display: block;
+	margin-top: 4px;
+	color: #646970;
+	font-size: 13px;
+}
+
+.jmrs-report-kpi.is-warning .jmrs-report-kpi-number {
+	color: #996800;
+}
+
+.jmrs-report-kpi.is-critical .jmrs-report-kpi-number {
+	color: #b32d2e;
+}
+
+.jmrs-report-range-note {
+	margin: 0 0 16px;
+	color: #646970;
+}
+
+.jmrs-report-dataset {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	padding: 12px 16px;
+	margin: 0 0 16px;
+	break-inside: avoid;
+	page-break-inside: avoid;
+}
+
+.jmrs-report-dataset-note {
+	margin: 0 0 10px;
+	color: #646970;
+	font-size: 13px;
+}
+
+.jmrs-report-dataset-grid {
+	display: grid;
+	grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.2fr);
+	gap: 16px;
+}
+
+@media (max-width: 782px) {
+	.jmrs-report-dataset-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.jmrs-chart-wrap {
+	position: relative;
+	min-height: 240px;
+	border: 1px solid #dcdcde;
+	background: #f6f7f7;
+	padding: 12px;
+}
+
+.jmrs-chart-wrap canvas {
+	max-width: 100%;
+}
+
+.jmrs-chart-hidden {
+	display: none !important;
+}
+
+.jmrs-chart-empty {
+	margin: 0;
+	color: #646970;
+	font-size: 13px;
+}
+
+.jmrs-chart-fallback {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.jmrs-report-print-meta {
+	display: none;
+}
+
+@media print {
+	#wpadminbar,
+	#adminmenumain,
+	#adminmenuback,
+	#adminmenuwrap,
+	.jmrs-report-toolbar,
+	.jmrs-report-filters,
+	.jmrs-report-section-actions,
+	.jmrs-no-print,
+	.update-nag,
+	.notice {
+		display: none !important;
+	}
+
+	#wpcontent,
+	#wpbody-content {
+		margin-left: 0 !important;
+		padding: 0 !important;
+	}
+
+	.jmrs-report-print-meta {
+		display: block;
+		margin: 0 0 16px;
+	}
+
+	.jmrs-report-dataset,
+	.jmrs-report-kpi,
+	.jmrs-report-section {
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+
+	.jmrs-report-dataset-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.jmrs-chart-wrap {
+		background: #fff;
+		border-color: #999;
+	}
+
+	a {
+		text-decoration: none;
+		color: #000;
+	}
+}

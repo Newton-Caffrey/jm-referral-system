@@ -124,6 +124,16 @@ The plugin runs inside WordPress admin, uses a modular PHP architecture (Reposit
 - Export referrals to CSV for reporting and offline review
 - Gated by the export capability
 
+### Reports
+
+- **J&M Referrals → Reports** for managers and coordinators (`jmrs_view_reports`)
+- Date presets (Today, This Week, This Month, This Year) and custom ranges
+- KPI cards plus trends/analytics sections (referral, visit, medication, task, staff, compliance)
+- Chart.js visualisations loaded only on the Reports page (local `assets/vendor/chart.umd.min.js` when present; otherwise pinned CDN Chart.js **4.4.6**)
+- Full report CSV export and per-section CSV export (nonce-protected)
+- Print-friendly layout via browser print (no PDF generation in this phase)
+- Assessors and Support Workers do not receive report access
+
 ---
 
 ## Architecture
@@ -256,6 +266,9 @@ Custom capabilities (prefix `jmrs_`):
 | Care team | `jmrs_view_care_team`, `jmrs_manage_care_team` |
 | Schedules | `jmrs_view_schedules`, `jmrs_manage_schedules` |
 | Configuration | `jmrs_manage_service_types`, `jmrs_manage_workflow_stages`, `jmrs_manage_settings` |
+| Alerts | `jmrs_view_operational_alerts` |
+| Reports | `jmrs_view_reports` |
+| Medications | `jmrs_view_medications`, `jmrs_manage_medications`, `jmrs_administer_medications` |
 
 Capability checks are enforced in controllers and services. Record visibility for Support Workers is further restricted by assignment via `AccessPolicy`.
 
@@ -336,7 +349,7 @@ Automated test coverage is planned for a later production phase. For now, verify
 | **1 — Foundation** | Plugin architecture, referrals, dashboard, notes, export, notifications | Complete |
 | **2 — Security** | Roles, capabilities, workflow, service types, sources, record-level access | Complete |
 | **3 — Clinical operations** | Documents, assessments, care plans, scheduling, visits | Largely complete |
-| **4 — Reporting** | Advanced reports, KPI dashboard, staff workload, referral analytics | Planned |
+| **4 — Reporting** | Reports foundation, trends/analytics, charts, CSV exports, print | In progress |
 | **5 — Production** | Performance, UX polish, documentation, automated testing, v1.0 | Planned |
 
 Near-term scheduling enhancements (not yet in scope) may include automatic cron generation, schedule-change synchronisation of future visits, calendar UI, and conflict detection.
