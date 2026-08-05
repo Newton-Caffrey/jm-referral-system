@@ -40,32 +40,26 @@ class DashboardPage
             wp_die(esc_html__('You do not have permission to view the dashboard.', 'jm-referral-system'));
         }
 
+        global $wpdb;
+        $queries_before = (int) $wpdb->num_queries;
+
         $dashboard          = $this->service->get_dashboard_data(5);
         $stats              = $dashboard['stats'];
         $pipeline           = $dashboard['pipeline'] ?? [];
         $recent             = $dashboard['recent'];
         $scoped_to_assigned = ! empty($dashboard['scoped_to_assigned']);
 
-        $can_view_visits     = Capabilities::current_user_can(Capabilities::VIEW_VISITS);
-        $visit_status_labels = CareVisitService::status_labels();
+        $can_view_visits      = Capabilities::current_user_can(Capabilities::VIEW_VISITS);
+        $visit_status_labels  = CareVisitService::status_labels();
         $visit_outcome_labels = VisitExecutionService::outcome_labels();
-        $upcoming_visits     = [];
+        $upcoming_visits      = [];
 
         if ($can_view_visits) {
-            foreach ($this->visit_service->get_upcoming_for_dashboard(10) as $visit_row) {
-                $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
-                $visit_row['assigned_staff_name'] = $assigned_id > 0
-                    ? $this->user_provider->get_display_name($assigned_id)
-                    : '';
-
-                $referral_id = absint($visit_row['referral_id'] ?? 0);
-                $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
-                $visit_row['client_name'] = is_array($referral)
-                    ? (string) ($referral['client_name'] ?? '')
-                    : '';
-
-                $upcoming_visits[] = $visit_row;
-            }
+            $upcoming_visits = $this->enrich_dashboard_visits(
+                $this->visit_service->get_upcoming_for_dashboard(10),
+                $visit_outcome_labels,
+                false
+            );
         }
 
         $show_my_active_clients = $this->access_policy->should_scope_to_assigned()
@@ -90,9 +84,11 @@ class DashboardPage
         $awaiting_review_visits = [];
 
         if ($show_awaiting_review) {
-            foreach ($this->visit_execution_service->get_awaiting_review_for_dashboard(10) as $visit_row) {
-                $awaiting_review_visits[] = $this->enrich_dashboard_visit($visit_row, $visit_outcome_labels);
-            }
+            $awaiting_review_visits = $this->enrich_dashboard_visits(
+                $this->visit_execution_service->get_awaiting_review_for_dashboard(10),
+                $visit_outcome_labels,
+                true
+            );
         }
 
         $show_todays_completed = $this->access_policy->should_scope_to_assigned()
@@ -100,9 +96,11 @@ class DashboardPage
         $todays_completed_visits = [];
 
         if ($show_todays_completed) {
-            foreach ($this->visit_execution_service->get_todays_completed_for_current_user(10) as $visit_row) {
-                $todays_completed_visits[] = $this->enrich_dashboard_visit($visit_row, $visit_outcome_labels);
-            }
+            $todays_completed_visits = $this->enrich_dashboard_visits(
+                $this->visit_execution_service->get_todays_completed_for_current_user(10),
+                $visit_outcome_labels,
+                true
+            );
         }
 
         $show_top_outstanding_tasks = Capabilities::current_user_can(Capabilities::MANAGE_VISITS)
@@ -120,10 +118,7 @@ class DashboardPage
         if ($show_todays_outstanding_tasks) {
             foreach ($this->visit_task_service->get_todays_outstanding_for_user(get_current_user_id(), 10) as $task_row) {
                 $referral_id = absint($task_row['referral_id'] ?? 0);
-                $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
-                $task_row['client_name'] = is_array($referral)
-                    ? (string) ($referral['client_name'] ?? '')
-                    : '';
+                $task_row['client_name'] = (string) ($task_row['client_name'] ?? '');
                 $task_row['referral_url'] = $referral_id > 0
                     ? add_query_arg(
                         [
@@ -137,11 +132,15 @@ class DashboardPage
             }
         }
 
+        // Calculate alerts once per dashboard request; reuse counts for reports shortcut.
         $show_operational_alerts = false;
         $operational_alerts      = null;
+        $shared_alert_counts     = null;
 
         if (Capabilities::current_user_can(Capabilities::VIEW_OPERATIONAL_ALERTS)) {
-            $operational_alerts = $this->alert_service->get_dashboard_alerts();
+            $alert_result = $this->alert_service->get_alerts();
+            $shared_alert_counts = $alert_result['counts'] ?? null;
+            $operational_alerts  = $this->alert_service->format_dashboard_alerts($alert_result);
             $show_operational_alerts = is_array($operational_alerts);
         }
 
@@ -162,45 +161,79 @@ class DashboardPage
         $show_reports_shortcut = false;
         $reports_summary       = null;
         if (Capabilities::current_user_can(Capabilities::VIEW_REPORTS)) {
-            $reports_summary = $this->report_service->get_dashboard_summary();
+            $reports_summary = $this->report_service->get_dashboard_summary($shared_alert_counts);
             $show_reports_shortcut = is_array($reports_summary);
         }
+
+        $this->maybe_log_query_count('dashboard', $queries_before);
 
         include JMRS_PLUGIN_PATH . 'templates/dashboard/index.php';
     }
 
     /**
-     * @param array<string, mixed>  $visit_row
-     * @param array<string, string> $outcome_labels
-     * @return array<string, mixed>
+     * Enriches dashboard visit rows without per-row referral finds.
+     * Expects client_name from repository JOIN when available.
+     *
+     * @param array<int, array<string, mixed>> $visits
+     * @param array<string, string>            $outcome_labels
+     * @return array<int, array<string, mixed>>
      */
-    private function enrich_dashboard_visit(array $visit_row, array $outcome_labels): array
+    private function enrich_dashboard_visits(array $visits, array $outcome_labels, bool $include_outcome): array
     {
-        $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
-        $visit_row['assigned_staff_name'] = $assigned_id > 0
-            ? $this->user_provider->get_display_name($assigned_id)
-            : '';
+        $user_ids = [];
+        foreach ($visits as $visit_row) {
+            $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
+            if ($assigned_id > 0) {
+                $user_ids[] = $assigned_id;
+            }
+        }
 
-        $referral_id = absint($visit_row['referral_id'] ?? 0);
-        $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
-        $visit_row['client_name'] = is_array($referral)
-            ? (string) ($referral['client_name'] ?? '')
-            : '';
-        $visit_row['referral_url'] = $referral_id > 0
-            ? add_query_arg(
-                [
-                    'page'        => 'jm-referrals-view',
-                    'referral_id' => $referral_id,
-                ],
-                admin_url('admin.php')
-            )
-            : '';
+        $names = $this->user_provider->get_display_names_by_ids($user_ids);
+        $enriched = [];
 
-        $outcome_key = (string) ($visit_row['visit_outcome'] ?? '');
-        $visit_row['outcome_label'] = isset($outcome_labels[$outcome_key])
-            ? $outcome_labels[$outcome_key]
-            : $outcome_key;
+        foreach ($visits as $visit_row) {
+            $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
+            $visit_row['assigned_staff_name'] = $assigned_id > 0
+                ? (string) ($names[$assigned_id] ?? '')
+                : '';
 
-        return $visit_row;
+            $referral_id = absint($visit_row['referral_id'] ?? 0);
+            $visit_row['client_name'] = (string) ($visit_row['client_name'] ?? '');
+            $visit_row['referral_url'] = $referral_id > 0
+                ? add_query_arg(
+                    [
+                        'page'        => 'jm-referrals-view',
+                        'referral_id' => $referral_id,
+                    ],
+                    admin_url('admin.php')
+                )
+                : '';
+
+            if ($include_outcome) {
+                $outcome_key = (string) ($visit_row['visit_outcome'] ?? '');
+                $visit_row['outcome_label'] = isset($outcome_labels[$outcome_key])
+                    ? $outcome_labels[$outcome_key]
+                    : $outcome_key;
+            }
+
+            $enriched[] = $visit_row;
+        }
+
+        return $enriched;
+    }
+
+    /**
+     * Development-only query count log (no SQL, no PHI).
+     */
+    private function maybe_log_query_count(string $label, int $queries_before): void
+    {
+        if (! defined('WP_DEBUG') || ! WP_DEBUG) {
+            return;
+        }
+
+        global $wpdb;
+        $delta = (int) $wpdb->num_queries - $queries_before;
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated by WP_DEBUG.
+        error_log(sprintf('[JMRS] %s query count: %d', $label, max(0, $delta)));
     }
 }

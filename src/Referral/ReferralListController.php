@@ -41,13 +41,28 @@ class ReferralListController
             wp_die(esc_html__('You do not have permission to view referrals.', 'jm-referral-system'));
         }
 
+        global $wpdb;
+        $queries_before = (int) $wpdb->num_queries;
+
         $filters            = $this->filters->from_request();
+        $pagination         = $this->filters->pagination_from_request();
+        $per_page           = $pagination['per_page'];
+        $page               = $pagination['page'];
         $access_assigned_to = $this->access_policy->get_assigned_user_constraint();
         $scope_to_assigned  = null !== $access_assigned_to;
         $assignable_users   = $scope_to_assigned ? [] : $this->user_provider->get_assignable_users();
-        $query_result       = $this->repository->query($filters, null, 1, $access_assigned_to);
+        $query_result       = $this->repository->query($filters, $per_page, $page, $access_assigned_to);
+
+        $total       = absint($query_result['total'] ?? 0);
+        $total_pages = $per_page > 0 ? (int) max(1, (int) ceil($total / $per_page)) : 1;
+        if ($page > $total_pages) {
+            $page         = $total_pages;
+            $query_result = $this->repository->query($filters, $per_page, $page, $access_assigned_to);
+        }
+
         $service_type_ids   = [];
         $workflow_stage_ids = [];
+        $assignee_ids       = [];
 
         foreach ($query_result['items'] as $referral) {
             $service_type_id = absint($referral['service_type_id'] ?? 0);
@@ -59,16 +74,22 @@ class ReferralListController
             if ($workflow_stage_id > 0) {
                 $workflow_stage_ids[] = $workflow_stage_id;
             }
+
+            $assigned_to = absint($referral['assigned_to'] ?? 0);
+            if ($assigned_to > 0) {
+                $assignee_ids[] = $assigned_to;
+            }
         }
 
         $service_names = $this->service_type_service->get_names_by_ids($service_type_ids);
         $stage_names   = $this->workflow_stage_service->get_names_by_ids($workflow_stage_ids);
+        $assignee_names = $this->user_provider->get_display_names_by_ids($assignee_ids);
         $referrals     = [];
 
         foreach ($query_result['items'] as $referral) {
             $assigned_to                  = absint($referral['assigned_to'] ?? 0);
             $referral['assigned_to_name'] = $assigned_to > 0
-                ? $this->user_provider->get_display_name($assigned_to)
+                ? (string) ($assignee_names[$assigned_to] ?? '')
                 : '';
 
             $service_type_id = absint($referral['service_type_id'] ?? 0);
@@ -90,10 +111,12 @@ class ReferralListController
                 && Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
                 && $this->access_policy->can_edit_referral($referral);
 
-            $referral['can_delete'] = ! $is_archived
-                && Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
-                && $this->access_policy->can_edit_referral($referral)
-                && $this->retention_service->can_permanently_delete(absint($referral['id'] ?? 0));
+            // Permanent delete is View-only (retention COUNTs once there). List never runs dependency summary.
+            $referral['can_delete'] = false;
+
+            $referral['can_archive'] = ! $is_archived
+                && Capabilities::current_user_can(Capabilities::ARCHIVE_REFERRALS)
+                && $this->access_policy->can_edit_referral($referral);
 
             $referral['can_restore'] = $is_archived
                 && Capabilities::current_user_can(Capabilities::RESTORE_REFERRALS)
@@ -102,10 +125,46 @@ class ReferralListController
             $referrals[] = $referral;
         }
 
-        $total      = $query_result['total'];
         $export_url = ReferralExportController::get_export_url($filters);
 
+        $from = 0 === $total ? 0 : (($page - 1) * $per_page) + 1;
+        $to   = min($page * $per_page, $total);
+
+        $list_base_args = ReferralFilters::list_query_args($filters, $per_page);
+        $list_base_url  = add_query_arg($list_base_args, admin_url('admin.php'));
+        $pagination_links = '';
+        if ($total_pages > 1) {
+            $pagination_links = paginate_links(
+                [
+                    'base'      => esc_url_raw($list_base_url) . '%_%',
+                    'format'    => '&paged=%#%',
+                    'current'   => $page,
+                    'total'     => $total_pages,
+                    'prev_text' => '&laquo;',
+                    'next_text' => '&raquo;',
+                    'type'      => 'plain',
+                ]
+            );
+        }
+
+        $this->maybe_log_query_count('referral list', $queries_before);
+
         include JMRS_PLUGIN_PATH . 'templates/referrals/list.php';
+    }
+
+    /**
+     * Development-only query count log (no SQL, no PHI).
+     */
+    private function maybe_log_query_count(string $label, int $queries_before): void
+    {
+        if (! defined('WP_DEBUG') || ! WP_DEBUG) {
+            return;
+        }
+
+        global $wpdb;
+        $delta = (int) $wpdb->num_queries - $queries_before;
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated by WP_DEBUG.
+        error_log(sprintf('[JMRS] %s query count: %d', $label, max(0, $delta)));
     }
 
     /**

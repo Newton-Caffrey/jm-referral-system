@@ -227,18 +227,21 @@ class VisitTaskRepository
         $limit       = max(1, min(100, $limit));
         $tasks_table = Tables::visit_tasks_table();
         $visits_table = Tables::care_visits_table();
+        $referrals   = Tables::referrals_table();
         $today       = current_time('Y-m-d');
 
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names are trusted.
         $results = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT t.id, t.visit_id, t.task_name, t.task_status, t.task_notes, t.display_order,
-                        v.visit_date, v.referral_id, v.assigned_user_id
+                        v.visit_date, v.referral_id, v.assigned_user_id, r.client_name AS client_name
                 FROM {$tasks_table} t
                 INNER JOIN {$visits_table} v ON v.id = t.visit_id
+                INNER JOIN {$referrals} r ON r.id = v.referral_id
                 WHERE v.assigned_user_id = %d
                   AND v.visit_date = %s
                   AND t.task_status IN ('pending', 'not_completed')
+                  AND r.archived_at IS NULL
                 ORDER BY t.display_order ASC, t.id ASC
                 LIMIT %d",
                 $user_id,

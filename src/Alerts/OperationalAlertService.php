@@ -132,12 +132,43 @@ class OperationalAlertService
             return null;
         }
 
-        $result  = $this->get_alerts();
-        $grouped = $result['grouped'];
+        return $this->format_dashboard_alerts($this->get_alerts());
+    }
 
-        $grouped['critical']    = array_slice($grouped['critical'], 0, 10);
-        $grouped['warning']     = array_slice($grouped['warning'], 0, 10);
-        $grouped['information'] = array_slice($grouped['information'], 0, 5);
+    /**
+     * Builds the dashboard-sized alert payload from a full get_alerts() result.
+     * Allows DashboardPage to calculate alerts once and reuse counts elsewhere.
+     *
+     * @param array{
+     *   alerts?: array<int, array<string, mixed>>,
+     *   grouped?: array{critical?: array<int, array<string, mixed>>, warning?: array<int, array<string, mixed>>, information?: array<int, array<string, mixed>>},
+     *   counts?: array{critical?: int, warning?: int, information?: int, total?: int}
+     * } $result
+     * @return array{
+     *   alerts: array<int, array<string, mixed>>,
+     *   grouped: array{critical: array<int, array<string, mixed>>, warning: array<int, array<string, mixed>>, information: array<int, array<string, mixed>>},
+     *   counts: array{critical: int, warning: int, information: int, total: int},
+     *   view_all_url: string
+     * }
+     */
+    public function format_dashboard_alerts(array $result): array
+    {
+        $grouped = $result['grouped'] ?? [
+            'critical'    => [],
+            'warning'     => [],
+            'information' => [],
+        ];
+
+        $grouped['critical']    = array_slice($grouped['critical'] ?? [], 0, 10);
+        $grouped['warning']     = array_slice($grouped['warning'] ?? [], 0, 10);
+        $grouped['information'] = array_slice($grouped['information'] ?? [], 0, 5);
+
+        $counts = $result['counts'] ?? [
+            'critical'    => 0,
+            'warning'     => 0,
+            'information' => 0,
+            'total'       => 0,
+        ];
 
         return [
             'alerts'       => array_merge(
@@ -145,8 +176,17 @@ class OperationalAlertService
                 $grouped['warning'],
                 $grouped['information']
             ),
-            'grouped'      => $grouped,
-            'counts'       => $result['counts'],
+            'grouped'      => [
+                'critical'    => $grouped['critical'],
+                'warning'     => $grouped['warning'],
+                'information' => $grouped['information'],
+            ],
+            'counts'       => [
+                'critical'    => absint($counts['critical'] ?? 0),
+                'warning'     => absint($counts['warning'] ?? 0),
+                'information' => absint($counts['information'] ?? 0),
+                'total'       => absint($counts['total'] ?? 0),
+            ],
             'view_all_url' => self::get_alerts_page_url(),
         ];
     }

@@ -9,10 +9,17 @@
  *     search: string,
  *     status: string,
  *     priority: string,
- *     assigned_to: int
+ *     assigned_to: int,
+ *     archive_scope?: string
  * } $filters Active filters.
  * @var array<int, array{id: int, display_name: string}> $assignable_users Assignable users.
  * @var int $total Total matching referrals.
+ * @var int $page Current page.
+ * @var int $per_page Page size.
+ * @var int $from Display range start.
+ * @var int $to Display range end.
+ * @var int $total_pages Total pages.
+ * @var string|false|null $pagination_links paginate_links() output.
  * @var string $export_url Nonce-protected CSV export URL.
  * @var bool $scope_to_assigned Whether the list is limited to the current user's assignments.
  */
@@ -25,16 +32,70 @@ $referrals          = is_array( $referrals ?? null ) ? $referrals : array();
 $filters            = is_array( $filters ?? null ) ? $filters : array();
 $assignable_users   = is_array( $assignable_users ?? null ) ? $assignable_users : array();
 $total              = isset( $total ) ? absint( $total ) : count( $referrals );
+$page               = isset( $page ) ? max( 1, absint( $page ) ) : 1;
+$per_page           = isset( $per_page ) ? absint( $per_page ) : 20;
+$from               = isset( $from ) ? absint( $from ) : 0;
+$to                 = isset( $to ) ? absint( $to ) : 0;
+$total_pages        = isset( $total_pages ) ? max( 1, absint( $total_pages ) ) : 1;
+$pagination_links   = $pagination_links ?? '';
 $export_url         = isset( $export_url ) ? (string) $export_url : '';
 $scope_to_assigned  = ! empty( $scope_to_assigned );
 
-$search      = (string) ( $filters['search'] ?? '' );
-$status      = (string) ( $filters['status'] ?? '' );
-$priority    = (string) ( $filters['priority'] ?? '' );
-$assigned_to = (string) absint( $filters['assigned_to'] ?? 0 );
+$search        = (string) ( $filters['search'] ?? '' );
+$status        = (string) ( $filters['status'] ?? '' );
+$priority      = (string) ( $filters['priority'] ?? '' );
+$assigned_to   = (string) absint( $filters['assigned_to'] ?? 0 );
 $archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
 
 $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
+
+$jmrs_render_list_pagination = static function ( string $select_id ) use ( $from, $to, $total, $per_page, $pagination_links ) {
+	?>
+	<div class="tablenav">
+		<div class="alignleft actions">
+			<label for="<?php echo esc_attr( $select_id ); ?>" class="screen-reader-text"><?php echo esc_html__( 'Referrals per page', 'jm-referral-system' ); ?></label>
+			<select name="jmrs_per_page" id="<?php echo esc_attr( $select_id ); ?>" onchange="if (this.form) { var p=this.form.querySelector('input[name=paged]'); if(p){p.value='1';} this.form.submit(); }">
+				<?php foreach ( \JMReferral\Referral\ReferralFilters::ALLOWED_PER_PAGE as $size ) : ?>
+					<option value="<?php echo esc_attr( (string) $size ); ?>" <?php selected( $per_page, $size ); ?>>
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: number of rows per page */
+								__( '%d per page', 'jm-referral-system' ),
+								$size
+							)
+						);
+						?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+		</div>
+		<div class="tablenav-pages">
+			<span class="displaying-num">
+				<?php
+				if ( $total > 0 ) {
+					echo esc_html(
+						sprintf(
+							/* translators: 1: first item number, 2: last item number, 3: total referrals */
+							__( 'Displaying %1$s–%2$s of %3$s referrals', 'jm-referral-system' ),
+							number_format_i18n( $from ),
+							number_format_i18n( $to ),
+							number_format_i18n( $total )
+						)
+					);
+				} else {
+					echo esc_html__( 'Displaying 0 referrals', 'jm-referral-system' );
+				}
+				?>
+			</span>
+			<?php if ( is_string( $pagination_links ) && '' !== $pagination_links ) : ?>
+				<span class="pagination-links"><?php echo $pagination_links; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- paginate_links() HTML. ?></span>
+			<?php endif; ?>
+		</div>
+		<br class="clear" />
+	</div>
+	<?php
+};
 ?>
 <div class="wrap">
 	<h1 class="wp-heading-inline">
@@ -51,8 +112,9 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 	</a>
 	<hr class="wp-header-end" />
 
-	<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="jmrs-filters">
+	<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="jmrs-filters" id="jmrs-referrals-filter">
 		<input type="hidden" name="page" value="jm-referrals-list" />
+		<input type="hidden" name="paged" value="1" />
 
 		<div class="tablenav top">
 			<div class="alignleft actions">
@@ -112,19 +174,9 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 			</div>
 			<br class="clear" />
 		</div>
-	</form>
 
-	<p class="description">
-		<?php
-		echo esc_html(
-			sprintf(
-				/* translators: %d: number of matching referrals */
-				_n( '%d referral found.', '%d referrals found.', $total, 'jm-referral-system' ),
-				$total
-			)
-		);
-		?>
-	</p>
+		<?php $jmrs_render_list_pagination( 'jmrs_per_page_top' ); ?>
+	</form>
 
 	<table class="wp-list-table widefat fixed striped table-view-list">
 		<thead>
@@ -165,12 +217,12 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 					$created_display  = '' !== $created_at
 						? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $created_at )
 						: '';
-					$delete_url       = \JMReferral\Referral\ReferralListController::get_delete_url( $referral_id );
 					$edit_url         = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral_id );
 					$view_url         = \JMReferral\Referral\ReferralViewController::get_view_url( $referral_id );
 					$restore_url      = \JMReferral\Referral\ReferralListController::get_restore_url( $referral_id );
+					$archive_url      = $view_url . '#jmrs-archive-referral';
 					$can_edit         = ! empty( $referral['can_edit'] );
-					$can_delete       = ! empty( $referral['can_delete'] );
+					$can_archive      = ! empty( $referral['can_archive'] );
 					$can_restore      = ! empty( $referral['can_restore'] );
 					$is_archived      = ! empty( $referral['is_archived'] );
 					?>
@@ -197,11 +249,11 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 								if ( $can_edit ) {
 									$action_links[] = '<a href="' . esc_url( $edit_url ) . '">' . esc_html__( 'Edit', 'jm-referral-system' ) . '</a>';
 								}
+								if ( $can_archive ) {
+									$action_links[] = '<a href="' . esc_url( $archive_url ) . '">' . esc_html__( 'Archive', 'jm-referral-system' ) . '</a>';
+								}
 								if ( $can_restore ) {
 									$action_links[] = '<a href="' . esc_url( $restore_url ) . '" onclick="return confirm(\'' . esc_js( __( 'Restore this archived referral?', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Restore', 'jm-referral-system' ) . '</a>';
-								}
-								if ( $can_delete ) {
-									$action_links[] = '<a href="' . esc_url( $delete_url ) . '" class="submitdelete" onclick="return confirm(\'' . esc_js( __( 'Permanently delete this empty referral? This cannot be undone.', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Delete', 'jm-referral-system' ) . '</a>';
 								}
 								echo implode( ' | ', $action_links ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links built with esc_url/esc_html above.
 								?>
@@ -226,4 +278,25 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 			</tr>
 		</tfoot>
 	</table>
+
+	<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="jmrs-filters-bottom">
+		<input type="hidden" name="page" value="jm-referrals-list" />
+		<input type="hidden" name="paged" value="1" />
+		<?php if ( '' !== $search ) : ?>
+			<input type="hidden" name="jmrs_search" value="<?php echo esc_attr( $search ); ?>" />
+		<?php endif; ?>
+		<?php if ( '' !== $status ) : ?>
+			<input type="hidden" name="jmrs_status" value="<?php echo esc_attr( $status ); ?>" />
+		<?php endif; ?>
+		<?php if ( '' !== $priority ) : ?>
+			<input type="hidden" name="jmrs_priority" value="<?php echo esc_attr( $priority ); ?>" />
+		<?php endif; ?>
+		<?php if ( '0' !== $assigned_to && '' !== $assigned_to ) : ?>
+			<input type="hidden" name="jmrs_assigned_to" value="<?php echo esc_attr( $assigned_to ); ?>" />
+		<?php endif; ?>
+		<?php if ( 'active' !== $archive_scope ) : ?>
+			<input type="hidden" name="jmrs_archive_scope" value="<?php echo esc_attr( $archive_scope ); ?>" />
+		<?php endif; ?>
+		<?php $jmrs_render_list_pagination( 'jmrs_per_page_bottom' ); ?>
+	</form>
 </div>

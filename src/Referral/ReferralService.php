@@ -313,17 +313,15 @@ class ReferralService
 
             $recent[$index]['can_edit'] = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
                 && $this->access_policy->can_mutate_referral($referral);
-            $recent[$index]['can_delete'] = Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
-                && $this->access_policy->can_edit_referral($referral);
+            // Permanent delete is Referral View only (avoids list/dashboard retention COUNTs).
+            $recent[$index]['can_delete'] = false;
             $recent[$index]['view_url'] = ReferralViewController::get_view_url(
                 absint($referral['id'] ?? 0)
             );
             $recent[$index]['edit_url'] = ReferralEditController::get_edit_url(
                 absint($referral['id'] ?? 0)
             );
-            $recent[$index]['delete_url'] = ReferralListController::get_delete_url(
-                absint($referral['id'] ?? 0)
-            );
+            $recent[$index]['delete_url'] = '';
         }
 
         return [

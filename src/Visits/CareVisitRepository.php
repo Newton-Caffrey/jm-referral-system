@@ -197,20 +197,22 @@ class CareVisitRepository
             return [];
         }
 
-        $limit   = max(1, min(100, $limit));
-        $table   = Tables::care_visits_table();
-        $columns = self::SELECT_COLUMNS;
-        $today   = current_time('Y-m-d');
+        $limit     = max(1, min(100, $limit));
+        $table     = Tables::care_visits_table();
+        $referrals = Tables::referrals_table();
+        $today     = current_time('Y-m-d');
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names are trusted.
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT {$columns}
-                FROM {$table}
-                WHERE assigned_user_id = %d
-                  AND visit_date >= %s
-                  AND visit_status NOT IN ('cancelled', 'completed', 'missed')
-                ORDER BY visit_date ASC, start_time ASC, id ASC
+                "SELECT v.*, r.client_name AS client_name
+                FROM {$table} v
+                INNER JOIN {$referrals} r ON r.id = v.referral_id
+                WHERE v.assigned_user_id = %d
+                  AND v.visit_date >= %s
+                  AND v.visit_status NOT IN ('cancelled', 'completed', 'missed')
+                  AND r.archived_at IS NULL
+                ORDER BY v.visit_date ASC, v.start_time ASC, v.id ASC
                 LIMIT %d",
                 $user_id,
                 $today,
@@ -231,19 +233,21 @@ class CareVisitRepository
     {
         global $wpdb;
 
-        $limit   = max(1, min(100, $limit));
-        $table   = Tables::care_visits_table();
-        $columns = self::SELECT_COLUMNS;
-        $today   = current_time('Y-m-d');
+        $limit     = max(1, min(100, $limit));
+        $table     = Tables::care_visits_table();
+        $referrals = Tables::referrals_table();
+        $today     = current_time('Y-m-d');
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names are trusted.
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT {$columns}
-                FROM {$table}
-                WHERE visit_date >= %s
-                  AND visit_status NOT IN ('cancelled', 'completed', 'missed')
-                ORDER BY visit_date ASC, start_time ASC, id ASC
+                "SELECT v.*, r.client_name AS client_name
+                FROM {$table} v
+                INNER JOIN {$referrals} r ON r.id = v.referral_id
+                WHERE v.visit_date >= %s
+                  AND v.visit_status NOT IN ('cancelled', 'completed', 'missed')
+                  AND r.archived_at IS NULL
+                ORDER BY v.visit_date ASC, v.start_time ASC, v.id ASC
                 LIMIT %d",
                 $today,
                 $limit
@@ -263,20 +267,22 @@ class CareVisitRepository
     {
         global $wpdb;
 
-        $limit   = max(1, min(100, $limit));
-        $table   = Tables::care_visits_table();
-        $columns = self::SELECT_COLUMNS;
+        $limit     = max(1, min(100, $limit));
+        $table     = Tables::care_visits_table();
+        $referrals = Tables::referrals_table();
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names are trusted.
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT {$columns}
-                FROM {$table}
-                WHERE visit_status = %s
-                  AND visit_outcome IS NOT NULL
-                  AND visit_outcome != ''
-                  AND (reviewed_at IS NULL OR reviewed_at = '')
-                ORDER BY completed_at DESC, visit_date DESC, id DESC
+                "SELECT v.*, r.client_name AS client_name
+                FROM {$table} v
+                INNER JOIN {$referrals} r ON r.id = v.referral_id
+                WHERE v.visit_status = %s
+                  AND v.visit_outcome IS NOT NULL
+                  AND v.visit_outcome != ''
+                  AND (v.reviewed_at IS NULL OR v.reviewed_at = '')
+                  AND r.archived_at IS NULL
+                ORDER BY v.completed_at DESC, v.visit_date DESC, v.id DESC
                 LIMIT %d",
                 'completed',
                 $limit
@@ -302,21 +308,23 @@ class CareVisitRepository
 
         $limit   = max(1, min(100, $limit));
         $table   = Tables::care_visits_table();
-        $columns = self::SELECT_COLUMNS;
+        $referrals = Tables::referrals_table();
         $today   = current_time('Y-m-d');
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names are trusted.
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT {$columns}
-                FROM {$table}
-                WHERE assigned_user_id = %d
-                  AND visit_status = %s
+                "SELECT v.*, r.client_name AS client_name
+                FROM {$table} v
+                INNER JOIN {$referrals} r ON r.id = v.referral_id
+                WHERE v.assigned_user_id = %d
+                  AND v.visit_status = %s
+                  AND r.archived_at IS NULL
                   AND (
-                    DATE(completed_at) = %s
-                    OR (completed_at IS NULL AND visit_date = %s)
+                    DATE(v.completed_at) = %s
+                    OR (v.completed_at IS NULL AND v.visit_date = %s)
                   )
-                ORDER BY completed_at DESC, departure_time DESC, id DESC
+                ORDER BY v.completed_at DESC, v.departure_time DESC, v.id DESC
                 LIMIT %d",
                 $user_id,
                 'completed',

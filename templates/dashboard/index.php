@@ -593,9 +593,7 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 					$status_display   = ucfirst( str_replace( '_', ' ', $status ) );
 					$view_url         = (string) ( $referral['view_url'] ?? '' );
 					$edit_url         = (string) ( $referral['edit_url'] ?? '' );
-					$delete_url       = (string) ( $referral['delete_url'] ?? '' );
 					$can_edit         = ! empty( $referral['can_edit'] );
-					$can_delete       = ! empty( $referral['can_delete'] );
 					?>
 					<tr>
 						<td><strong><?php echo esc_html( $referral_number ); ?></strong></td>
@@ -613,9 +611,6 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 								}
 								if ( $can_edit && '' !== $edit_url ) {
 									$action_links[] = '<a href="' . esc_url( $edit_url ) . '">' . esc_html__( 'Edit', 'jm-referral-system' ) . '</a>';
-								}
-								if ( $can_delete && '' !== $delete_url ) {
-									$action_links[] = '<a href="' . esc_url( $delete_url ) . '" class="submitdelete" onclick="return confirm(\'' . esc_js( __( 'Permanently delete this empty referral? Linked records will block deletion.', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Delete', 'jm-referral-system' ) . '</a>';
 								}
 								echo ! empty( $action_links )
 									? implode( ' | ', $action_links ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links escaped above.

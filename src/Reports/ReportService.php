@@ -148,9 +148,11 @@ class ReportService
     }
 
     /**
+     * @param array{critical?: int, warning?: int, information?: int, total?: int}|null $precomputed_alert_counts
+     *        When provided (same request as dashboard alerts), skips a second alert-engine run.
      * @return array{referrals_total: int, visits_completed: int, operational_alerts: int, reports_url: string}|null
      */
-    public function get_dashboard_summary(): ?array
+    public function get_dashboard_summary(?array $precomputed_alert_counts = null): ?array
     {
         if (! $this->current_user_can_view()) {
             return null;
@@ -161,7 +163,11 @@ class ReportService
         $end    = (string) $range['end_date'];
         $access = $this->access_policy->get_assigned_user_constraint();
 
-        $alert_counts = $this->alert_service->get_alerts()['counts'] ?? [];
+        if (null !== $precomputed_alert_counts) {
+            $alert_counts = $precomputed_alert_counts;
+        } else {
+            $alert_counts = $this->alert_service->get_alerts()['counts'] ?? [];
+        }
 
         return [
             'referrals_total'    => $this->report_repository->count_referrals_in_range($start, $end, $access),

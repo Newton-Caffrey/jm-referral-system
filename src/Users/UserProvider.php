@@ -71,6 +71,41 @@ class UserProvider
     }
 
     /**
+     * Batch-resolves display names for user IDs (single get_users call).
+     *
+     * @param array<int, int> $user_ids
+     * @return array<int, string> Map of user_id => display_name
+     */
+    public function get_display_names_by_ids(array $user_ids): array
+    {
+        $ids = [];
+        foreach ($user_ids as $user_id) {
+            $id = absint($user_id);
+            if ($id > 0) {
+                $ids[$id] = $id;
+            }
+        }
+
+        if ([] === $ids) {
+            return [];
+        }
+
+        $users = get_users(
+            [
+                'include' => array_values($ids),
+                'fields'  => ['ID', 'display_name'],
+            ]
+        );
+
+        $map = [];
+        foreach ($users as $user) {
+            $map[(int) $user->ID] = (string) $user->display_name;
+        }
+
+        return $map;
+    }
+
+    /**
      * Returns a user's email address, or empty string when not found.
      */
     public function get_email(int $user_id): string

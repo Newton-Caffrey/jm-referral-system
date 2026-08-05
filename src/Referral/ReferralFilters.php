@@ -27,6 +27,10 @@ class ReferralFilters
         'all',
     ];
 
+    public const ALLOWED_PER_PAGE = [20, 50, 100];
+
+    public const DEFAULT_PER_PAGE = 20;
+
     public function __construct(
         private UserProvider $user_provider,
         private AccessPolicy $access_policy
@@ -98,5 +102,81 @@ class ReferralFilters
             'assigned_to'    => $assigned_to,
             'archive_scope'  => $archive_scope,
         ];
+    }
+
+    /**
+     * Reads list pagination from the request (allowlisted page size).
+     *
+     * @return array{page: int, per_page: int}
+     */
+    public function pagination_from_request(): array
+    {
+        $per_page = isset($_GET['jmrs_per_page'])
+            ? absint($_GET['jmrs_per_page'])
+            : self::DEFAULT_PER_PAGE;
+
+        if (! in_array($per_page, self::ALLOWED_PER_PAGE, true)) {
+            $per_page = self::DEFAULT_PER_PAGE;
+        }
+
+        $page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+        if ($page < 1) {
+            $page = 1;
+        }
+
+        return [
+            'page'     => $page,
+            'per_page' => $per_page,
+        ];
+    }
+
+    /**
+     * Builds query args for list URLs that preserve filters and page size.
+     *
+     * @param array{
+     *     search?: string,
+     *     status?: string,
+     *     priority?: string,
+     *     assigned_to?: int,
+     *     archive_scope?: string
+     * } $filters
+     * @return array<string, scalar>
+     */
+    public static function list_query_args(array $filters, int $per_page, ?int $page = null): array
+    {
+        $args = [
+            'page' => 'jm-referrals-list',
+        ];
+
+        if (! empty($filters['search'])) {
+            $args['jmrs_search'] = (string) $filters['search'];
+        }
+
+        if (! empty($filters['status'])) {
+            $args['jmrs_status'] = (string) $filters['status'];
+        }
+
+        if (! empty($filters['priority'])) {
+            $args['jmrs_priority'] = (string) $filters['priority'];
+        }
+
+        if (! empty($filters['assigned_to'])) {
+            $args['jmrs_assigned_to'] = absint($filters['assigned_to']);
+        }
+
+        $archive_scope = (string) ($filters['archive_scope'] ?? 'active');
+        if ('' !== $archive_scope && 'active' !== $archive_scope) {
+            $args['jmrs_archive_scope'] = $archive_scope;
+        }
+
+        if (in_array($per_page, self::ALLOWED_PER_PAGE, true) && self::DEFAULT_PER_PAGE !== $per_page) {
+            $args['jmrs_per_page'] = $per_page;
+        }
+
+        if (null !== $page && $page > 1) {
+            $args['paged'] = $page;
+        }
+
+        return $args;
     }
 }
