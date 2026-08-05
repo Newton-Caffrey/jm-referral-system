@@ -114,6 +114,11 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Phase 6.1B: multi-step wizard, branding, review summary, no-JS fallback
 - [ ] CAPTCHA option / tracking portal / public edit (later)
 
+### Staff Frontend Portal
+
+- [x] Phase 6.2A: portal foundation — routing, shell, nav, dashboard, referral list/view, optional wp-admin redirect (`docs/STAFF_PORTAL.md`)
+- [ ] Phase 6.2B+: frontend workflows (edit, notes, documents, assessments, care plans, visits, MAR, reports)
+
 ### Medication Administration (advanced)
 
 - [ ] Stock control, controlled-drug registers, PRN, eMAR export
@@ -191,6 +196,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 5.x — Production Hardening | Audit → private docs → retention → performance → UX/a11y → v1.0 readiness | ✅ Complete (v1.0.0) |
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
 | Phase 6.1 — Public referral intake | 6.1A + 6.1B wizard complete | ✅ Complete |
+| Phase 6.2A — Staff portal foundation | Routing, shell, dashboard, referral list/view | ✅ Complete |
 | Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Backlog |
 
 **Current release:** plugin `1.0.0` · DB `2.17.0` (after public intake migration) · see `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md`.

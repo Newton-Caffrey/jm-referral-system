@@ -26,6 +26,7 @@ Before go-live, use `docs/RELEASE_CHECKLIST.md`. Remaining constraints are liste
 - Search, filtering, and status tracking
 - Full referral detail view with related clinical and operational modules
 - **Public website intake:** shortcode `[jmrs_public_referral_form]` — multi-step wizard with no-JS fallback (see `docs/PUBLIC_REFERRAL_INTAKE.md`)
+- **Staff portal (optional):** `/staff-portal/` foundation — dashboard, referral list/view, capability nav (see `docs/STAFF_PORTAL.md`); disabled by default
 
 ### Workflow Management
 
@@ -372,6 +373,7 @@ Prefer additive schema changes. Do not remove or rewrite existing clinical data 
 
 | Doc | Purpose |
 | --- | --- |
+| `docs/STAFF_PORTAL.md` | Staff frontend portal architecture, routes, settings, security |
 | `docs/PUBLIC_REFERRAL_INTAKE.md` | Public shortcode form, settings, security, notifications |
 | `docs/RELEASE_CHECKLIST.md` | Pre-production install, upgrade, and smoke checklist |
 | `docs/KNOWN_LIMITATIONS.md` | Genuine remaining limitations for v1.0 |

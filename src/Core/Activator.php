@@ -6,6 +6,7 @@ use JMReferral\Database\Migrator;
 use JMReferral\Documents\PrivateDocumentStorage;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Permissions\Roles;
+use JMReferral\Portal\PortalRouter;
 
 class Activator
 {
@@ -17,5 +18,8 @@ class Activator
 
         $storage = new PrivateDocumentStorage();
         $storage->ensure_ready();
+
+        // Register portal rules (no-op when disabled) and flush once.
+        PortalRouter::flush_rules();
     }
 }

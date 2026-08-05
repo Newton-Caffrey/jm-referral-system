@@ -23,12 +23,17 @@ use JMReferral\Documents\PrivateDocumentStorage;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Documents\ReferralDocumentService;
+use JMReferral\Alerts\OperationalAlertService;
 use JMReferral\Frontend\PublicReferralController;
 use JMReferral\Frontend\PublicReferralService;
 use JMReferral\Frontend\PublicReferralShortcode;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
 use JMReferral\Permissions\AccessPolicy;
+use JMReferral\Portal\PortalAccess;
+use JMReferral\Portal\PortalController;
+use JMReferral\Portal\PortalNavigation;
+use JMReferral\Portal\PortalRouter;
 use JMReferral\Referral\ReferralActivityRepository;
 use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralController;
@@ -326,6 +331,16 @@ class Plugin
             $this->access_policy
         );
 
+        $this->registerStaffPortal(
+            $repository,
+            $activity_repository,
+            $document_repository,
+            $assessment_repository,
+            $care_plan_repository,
+            $visit_repository,
+            $retention_service
+        );
+
         $this->list_controller = new ReferralListController(
             $repository,
             $this->user_provider,
@@ -442,5 +457,59 @@ class Plugin
         $this->medication_controller->register();
         $this->service_type_controller->register();
         $this->workflow_stage_controller->register();
+    }
+
+    /**
+     * Registers staff portal routing, access restriction, and controller.
+     */
+    private function registerStaffPortal(
+        ReferralRepository $repository,
+        ReferralActivityRepository $activity_repository,
+        ReferralDocumentRepository $document_repository,
+        ReferralAssessmentRepository $assessment_repository,
+        ReferralCarePlanRepository $care_plan_repository,
+        CareVisitRepository $visit_repository,
+        ReferralRetentionService $retention_service
+    ): void {
+        $operational_alert_service = new OperationalAlertService(
+            $repository,
+            $assessment_repository,
+            $care_plan_repository,
+            new ReferralCarePlanReviewRepository(),
+            new CareTeamRepository(),
+            new ScheduleRepository(),
+            $visit_repository,
+            new VisitTaskRepository(),
+            $this->access_policy,
+            new MedicationAdministrationRepository()
+        );
+
+        $navigation = new PortalNavigation($this->access_policy);
+        $controller = new PortalController(
+            $navigation,
+            $this->service,
+            $repository,
+            $this->filters,
+            $this->access_policy,
+            $this->user_provider,
+            $this->service_type_service,
+            $this->workflow_stage_service,
+            $retention_service,
+            $this->care_visit_service,
+            $this->visit_execution_service,
+            $this->care_team_service,
+            $this->schedule_service,
+            $operational_alert_service,
+            $this->medication_administration_service,
+            $this->medication_service,
+            $document_repository,
+            $assessment_repository,
+            $care_plan_repository,
+            $activity_repository
+        );
+
+        PortalRouter::set_controller($controller);
+        PortalRouter::register();
+        PortalAccess::register();
     }
 }

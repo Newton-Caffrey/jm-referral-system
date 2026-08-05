@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 6.2A: staff frontend portal foundation (`/staff-portal/` by default) — auth, shell, capability nav, dashboard, referral list/view
+- Portal settings (enable, branding, base path, support contacts, optional wp-admin redirect) under Settings → Staff Portal
+- `docs/STAFF_PORTAL.md`
 - Phase 6.1B: multi-step public referral wizard (Welcome → About You → Person → Care Needs → Documents → Review)
 - Public branding settings (company name, heading, intro, contact, primary colour, success next-steps) via `PublicBranding`
 - Wizard progress indicator, review summary cards with Edit, optional analytics CustomEvents (step number only)
@@ -28,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Portal: authenticated routes, AccessPolicy on records, privacy cache headers, generic 403/404
+- Optional wp-admin redirect for non-administrator JM staff (AJAX/admin-post/downloads/exports preserved)
 - Public form: nonce, honeypot, minimum completion time, hashed rate limit (no raw IP storage)
 - Public uploads use private storage only; never Media Library
 - Wizard does not weaken spam controls or introduce AJAX submission
