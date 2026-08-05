@@ -116,6 +116,15 @@ class ReferralDocumentController
             $file_size = (int) filesize($file_path);
         }
 
+        if ('' === $mime_type || ! preg_match('/^[a-z0-9.+\/-]+$/i', $mime_type)) {
+            $mime_type = 'application/octet-stream';
+        }
+
+        // Avoid loading the full file into PHP memory; clear buffers before streaming.
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
         nocache_headers();
         header('Content-Description: File Transfer');
         header('Content-Type: ' . $mime_type);
@@ -123,6 +132,9 @@ class ReferralDocumentController
         header('Content-Transfer-Encoding: binary');
         header('Content-Length: ' . (string) max(0, $file_size));
         header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
 
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- intentional binary stream.
         readfile($file_path);

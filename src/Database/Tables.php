@@ -335,16 +335,21 @@ class Tables
         $sql = "CREATE TABLE {$table} (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             referral_id BIGINT UNSIGNED NOT NULL,
-            attachment_id BIGINT UNSIGNED NOT NULL,
+            attachment_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
             original_name VARCHAR(255) NOT NULL,
             mime_type VARCHAR(100) NOT NULL,
             file_size BIGINT UNSIGNED NOT NULL DEFAULT 0,
             uploaded_by BIGINT UNSIGNED NOT NULL,
             created_at DATETIME NOT NULL,
+            storage_type VARCHAR(50) NOT NULL DEFAULT 'legacy_attachment',
+            relative_path VARCHAR(500) NULL,
+            stored_name VARCHAR(255) NULL,
+            checksum_sha256 VARCHAR(64) NULL,
             PRIMARY KEY  (id),
             KEY referral_id (referral_id),
             KEY attachment_id (attachment_id),
-            KEY uploaded_by (uploaded_by)
+            KEY uploaded_by (uploaded_by),
+            KEY storage_type (storage_type)
         ) {$charset};";
 
         dbDelta($sql);

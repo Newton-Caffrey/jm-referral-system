@@ -31,6 +31,9 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 
 - [x] Secure document upload and download
 - [x] Capability-gated document access
+- [x] Private storage for new uploads (`uploads/jmrs-private/`, Phase 5.2.1)
+- [x] Legacy → private batch migration tool (Settings; originals retained)
+- [ ] Legacy Media Library cleanup after migration (later hardening phase)
 
 ### Assessments ✅
 
@@ -149,6 +152,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 3 — Clinical Operations | Documents, assessments, care plans, care team, scheduling, generated visits | ✅ Complete |
 | Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, operational alerts, and MAR foundation | ✅ Complete |
 | Phase 5 — Reporting | Reporting foundation KPIs; advanced reports, workload, analytics next | 🚧 In progress |
+| Phase 5.x — Production Hardening | Audit (5.1); private documents (5.2.1); further security/performance phases | 🚧 In progress |
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
 | Phase 7 — Production Hardening | Performance, UX polish, automated testing, v1.0 | 🚀 Future |
 

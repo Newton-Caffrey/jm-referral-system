@@ -11,8 +11,10 @@ class ReferralDocumentService
 {
     private const MAX_FILE_SIZE = 10485760; // 10 MB
 
+    private const MIGRATION_BATCH_SIZE = 20;
+
     /**
-     * Allowed extensions mapped to MIME types for WordPress upload overrides.
+     * Allowed extensions mapped to MIME types.
      *
      * @var array<string, string>
      */
@@ -29,12 +31,13 @@ class ReferralDocumentService
         private ReferralDocumentRepository $document_repository,
         private ReferralRepository $referral_repository,
         private ReferralActivityService $activity_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private PrivateDocumentStorage $private_storage
     ) {
     }
 
     /**
-     * Validates and uploads a document for a referral.
+     * Validates and uploads a document into private storage.
      *
      * @param array<string, mixed> $file $_FILES entry for the uploaded document.
      * @return array{id: int}|array{errors: array<string, string>}|false
@@ -57,38 +60,23 @@ class ReferralDocumentService
             ];
         }
 
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        require_once ABSPATH . 'wp-admin/includes/media.php';
-        require_once ABSPATH . 'wp-admin/includes/image.php';
+        $ready = $this->private_storage->ensure_ready();
 
-        $original_name = sanitize_file_name((string) ($file['name'] ?? ''));
-
-        add_filter('upload_mimes', [$this, 'filter_allowed_mimes']);
-        add_filter('wp_check_filetype_and_ext', [$this, 'filter_filetype_and_ext'], 10, 5);
-
-        $attachment_id = media_handle_upload('jmrs_document', 0);
-
-        remove_filter('upload_mimes', [$this, 'filter_allowed_mimes']);
-        remove_filter('wp_check_filetype_and_ext', [$this, 'filter_filetype_and_ext'], 10);
-
-        if (is_wp_error($attachment_id)) {
+        if (is_wp_error($ready)) {
             return [
                 'errors' => [
-                    'file' => $attachment_id->get_error_message(),
+                    'file' => __('Unable to prepare private document storage.', 'jm-referral-system'),
                 ],
             ];
         }
 
-        $attachment_id = (int) $attachment_id;
-        $mime_type     = (string) get_post_mime_type($attachment_id);
-        $file_path     = get_attached_file($attachment_id);
-        $file_size     = (is_string($file_path) && is_readable($file_path))
-            ? (int) filesize($file_path)
-            : absint($file['size'] ?? 0);
+        $original_name = $this->sanitize_original_name((string) ($file['name'] ?? ''));
+        $ext           = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+        $tmp_name      = (string) ($file['tmp_name'] ?? '');
 
-        if ('' === $mime_type || ! $this->is_allowed_mime($mime_type)) {
-            wp_delete_attachment($attachment_id, true);
+        $check = wp_check_filetype_and_ext($tmp_name, (string) ($file['name'] ?? ''), self::ALLOWED_MIMES);
 
+        if (empty($check['type']) || empty($check['ext']) || ! $this->is_allowed_mime((string) $check['type'])) {
             return [
                 'errors' => [
                     'file' => __('That file type is not allowed.', 'jm-referral-system'),
@@ -96,8 +84,40 @@ class ReferralDocumentService
             ];
         }
 
-        if ($file_size > self::MAX_FILE_SIZE) {
-            wp_delete_attachment($attachment_id, true);
+        $ext       = strtolower((string) $check['ext']);
+        $mime_type = (string) $check['type'];
+
+        $month_dir = $this->private_storage->ensure_month_directory();
+
+        if ('' === $month_dir) {
+            return [
+                'errors' => [
+                    'file' => __('Unable to prepare private document storage.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+
+        $stored_name = $this->private_storage->generate_stored_name($ext);
+        $stored_name = wp_unique_filename($month_dir, $stored_name);
+        $dest_path   = trailingslashit($month_dir) . $stored_name;
+
+        if (! @move_uploaded_file($tmp_name, $dest_path)) {
+            return [
+                'errors' => [
+                    'file' => __('The upload failed. Please try again.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod
+        @chmod($dest_path, 0640);
+
+        $file_size = is_readable($dest_path) ? (int) filesize($dest_path) : 0;
+
+        if ($file_size <= 0 || $file_size > self::MAX_FILE_SIZE) {
+            $this->safe_unlink($dest_path);
 
             return [
                 'errors' => [
@@ -106,28 +126,63 @@ class ReferralDocumentService
             ];
         }
 
+        if (! $this->is_allowed_mime($mime_type)) {
+            $this->safe_unlink($dest_path);
+
+            return [
+                'errors' => [
+                    'file' => __('That file type is not allowed.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $checksum = hash_file('sha256', $dest_path);
+
+        if (! is_string($checksum) || 64 !== strlen($checksum)) {
+            $this->safe_unlink($dest_path);
+
+            return [
+                'errors' => [
+                    'file' => __('Unable to verify the uploaded file.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $relative_path = $this->private_storage->build_relative_path($stored_name);
+
+        if (null === $this->private_storage->normalize_relative_path($relative_path)) {
+            $this->safe_unlink($dest_path);
+
+            return [
+                'errors' => [
+                    'file' => __('Unable to store the uploaded file.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
         $document_id = $this->document_repository->create(
             [
-                'referral_id'   => $referral_id,
-                'attachment_id' => $attachment_id,
-                'original_name' => '' !== $original_name ? $original_name : 'document',
-                'mime_type'     => $mime_type,
-                'file_size'     => $file_size,
-                'uploaded_by'   => get_current_user_id(),
-                'created_at'    => current_time('mysql'),
+                'referral_id'     => $referral_id,
+                'attachment_id'   => 0,
+                'original_name'   => $original_name,
+                'mime_type'       => $mime_type,
+                'file_size'       => $file_size,
+                'uploaded_by'     => get_current_user_id(),
+                'created_at'      => current_time('mysql'),
+                'storage_type'    => PrivateDocumentStorage::STORAGE_PRIVATE,
+                'relative_path'   => $relative_path,
+                'stored_name'     => $stored_name,
+                'checksum_sha256' => $checksum,
             ]
         );
 
         if (false === $document_id) {
-            wp_delete_attachment($attachment_id, true);
+            $this->safe_unlink($dest_path);
 
             return false;
         }
 
-        $this->activity_service->log_document_uploaded(
-            $referral_id,
-            '' !== $original_name ? $original_name : 'document'
-        );
+        $this->activity_service->log_document_uploaded($referral_id, $original_name);
 
         return ['id' => $document_id];
     }
@@ -169,7 +224,7 @@ class ReferralDocumentService
     }
 
     /**
-     * Loads a document and verifies download access.
+     * Loads a document and verifies download access for either storage type.
      *
      * @return array{document: array<string, mixed>, referral: array<string, mixed>, file_path: string}|array{errors: array<string, string>}
      */
@@ -212,6 +267,153 @@ class ReferralDocumentService
             ];
         }
 
+        $storage_type = (string) ($document['storage_type'] ?? PrivateDocumentStorage::STORAGE_LEGACY);
+
+        if (PrivateDocumentStorage::STORAGE_PRIVATE === $storage_type) {
+            return $this->prepare_private_download($document, $referral);
+        }
+
+        return $this->prepare_legacy_download($document, $referral);
+    }
+
+    /**
+     * Returns counts for the Settings migration UI.
+     *
+     * @return array{legacy: int, private: int}
+     */
+    public function get_storage_counts(): array
+    {
+        return [
+            'legacy'  => $this->document_repository->count_legacy(),
+            'private' => $this->document_repository->count_by_storage_type(PrivateDocumentStorage::STORAGE_PRIVATE),
+        ];
+    }
+
+    /**
+     * Copies one batch of legacy Media Library documents into private storage.
+     *
+     * Does not delete original attachments. Safe to re-run; already-private rows are skipped.
+     *
+     * @return array{migrated: int, skipped: int, failed: int}|array{errors: array<string, string>}
+     */
+    public function migrate_legacy_batch(int $limit = self::MIGRATION_BATCH_SIZE): array
+    {
+        if (! Capabilities::current_user_can(Capabilities::MANAGE_SETTINGS)) {
+            return [
+                'errors' => [
+                    'permission' => __('You do not have permission to migrate documents.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $ready = $this->private_storage->ensure_ready();
+
+        if (is_wp_error($ready)) {
+            return [
+                'errors' => [
+                    'storage' => __('Unable to prepare private document storage.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $batch    = $this->document_repository->get_legacy_batch($limit);
+        $migrated = 0;
+        $skipped  = 0;
+        $failed   = 0;
+
+        foreach ($batch as $document) {
+            $result = $this->migrate_single_legacy_document($document);
+
+            if ('migrated' === $result) {
+                ++$migrated;
+            } elseif ('skipped' === $result) {
+                ++$skipped;
+            } else {
+                ++$failed;
+            }
+        }
+
+        return [
+            'migrated' => $migrated,
+            'skipped'  => $skipped,
+            'failed'   => $failed,
+        ];
+    }
+
+    /**
+     * @param array<string, string> $mimes
+     * @return array<string, string>
+     */
+    public function filter_allowed_mimes(array $mimes): array
+    {
+        return self::ALLOWED_MIMES;
+    }
+
+    /**
+     * @param array{ext?: string|false, type?: string|false, proper_filename?: string|false} $data
+     * @param array<string, string>|null $mimes
+     * @return array{ext?: string|false, type?: string|false, proper_filename?: string|false}
+     */
+    public function filter_filetype_and_ext(array $data, string $file, string $filename, ?array $mimes = null, $real_mime = null): array
+    {
+        unset($file, $mimes, $real_mime);
+
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+        if (isset(self::ALLOWED_MIMES[$ext])) {
+            $data['ext']  = $ext;
+            $data['type'] = self::ALLOWED_MIMES[$ext];
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     * @param array<string, mixed> $referral
+     * @return array{document: array<string, mixed>, referral: array<string, mixed>, file_path: string}|array{errors: array<string, string>}
+     */
+    private function prepare_private_download(array $document, array $referral): array
+    {
+        $relative = (string) ($document['relative_path'] ?? '');
+        $file_path = $this->private_storage->resolve_safe_path($relative);
+
+        if (null === $file_path) {
+            return [
+                'errors' => [
+                    'file' => __('The document file could not be found.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $expected = (string) ($document['checksum_sha256'] ?? '');
+
+        if ('' !== $expected) {
+            $actual = hash_file('sha256', $file_path);
+
+            if (! is_string($actual) || ! hash_equals($expected, $actual)) {
+                return [
+                    'errors' => [
+                        'file' => __('The document file could not be verified.', 'jm-referral-system'),
+                    ],
+                ];
+            }
+        }
+
+        return [
+            'document'  => $document,
+            'referral'  => $referral,
+            'file_path' => $file_path,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     * @param array<string, mixed> $referral
+     * @return array{document: array<string, mixed>, referral: array<string, mixed>, file_path: string}|array{errors: array<string, string>}
+     */
+    private function prepare_legacy_download(array $document, array $referral): array
+    {
         $attachment_id = absint($document['attachment_id'] ?? 0);
         $file_path     = $attachment_id > 0 ? get_attached_file($attachment_id) : false;
 
@@ -239,36 +441,117 @@ class ReferralDocumentService
     }
 
     /**
-     * Restricts WordPress uploads to allowed document MIME types.
-     *
-     * @param array<string, string> $mimes
-     * @return array<string, string>
+     * @param array<string, mixed> $document
+     * @return 'migrated'|'skipped'|'failed'
      */
-    public function filter_allowed_mimes(array $mimes): array
+    private function migrate_single_legacy_document(array $document): string
     {
-        return self::ALLOWED_MIMES;
-    }
+        $id = absint($document['id'] ?? 0);
 
-    /**
-     * Ensures WordPress filetype detection accepts our allowed extensions.
-     *
-     * @param array{ext?: string|false, type?: string|false, proper_filename?: string|false} $data
-     * @param array<string, string>|null $mimes
-     * @return array{ext?: string|false, type?: string|false, proper_filename?: string|false}
-     */
-    public function filter_filetype_and_ext(array $data, string $file, string $filename, ?array $mimes = null, $real_mime = null): array
-    {
-        $mimes = is_array($mimes) ? $mimes : [];
-        unset($file, $mimes, $real_mime);
-
-        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-
-        if (isset(self::ALLOWED_MIMES[$ext])) {
-            $data['ext']  = $ext;
-            $data['type'] = self::ALLOWED_MIMES[$ext];
+        if ($id <= 0) {
+            return 'failed';
         }
 
-        return $data;
+        $storage_type = (string) ($document['storage_type'] ?? PrivateDocumentStorage::STORAGE_LEGACY);
+
+        if (PrivateDocumentStorage::STORAGE_PRIVATE === $storage_type
+            && '' !== (string) ($document['relative_path'] ?? '')
+        ) {
+            return 'skipped';
+        }
+
+        $attachment_id = absint($document['attachment_id'] ?? 0);
+
+        if ($attachment_id <= 0) {
+            return 'failed';
+        }
+
+        $source = get_attached_file($attachment_id);
+
+        if (! is_string($source) || '' === $source || ! is_readable($source)) {
+            return 'failed';
+        }
+
+        if (! $this->is_path_within_uploads($source)) {
+            return 'failed';
+        }
+
+        $original_name = (string) ($document['original_name'] ?? 'document');
+        $ext           = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+
+        if ('' === $ext || ! isset(self::ALLOWED_MIMES[$ext])) {
+            $source_ext = strtolower(pathinfo($source, PATHINFO_EXTENSION));
+            $ext        = isset(self::ALLOWED_MIMES[$source_ext]) ? $source_ext : '';
+        }
+
+        if ('' === $ext) {
+            return 'failed';
+        }
+
+        $month_dir = $this->private_storage->ensure_month_directory();
+
+        if ('' === $month_dir) {
+            return 'failed';
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+
+        $stored_name = $this->private_storage->generate_stored_name($ext);
+        $stored_name = wp_unique_filename($month_dir, $stored_name);
+        $dest_path   = trailingslashit($month_dir) . $stored_name;
+
+        if (! @copy($source, $dest_path)) {
+            return 'failed';
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod
+        @chmod($dest_path, 0640);
+
+        $source_size = (int) filesize($source);
+        $dest_size   = is_readable($dest_path) ? (int) filesize($dest_path) : 0;
+
+        if ($dest_size <= 0 || $dest_size !== $source_size) {
+            $this->safe_unlink($dest_path);
+
+            return 'failed';
+        }
+
+        $checksum = hash_file('sha256', $dest_path);
+        $source_checksum = hash_file('sha256', $source);
+
+        if (! is_string($checksum) || ! is_string($source_checksum) || ! hash_equals($source_checksum, $checksum)) {
+            $this->safe_unlink($dest_path);
+
+            return 'failed';
+        }
+
+        $relative_path = $this->private_storage->build_relative_path($stored_name);
+
+        if (null === $this->private_storage->normalize_relative_path($relative_path)) {
+            $this->safe_unlink($dest_path);
+
+            return 'failed';
+        }
+
+        $updated = $this->document_repository->update_private_storage(
+            $id,
+            [
+                'storage_type'    => PrivateDocumentStorage::STORAGE_PRIVATE,
+                'relative_path'   => $relative_path,
+                'stored_name'     => $stored_name,
+                'checksum_sha256' => $checksum,
+                'file_size'       => $dest_size,
+            ]
+        );
+
+        if (! $updated) {
+            $this->safe_unlink($dest_path);
+
+            return 'failed';
+        }
+
+        // Original Media Library file intentionally retained until a later cleanup phase.
+        return 'migrated';
     }
 
     /**
@@ -330,11 +613,18 @@ class ReferralDocumentService
             return $errors;
         }
 
-        $name = (string) ($file['name'] ?? '');
+        $name = str_replace("\0", '', (string) ($file['name'] ?? ''));
         $ext  = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
         if ('' === $ext || ! isset(self::ALLOWED_MIMES[$ext])) {
             $errors['file'] = __('Allowed file types are PDF, DOC, DOCX, JPG, JPEG, and PNG.', 'jm-referral-system');
+            return $errors;
+        }
+
+        // Reject obvious double-extension executables (e.g. file.php.pdf still allowed by type;
+        // block names containing null or path separators after sanitization checks).
+        if (str_contains($name, '/') || str_contains($name, '\\') || str_contains($name, "\0")) {
+            $errors['file'] = __('The upload is invalid.', 'jm-referral-system');
             return $errors;
         }
 
@@ -352,6 +642,15 @@ class ReferralDocumentService
         }
 
         return $errors;
+    }
+
+    private function sanitize_original_name(string $name): string
+    {
+        $name = str_replace("\0", '', $name);
+        $name = basename(str_replace('\\', '/', $name));
+        $name = sanitize_file_name($name);
+
+        return '' !== $name ? $name : 'document';
     }
 
     private function is_allowed_mime(string $mime_type): bool
@@ -378,5 +677,19 @@ class ReferralDocumentService
         $real_path = str_replace('\\', '/', $real_path);
 
         return str_starts_with($real_path, $real_base);
+    }
+
+    private function safe_unlink(string $path): void
+    {
+        if ('' === $path || ! is_file($path)) {
+            return;
+        }
+
+        if (! $this->private_storage->is_path_within_private_root($path)) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+        @unlink($path);
     }
 }

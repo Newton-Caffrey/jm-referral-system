@@ -23,6 +23,7 @@ use JMReferral\CareTeam\CareTeamController;
 use JMReferral\CareTeam\CareTeamRepository;
 use JMReferral\CareTeam\CareTeamService;
 use JMReferral\Documents\ReferralDocumentRepository;
+use JMReferral\Documents\ReferralDocumentService;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
 use JMReferral\Permissions\AccessPolicy;
@@ -100,7 +101,8 @@ class Menu
         ?ScheduleService $schedule_service = null,
         ?MedicationController $medication_controller = null,
         ?MedicationService $medication_service = null,
-        ?MedicationAdministrationService $medication_administration_service = null
+        ?MedicationAdministrationService $medication_administration_service = null,
+        ?ReferralDocumentService $document_service = null
     ) {
         $repository      = new ReferralRepository();
         $access_policy ??= new AccessPolicy();
@@ -302,7 +304,7 @@ class Menu
         $this->operational_alerts_page   = new OperationalAlertsPage($operational_alert_service);
         $this->referrals_page            = new ReferralsPage($list_controller);
         $this->add_referral_page         = new AddReferralPage($user_provider, $service_type_service);
-        $this->settings_page             = new SettingsPage();
+        $this->settings_page             = new SettingsPage($document_service);
         $this->edit_controller           = $edit_controller;
         $this->view_controller           = $view_controller;
         $this->service_type_controller   = $service_type_controller;

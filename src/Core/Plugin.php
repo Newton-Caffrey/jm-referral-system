@@ -17,6 +17,8 @@ use JMReferral\CareTeam\CareTeamController;
 use JMReferral\CareTeam\CareTeamRepository;
 use JMReferral\CareTeam\CareTeamService;
 use JMReferral\Database\Migrator;
+use JMReferral\Documents\DocumentMigrationController;
+use JMReferral\Documents\PrivateDocumentStorage;
 use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Documents\ReferralDocumentService;
@@ -87,6 +89,7 @@ class Plugin
     private ?MedicationController $medication_controller = null;
     private ?MedicationService $medication_service = null;
     private ?MedicationAdministrationService $medication_administration_service = null;
+    private ?ReferralDocumentService $document_service = null;
 
     public function run(): void
     {
@@ -119,7 +122,8 @@ class Plugin
             $this->schedule_service,
             $this->medication_controller,
             $this->medication_service,
-            $this->medication_administration_service
+            $this->medication_administration_service,
+            $this->document_service
         );
         $menu->register();
     }
@@ -141,13 +145,16 @@ class Plugin
         $this->user_provider = new UserProvider();
         $this->filters       = new ReferralFilters($this->user_provider, $this->access_policy);
 
-        $document_repository = new ReferralDocumentRepository();
-        $document_service    = new ReferralDocumentService(
+        $document_repository     = new ReferralDocumentRepository();
+        $private_storage         = new PrivateDocumentStorage();
+        $this->document_service  = new ReferralDocumentService(
             $document_repository,
             $repository,
             $activity_service,
-            $this->access_policy
+            $this->access_policy,
+            $private_storage
         );
+        $document_service = $this->document_service;
 
         $assessment_repository = new ReferralAssessmentRepository();
         $assessment_service    = new ReferralAssessmentService(
@@ -335,6 +342,8 @@ class Plugin
             $this->access_policy
         );
 
+        $document_migration_controller = new DocumentMigrationController($document_service);
+
         $assessment_controller = new ReferralAssessmentController(
             $assessment_service,
             $repository,
@@ -393,6 +402,7 @@ class Plugin
         $note_controller->register();
         $export_controller->register();
         $document_controller->register();
+        $document_migration_controller->register();
         $assessment_controller->register();
         $care_plan_controller->register();
         $this->care_plan_review_controller->register();

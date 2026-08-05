@@ -5,6 +5,26 @@ All notable changes to the JM Referral System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Private referral document storage under `uploads/jmrs-private/` (Phase 5.2.1)
+- Document table columns: `storage_type`, `relative_path`, `stored_name`, `checksum_sha256` (DB `2.14.0`)
+- Settings → Private Document Migration batch tool (copies legacy Media Library files; does not delete originals)
+- Apache `.htaccess` / `index.php` / `index.html` protection files for the private directory
+
+### Changed
+
+- New uploads no longer create public Media Library attachments
+- Document downloads stream from private storage or legacy attachments with stricter cache headers
+- Settings page documents storage design, server access-control limits, and backup requirements
+
+### Security
+
+- New sensitive files are not exposed via public uploads URLs or the Media Library
+- Legacy documents remain potentially public until migrated and originals are cleaned up in a later phase
+
 ## [0.4.0] - 2026-08-04
 
 Milestone release covering the foundation, security, and clinical operations delivered so far: referrals through assessments, care plans, care team, scheduling, and generated visits.

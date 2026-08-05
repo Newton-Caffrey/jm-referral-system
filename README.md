@@ -84,6 +84,11 @@ The plugin runs inside WordPress admin, uses a modular PHP architecture (Reposit
 
 - Secure document upload and download per referral
 - Capability-gated access for upload and download
+- **Private storage (Phase 5.2.1):** new files are stored under `wp-content/uploads/jmrs-private/` with randomized filenames, served only through the plugin download controller (capability + AccessPolicy + nonce)
+- Allowed types: PDF, DOC, DOCX, JPG, JPEG, PNG (max 10 MB)
+- Legacy Media Library attachments remain downloadable via the same secure links; optional batch migration on **Settings** copies them into private storage without deleting originals
+- `.htaccess` deny rules are written for Apache-compatible hosts; they may not apply on every server — controller-mediated downloads remain mandatory
+- Backups must include both the database and `uploads/jmrs-private/`
 
 ### Notes
 
