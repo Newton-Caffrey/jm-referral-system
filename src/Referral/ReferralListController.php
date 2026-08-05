@@ -80,6 +80,11 @@ class ReferralListController
                 ? $stage_names[$workflow_stage_id]
                 : '';
 
+            $referral['can_edit'] = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+                && $this->access_policy->can_edit_referral($referral);
+            $referral['can_delete'] = Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
+                && $this->access_policy->can_edit_referral($referral);
+
             $referrals[] = $referral;
         }
 

@@ -570,12 +570,13 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 				<th scope="col"><?php echo esc_html__( 'Workflow Stage', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Created Date', 'jm-referral-system' ); ?></th>
+				<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if ( empty( $recent ) ) : ?>
 				<tr class="no-items">
-					<td colspan="6"><?php echo esc_html__( 'No referrals found.', 'jm-referral-system' ); ?></td>
+					<td colspan="7"><?php echo esc_html__( 'No referrals found.', 'jm-referral-system' ); ?></td>
 				</tr>
 			<?php else : ?>
 				<?php foreach ( $recent as $referral ) : ?>
@@ -590,6 +591,11 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 						? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $created_at )
 						: '';
 					$status_display   = ucfirst( str_replace( '_', ' ', $status ) );
+					$view_url         = (string) ( $referral['view_url'] ?? '' );
+					$edit_url         = (string) ( $referral['edit_url'] ?? '' );
+					$delete_url       = (string) ( $referral['delete_url'] ?? '' );
+					$can_edit         = ! empty( $referral['can_edit'] );
+					$can_delete       = ! empty( $referral['can_delete'] );
 					?>
 					<tr>
 						<td><strong><?php echo esc_html( $referral_number ); ?></strong></td>
@@ -598,6 +604,25 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 						<td><?php echo '' !== $workflow_stage_name ? esc_html( $workflow_stage_name ) : '—'; ?></td>
 						<td><?php echo esc_html( $status_display ); ?></td>
 						<td><?php echo esc_html( $created_display ); ?></td>
+						<td>
+							<span class="jmrs-actions">
+								<?php
+								$action_links = array();
+								if ( '' !== $view_url ) {
+									$action_links[] = '<a href="' . esc_url( $view_url ) . '">' . esc_html__( 'View', 'jm-referral-system' ) . '</a>';
+								}
+								if ( $can_edit && '' !== $edit_url ) {
+									$action_links[] = '<a href="' . esc_url( $edit_url ) . '">' . esc_html__( 'Edit', 'jm-referral-system' ) . '</a>';
+								}
+								if ( $can_delete && '' !== $delete_url ) {
+									$action_links[] = '<a href="' . esc_url( $delete_url ) . '" class="submitdelete" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this referral?', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Delete', 'jm-referral-system' ) . '</a>';
+								}
+								echo ! empty( $action_links )
+									? implode( ' | ', $action_links ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links escaped above.
+									: '—';
+								?>
+							</span>
+						</td>
 					</tr>
 				<?php endforeach; ?>
 			<?php endif; ?>

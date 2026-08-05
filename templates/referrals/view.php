@@ -16,6 +16,8 @@
  * @var array<int, array<string, mixed>> $documents        Document rows for the referral.
  * @var bool                             $can_upload_documents Whether the user may upload documents.
  * @var bool                             $can_download_documents Whether the user may download documents.
+ * @var bool                             $can_edit_referral Whether the user may edit this referral.
+ * @var bool                             $can_delete_referral Whether the user may delete this referral.
  * @var array<string, mixed>|null        $assessment       Existing assessment row, if any.
  * @var array<string, string>            $assessment_data  Assessment form values.
  * @var array<string, string>            $assessment_errors Assessment validation errors.
@@ -158,6 +160,9 @@ $status_display   = ucfirst( str_replace( '_', ' ', $status ) );
 
 $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral_id );
+$delete_url = \JMReferral\Referral\ReferralListController::get_delete_url( $referral_id );
+$can_edit_referral = ! empty( $can_edit_referral );
+$can_delete_referral = ! empty( $can_delete_referral );
 ?>
 <div class="wrap">
 	<h1><?php echo esc_html__( 'Referral Details', 'jm-referral-system' ); ?></h1>
@@ -166,9 +171,20 @@ $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral
 		<a class="button" href="<?php echo esc_url( $list_url ); ?>">
 			<?php echo esc_html__( 'Back to Referrals', 'jm-referral-system' ); ?>
 		</a>
-		<a class="button button-primary" href="<?php echo esc_url( $edit_url ); ?>">
-			<?php echo esc_html__( 'Edit Referral', 'jm-referral-system' ); ?>
-		</a>
+		<?php if ( $can_edit_referral ) : ?>
+			<a class="button button-primary" href="<?php echo esc_url( $edit_url ); ?>">
+				<?php echo esc_html__( 'Edit Referral', 'jm-referral-system' ); ?>
+			</a>
+		<?php endif; ?>
+		<?php if ( $can_delete_referral ) : ?>
+			<a
+				class="button submitdelete"
+				href="<?php echo esc_url( $delete_url ); ?>"
+				onclick="return confirm('<?php echo esc_js( __( 'Are you sure you want to delete this referral?', 'jm-referral-system' ) ); ?>');"
+			>
+				<?php echo esc_html__( 'Delete Referral', 'jm-referral-system' ); ?>
+			</a>
+		<?php endif; ?>
 	</p>
 
 	<h2><?php echo esc_html__( 'Referral Information', 'jm-referral-system' ); ?></h2>

@@ -126,6 +126,10 @@ class ReferralViewController
         $can_upload_documents   = Capabilities::current_user_can(Capabilities::UPLOAD_DOCUMENTS)
             && $this->access_policy->can_edit_referral($referral);
         $can_download_documents = Capabilities::current_user_can(Capabilities::DOWNLOAD_DOCUMENTS);
+        $can_edit_referral      = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral);
+        $can_delete_referral    = Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral);
         $documents              = [];
 
         if ($can_download_documents) {

@@ -310,6 +310,20 @@ class ReferralService
             $recent[$index]['workflow_stage_name'] = ($workflow_stage_id > 0 && isset($stage_names[$workflow_stage_id]))
                 ? $stage_names[$workflow_stage_id]
                 : '';
+
+            $recent[$index]['can_edit'] = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+                && $this->access_policy->can_edit_referral($referral);
+            $recent[$index]['can_delete'] = Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
+                && $this->access_policy->can_edit_referral($referral);
+            $recent[$index]['view_url'] = ReferralViewController::get_view_url(
+                absint($referral['id'] ?? 0)
+            );
+            $recent[$index]['edit_url'] = ReferralEditController::get_edit_url(
+                absint($referral['id'] ?? 0)
+            );
+            $recent[$index]['delete_url'] = ReferralListController::get_delete_url(
+                absint($referral['id'] ?? 0)
+            );
         }
 
         return [

@@ -160,6 +160,8 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 					$delete_url       = \JMReferral\Referral\ReferralListController::get_delete_url( $referral_id );
 					$edit_url         = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral_id );
 					$view_url         = \JMReferral\Referral\ReferralViewController::get_view_url( $referral_id );
+					$can_edit         = ! empty( $referral['can_edit'] );
+					$can_delete       = ! empty( $referral['can_delete'] );
 					?>
 					<tr>
 						<td>
@@ -175,17 +177,17 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 						<td><?php echo esc_html( $created_display ); ?></td>
 						<td>
 							<span class="jmrs-actions">
-								<a href="<?php echo esc_url( $view_url ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
-								|
-								<a href="<?php echo esc_url( $edit_url ); ?>"><?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?></a>
-								|
-								<a
-									href="<?php echo esc_url( $delete_url ); ?>"
-									class="submitdelete"
-									onclick="return confirm('<?php echo esc_js( __( 'Are you sure you want to delete this referral?', 'jm-referral-system' ) ); ?>');"
-								>
-									<?php echo esc_html__( 'Delete', 'jm-referral-system' ); ?>
-								</a>
+								<?php
+								$action_links = array();
+								$action_links[] = '<a href="' . esc_url( $view_url ) . '">' . esc_html__( 'View', 'jm-referral-system' ) . '</a>';
+								if ( $can_edit ) {
+									$action_links[] = '<a href="' . esc_url( $edit_url ) . '">' . esc_html__( 'Edit', 'jm-referral-system' ) . '</a>';
+								}
+								if ( $can_delete ) {
+									$action_links[] = '<a href="' . esc_url( $delete_url ) . '" class="submitdelete" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this referral?', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Delete', 'jm-referral-system' ) . '</a>';
+								}
+								echo implode( ' | ', $action_links ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links built with esc_url/esc_html above.
+								?>
 							</span>
 						</td>
 					</tr>
