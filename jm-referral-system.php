@@ -6,6 +6,8 @@
  * Version: 1.0.0
  * Author: J&M Healthcare
  * Text Domain: jm-referral-system
+ * License: Proprietary (pending final licence decision)
+ * License URI: https://example.com
  */
 
 if (!defined('ABSPATH')) {

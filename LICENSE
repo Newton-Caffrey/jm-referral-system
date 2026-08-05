@@ -1,0 +1,15 @@
+# License
+
+Copyright (c) J&M Healthcare.
+
+**Licensing status:** To be decided.
+
+Until a final licence is chosen and published, all rights are reserved by J&M Healthcare.
+Redistribution, sublicensing, or public release of this software outside authorised
+J&M Healthcare deployments requires prior written permission.
+
+When a licence is selected (for example GPL-2.0-or-later for WordPress.org distribution,
+or a proprietary commercial licence), replace this file with the full licence text and
+update the plugin header `License:` / `License URI:` fields accordingly.
+
+For security vulnerability reporting, see `SECURITY.md`.

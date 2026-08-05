@@ -53,7 +53,11 @@ Genuine remaining limitations after Phase 5.6 readiness review. Do not treat thi
 | Consent checkboxes are operational evidence | Not a full legal consent-management product |
 | No digital signatures | Not implemented |
 | No external REST API | Not implemented |
+| Limitation | Notes |
+| --- | --- |
 | No automated test suite | Manual checklist in `docs/RELEASE_CHECKLIST.md` |
+| Final software licence TBD | See root `LICENSE` placeholder; update before public distribution |
+| Security contact placeholder | Replace `security@example.com` in `SECURITY.md` before public distribution |
 | No Chart.js guarantee offline | Local vendor preferred; CDN fallback if vendor file missing |
 
 ---

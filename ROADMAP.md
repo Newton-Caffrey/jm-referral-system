@@ -117,40 +117,42 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 ### Staff Frontend Portal
 
 - [x] Phase 6.2A: portal foundation — routing, shell, nav, dashboard, referral list/view, optional wp-admin redirect (`docs/STAFF_PORTAL.md`)
-- [ ] Phase 6.2B+: frontend workflows (edit, notes, documents, assessments, care plans, visits, MAR, reports)
+- [ ] Phase 6.2B+ / **v1.1**: frontend workflows (edit, notes, documents, assessments, care plans, visits, MAR, reports)
+
+### Version 1.0.0 Production Package ✅
+
+- [x] Phase 7.1: release documentation, version alignment, LICENSE/CONTRIBUTING/SECURITY, packaging guidance
+- [x] Guides: installation, administrator, staff, public referral, troubleshooting, FAQ, release notes
+- [x] Release checklist updated for public intake + portal + schema `2.17.0`
+- [x] Phase 7.2: developer documentation (`docs/developer/*`)
+
+---
+
+## Next product line — Version 1.1 🚧
+
+Planned themes (not committed scope):
+
+- [ ] Staff portal editing and clinical workflow pages
+- [ ] Remaining performance / Menu DI / search strategy
+- [ ] Chart.js local vendor pin
+- [ ] Legacy Media Library cleanup after private migration
+- [ ] Automated test harness (PHPUnit / CI)
+- [ ] CAPTCHA option for public intake (if required)
+- [ ] Timed retention purge (only after legal/compliance sign-off)
+
+---
+
+## Future 🚀
 
 ### Medication Administration (advanced)
 
 - [ ] Stock control, controlled-drug registers, PRN, eMAR export
 
-### Reporting
+### Reporting (advanced)
 
 - [ ] Staff workload views
 - [ ] Scheduled/email report delivery
 - [ ] Deeper referral analytics exports
-
-### Production Hardening ✅ (v1.0.0)
-
-- [x] Production audit (`docs/PRODUCTION_AUDIT.md`, Phase 5.1)
-- [x] Private documents + security hardening (Phase 5.2)
-- [x] Data retention & safe deletion (Phase 5.3)
-- [x] Performance & scalability audit (`docs/PERFORMANCE_AUDIT.md`, Phase 5.4.1)
-- [x] List pagination + dashboard alert/enrichment fixes (Phase 5.4.2A)
-- [x] Referral View pagination / N+1 / generation batching / chunked CSV / indexes (Phase 5.4.2B)
-- [x] UX polish & accessibility (Phase 5.5) — shared admin CSS/JS, badges, confirms, docs
-- [x] Version 1.0 release readiness (Phase 5.6) — checklist, known limitations, docs alignment
-
-### Hardening (post-1.0)
-
-- [ ] Remaining performance: search strategy, Menu DI reuse, report DATE() predicates, View docs/schedules pagination
-- [ ] Chart.js local vendor pin (CDN fallback remains if vendor file missing)
-- [ ] Legacy Media Library cleanup after private migration
-- [ ] Timed retention purge (only after legal/compliance sign-off)
-- [ ] Automated test harness (PHPUnit / CI)
-
----
-
-## Future 🚀
 
 ### Calendar
 
@@ -197,8 +199,13 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
 | Phase 6.1 — Public referral intake | 6.1A + 6.1B wizard complete | ✅ Complete |
 | Phase 6.2A — Staff portal foundation | Routing, shell, dashboard, referral list/view | ✅ Complete |
-| Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Backlog |
+| Phase 7.1 — Production release package | Docs, version alignment, packaging, checklist | ✅ Complete |
+| Phase 7.2 — Developer documentation | Architecture, schema, permissions, DI, history | ✅ Complete |
+| Version 1.1 | Portal workflows + hardening backlog | 🚧 Planned |
+| Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Absorbed into 1.1+ |
 
-**Current release:** plugin `1.0.0` · DB `2.17.0` (after public intake migration) · see `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md`.
+**Current release:** plugin `1.0.0` · DB `2.17.0` · see `docs/RELEASE_NOTES_v1.0.0.md`, `docs/RELEASE_CHECKLIST.md`, and `docs/KNOWN_LIMITATIONS.md`.
+
+**Next version:** **1.1** — see sections above.
 
 See `CHANGELOG.md` for release detail and `README.md` for current system documentation.

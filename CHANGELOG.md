@@ -9,8 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 7.2: developer documentation under `docs/developer/` (architecture, schema, permissions, workflows, portal/public, services, DI, history)
+- (product features — next line targets **1.1.0**; see `ROADMAP.md`)
+
+## [1.0.0] - 2026-08-05
+
+First production release of the JM Referral System. Plugin version `1.0.0`. Database schema `2.17.0`.
+
+### Added
+
+#### Phase 7.1 — release package
+
+- User/ops docs: installation, administrator, staff, public referral, security, backup/recovery, troubleshooting, FAQ, release notes
+- `LICENSE` (placeholder pending final licence), `CONTRIBUTING.md`, root `SECURITY.md`
+- Professional README rewrite; packaging guidance
+
+#### Phase 6.x — channels
+
 - Phase 6.2A: staff frontend portal foundation (`/staff-portal/` by default) — auth, shell, capability nav, dashboard, referral list/view
 - Portal settings (enable, branding, base path, support contacts, optional wp-admin redirect) under Settings → Staff Portal
+- Portal referral view read-only field parity with admin
 - `docs/STAFF_PORTAL.md`
 - Phase 6.1B: multi-step public referral wizard (Welcome → About You → Person → Care Needs → Documents → Review)
 - Public branding settings (company name, heading, intro, contact, primary colour, success next-steps) via `PublicBranding`
@@ -21,31 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ops + referrer confirmation email templates for website submissions
 - `docs/PUBLIC_REFERRAL_INTAKE.md`
 
-### Changed
-
-- Public form remains one native HTML POST; JS only controls wizard step visibility
-- Confirmation / success copy uses configured company branding
-- Referral create path accepts public-intake columns without forking admin create
-- Referral View / list / CSV export surface website channel and public fields
-- CSV export includes referral source and public-intake columns
-
-### Security
-
-- Portal: authenticated routes, AccessPolicy on records, privacy cache headers, generic 403/404
-- Optional wp-admin redirect for non-administrator JM staff (AJAX/admin-post/downloads/exports preserved)
-- Public form: nonce, honeypot, minimum completion time, hashed rate limit (no raw IP storage)
-- Public uploads use private storage only; never Media Library
-- Wizard does not weaken spam controls or introduce AJAX submission
-
-### Fixed
-
-- Public form submit hang: preserve submitter and defer disable so native POST proceeds
-
-## [1.0.0] - 2026-08-05
-
-First production release of the JM Referral System. Plugin version `1.0.0`. Database schema remains `2.16.0` (no schema change in this release).
-
-### Added
+#### Phases 1–5.6 — core
 
 - Phase 5.6: `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md`
 - Phase 5.5: shared admin CSS/JS (`assets/css/admin.css`, `assets/js/admin.js`) on all plugin screens
@@ -74,7 +68,13 @@ First production release of the JM Referral System. Plugin version `1.0.0`. Data
 
 ### Changed
 
-- Phase 5.6: release docs aligned; product version locked to `1.0.0`; DB version unchanged at `2.16.0`
+- Phase 7.1: documentation and packaging aligned for production distribution
+- Public form remains one native HTML POST; JS only controls wizard step visibility
+- Confirmation / success copy uses configured company branding
+- Referral create path accepts public-intake columns without forking admin create
+- Referral View / list / CSV export surface website channel and public fields
+- CSV export includes referral source and public-intake columns
+- Phase 5.6: product version locked to `1.0.0`; schema tracked independently (`2.17.0` after public intake)
 - Consistent notice wording (`… successfully.` / `Please fix the following errors:`)
 - Standardized primary/secondary/danger buttons, confirms (`data-jmrs-confirm`), and double-submit busy labels
 - Priority/status/archive/alert badges and improved empty states on list, view, and alerts
@@ -101,12 +101,19 @@ First production release of the JM Referral System. Plugin version `1.0.0`. Data
 
 ### Fixed
 
+- Public form submit hang: preserve submitter and defer disable so native POST proceeds
+- Portal medication and related view fields use admin array keys (`dosage`, `medication_status`, `visit_status`, …)
 - Phase 5.6: notes on archived referrals require `can_mutate_referral` (archive read-only alignment)
 - Phase 5.5 double-submit guard: preserve clicked submit button name/value via hidden input before disabling (fixes Update Referral and other named submit actions)
 - Removed unused `MedicationAdministrationController` stub and dead `get_dashboard_alerts()` wrapper
 
 ### Security
 
+- Portal: authenticated routes, AccessPolicy on records, privacy cache headers, generic 403/404
+- Optional wp-admin redirect for non-administrator JM staff (AJAX/admin-post/downloads/exports preserved)
+- Public form: nonce, honeypot, minimum completion time, hashed rate limit (no raw IP storage)
+- Public uploads use private storage only; never Media Library
+- Wizard does not weaken spam controls or introduce AJAX submission
 - Archive-first retention reduces accidental permanent deletion of referrals with health records
 - New sensitive files are not exposed via public uploads URLs or the Media Library
 - Legacy documents remain potentially public until migrated and originals are cleaned up in a later phase
