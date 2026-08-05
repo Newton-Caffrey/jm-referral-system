@@ -51,7 +51,8 @@ class ReferralViewController
         private VisitExecutionService $visit_execution_service,
         private VisitTaskService $visit_task_service,
         private MedicationService $medication_service,
-        private MedicationAdministrationService $medication_administration_service
+        private MedicationAdministrationService $medication_administration_service,
+        private ReferralRetentionService $retention_service
     ) {
     }
 
@@ -90,6 +91,13 @@ class ReferralViewController
             ? $this->user_provider->get_display_name($assigned_to)
             : '';
 
+        $archived_by      = absint($referral['archived_by'] ?? 0);
+        $archived_by_name = $archived_by > 0
+            ? $this->user_provider->get_display_name($archived_by)
+            : '';
+        $archived_at      = (string) ($referral['archived_at'] ?? '');
+        $archive_reason   = (string) ($referral['archive_reason'] ?? '');
+
         $service_type_id = absint($referral['service_type_id'] ?? 0);
         $service_name    = (string) ($referral['service_required'] ?? '');
         if ($service_type_id > 0) {
@@ -123,13 +131,27 @@ class ReferralViewController
         $note_value      = $note_form_state['note'];
         $note_errors     = $note_form_state['errors'];
 
+        $is_archived = $this->retention_service->is_archived($referral);
+        $can_mutate  = $this->access_policy->can_mutate_referral($referral);
+
         $can_upload_documents   = Capabilities::current_user_can(Capabilities::UPLOAD_DOCUMENTS)
-            && $this->access_policy->can_edit_referral($referral);
+            && $can_mutate;
         $can_download_documents = Capabilities::current_user_can(Capabilities::DOWNLOAD_DOCUMENTS);
         $can_edit_referral      = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            && $can_mutate;
+        $can_delete_referral    = ! $is_archived
+            && Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral)
+            && $this->retention_service->can_permanently_delete($referral_id);
+        $can_archive_referral   = ! $is_archived
+            && Capabilities::current_user_can(Capabilities::ARCHIVE_REFERRALS)
             && $this->access_policy->can_edit_referral($referral);
-        $can_delete_referral    = Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
-            && $this->access_policy->can_edit_referral($referral);
+        $can_restore_referral   = $is_archived
+            && Capabilities::current_user_can(Capabilities::RESTORE_REFERRALS)
+            && $this->access_policy->can_view_referral($referral);
+        $can_add_notes          = ! $is_archived
+            && Capabilities::current_user_can(Capabilities::ADD_NOTES)
+            && $this->access_policy->can_view_referral($referral);
         $documents              = [];
 
         if ($can_download_documents) {
@@ -148,7 +170,7 @@ class ReferralViewController
         $document_errors = ReferralDocumentController::get_errors($referral_id);
 
         $can_edit_assessment = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
-            && $this->access_policy->can_edit_referral($referral);
+            && $can_mutate;
 
         $assessment           = $this->assessment_repository->find_by_referral($referral_id);
         $assessment_form_state = ReferralAssessmentController::get_form_state($referral_id);
@@ -173,9 +195,9 @@ class ReferralViewController
         $can_view_care_plan = Capabilities::current_user_can(Capabilities::VIEW_CARE_PLANS)
             && $this->access_policy->can_view_referral($referral);
         $can_manage_care_plan = Capabilities::current_user_can(Capabilities::MANAGE_CARE_PLANS)
-            && $this->access_policy->can_edit_referral($referral);
+            && $can_mutate;
         $can_review_care_plan = Capabilities::current_user_can(Capabilities::REVIEW_CARE_PLANS)
-            && $this->access_policy->can_edit_referral($referral);
+            && $can_mutate;
 
         $care_plan            = $this->care_plan_repository->find_by_referral($referral_id);
         $care_plan_form_state = ReferralCarePlanController::get_form_state($referral_id);
@@ -249,7 +271,7 @@ class ReferralViewController
         $can_view_visits = Capabilities::current_user_can(Capabilities::VIEW_VISITS)
             && $this->access_policy->can_view_referral($referral);
         $can_manage_visits = Capabilities::current_user_can(Capabilities::MANAGE_VISITS)
-            && $this->access_policy->can_edit_referral($referral);
+            && $can_mutate;
 
         $care_visit_statuses = CareVisitService::status_labels();
         $care_visit_form_state = CareVisitController::get_form_state($referral_id);
@@ -269,7 +291,7 @@ class ReferralViewController
         $can_view_care_team = Capabilities::current_user_can(Capabilities::VIEW_CARE_TEAM)
             && $this->access_policy->can_view_referral($referral);
         $can_manage_care_team = Capabilities::current_user_can(Capabilities::MANAGE_CARE_TEAM)
-            && $this->access_policy->can_edit_referral($referral);
+            && $can_mutate;
 
         $care_team_roles    = CareTeamService::role_labels();
         $care_team_statuses = CareTeamService::status_labels();
@@ -311,7 +333,8 @@ class ReferralViewController
             : MedicationService::empty_form_data();
         $medications = [];
         $can_administer_medications_cap = Capabilities::current_user_can(Capabilities::ADMINISTER_MEDICATIONS)
-            && $this->access_policy->can_view_referral($referral);
+            && $this->access_policy->can_view_referral($referral)
+            && ! $is_archived;
 
         if ($can_view_medications) {
             $medications = $this->medication_service->get_medications_for_referral(
@@ -335,7 +358,7 @@ class ReferralViewController
         $can_view_schedules = Capabilities::current_user_can(Capabilities::VIEW_SCHEDULES)
             && $this->access_policy->can_view_referral($referral);
         $can_manage_schedules = Capabilities::current_user_can(Capabilities::MANAGE_SCHEDULES)
-            && $this->access_policy->can_edit_referral($referral);
+            && $can_mutate;
 
         $schedule_repeat_labels  = ScheduleService::repeat_type_labels();
         $schedule_status_labels  = ScheduleService::status_labels();
@@ -588,7 +611,7 @@ class ReferralViewController
 
         $referral = $this->repository->find($referral_id);
 
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
+        if (null === $referral || ! $this->access_policy->can_mutate_referral($referral)) {
             wp_die(esc_html__('You do not have permission to edit this referral.', 'jm-referral-system'));
         }
 

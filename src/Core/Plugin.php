@@ -28,6 +28,7 @@ use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Referral\ReferralActivityRepository;
 use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralController;
+use JMReferral\Referral\ReferralDependencyRepository;
 use JMReferral\Referral\ReferralEditController;
 use JMReferral\Referral\ReferralExportController;
 use JMReferral\Referral\ReferralFilters;
@@ -37,6 +38,7 @@ use JMReferral\Referral\ReferralNoteRepository;
 use JMReferral\Referral\ReferralNoteService;
 use JMReferral\Referral\ReferralNumberGenerator;
 use JMReferral\Referral\ReferralRepository;
+use JMReferral\Referral\ReferralRetentionService;
 use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
@@ -297,13 +299,21 @@ class Plugin
             $this->access_policy
         );
 
+        $retention_service = new ReferralRetentionService(
+            $repository,
+            new ReferralDependencyRepository(),
+            $activity_service,
+            $this->access_policy
+        );
+
         $this->list_controller = new ReferralListController(
             $repository,
             $this->user_provider,
             $this->filters,
             $this->service_type_service,
             $this->workflow_stage_service,
-            $this->access_policy
+            $this->access_policy,
+            $retention_service
         );
         $this->edit_controller = new ReferralEditController(
             $this->service,
@@ -333,7 +343,8 @@ class Plugin
             $this->visit_execution_service,
             $visit_task_service,
             $this->medication_service,
-            $this->medication_administration_service
+            $this->medication_administration_service,
+            $retention_service
         );
 
         $document_controller = new ReferralDocumentController(

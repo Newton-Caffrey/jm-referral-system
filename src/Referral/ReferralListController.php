@@ -16,7 +16,8 @@ class ReferralListController
         private ReferralFilters $filters,
         private ServiceTypeService $service_type_service,
         private WorkflowStageService $workflow_stage_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private ReferralRetentionService $retention_service
     ) {
     }
 
@@ -26,6 +27,8 @@ class ReferralListController
     public function register(): void
     {
         add_action('admin_init', [$this, 'handle_delete']);
+        add_action('admin_init', [$this, 'handle_archive']);
+        add_action('admin_init', [$this, 'handle_restore']);
         add_action('admin_notices', [$this, 'render_notices']);
     }
 
@@ -80,10 +83,21 @@ class ReferralListController
                 ? $stage_names[$workflow_stage_id]
                 : '';
 
-            $referral['can_edit'] = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            $is_archived = $this->retention_service->is_archived($referral);
+            $referral['is_archived'] = $is_archived;
+
+            $referral['can_edit'] = ! $is_archived
+                && Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
                 && $this->access_policy->can_edit_referral($referral);
-            $referral['can_delete'] = Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
-                && $this->access_policy->can_edit_referral($referral);
+
+            $referral['can_delete'] = ! $is_archived
+                && Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
+                && $this->access_policy->can_edit_referral($referral)
+                && $this->retention_service->can_permanently_delete(absint($referral['id'] ?? 0));
+
+            $referral['can_restore'] = $is_archived
+                && Capabilities::current_user_can(Capabilities::RESTORE_REFERRALS)
+                && $this->access_policy->can_view_referral($referral);
 
             $referrals[] = $referral;
         }
@@ -95,15 +109,15 @@ class ReferralListController
     }
 
     /**
-     * Handles single referral delete requests.
+     * Handles single referral permanent delete requests.
      */
     public function handle_delete(): void
     {
-        if (! $this->is_list_screen()) {
+        if (! $this->is_list_screen() && ! $this->is_view_screen()) {
             return;
         }
 
-        $action = isset($_GET['action']) ? sanitize_key(wp_unslash($_GET['action'])) : '';
+        $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';
 
         if ('delete' !== $action) {
             return;
@@ -113,55 +127,157 @@ class ReferralListController
             wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
-        $referral_id = isset($_GET['referral_id']) ? absint($_GET['referral_id']) : 0;
+        $referral_id = isset($_REQUEST['referral_id']) ? absint($_REQUEST['referral_id']) : 0;
 
         check_admin_referer('jmrs_delete_referral_' . $referral_id);
 
-        $referral = $this->repository->find($referral_id);
+        $result = $this->retention_service->permanently_delete($referral_id);
 
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
+        $args = [
+            'page' => 'jm-referrals-list',
+        ];
+
+        if (! empty($result['success'])) {
+            $args['jmrs_deleted'] = '1';
+        } elseif (! empty($result['blocked'])) {
+            $args['jmrs_delete_blocked'] = '1';
+            $args['page']                = 'jm-referrals-view';
+            $args['referral_id']         = $referral_id;
+        } else {
+            $args['jmrs_deleted'] = '0';
         }
 
-        $deleted = $this->repository->delete($referral_id);
-
-        $redirect_url = add_query_arg(
-            [
-                'page'         => 'jm-referrals-list',
-                'jmrs_deleted' => $deleted ? '1' : '0',
-            ],
-            admin_url('admin.php')
-        );
-
-        wp_safe_redirect($redirect_url);
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
         exit;
     }
 
     /**
-     * Renders delete result notices on the list screen.
+     * Handles archive form posts.
+     */
+    public function handle_archive(): void
+    {
+        if (! is_admin()) {
+            return;
+        }
+
+        if (! isset($_POST['jmrs_archive_referral'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['referral_id']) ? absint($_POST['referral_id']) : 0;
+        check_admin_referer('jmrs_archive_referral_' . $referral_id, 'jmrs_archive_nonce');
+
+        $reason = isset($_POST['archive_reason'])
+            ? sanitize_textarea_field(wp_unslash($_POST['archive_reason']))
+            : '';
+
+        $result = $this->retention_service->archive($referral_id, $reason);
+
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+
+        if (! empty($result['success'])) {
+            $args['jmrs_archived'] = '1';
+        } else {
+            $args['jmrs_archive_error'] = '1';
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * Handles restore requests.
+     */
+    public function handle_restore(): void
+    {
+        if (! is_admin()) {
+            return;
+        }
+
+        $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';
+
+        if ('restore' !== $action && ! isset($_POST['jmrs_restore_referral'])) {
+            return;
+        }
+
+        $referral_id = isset($_REQUEST['referral_id']) ? absint($_REQUEST['referral_id']) : 0;
+        check_admin_referer('jmrs_restore_referral_' . $referral_id, 'jmrs_restore_nonce');
+
+        $result = $this->retention_service->restore($referral_id);
+
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+
+        if (! empty($result['success'])) {
+            $args['jmrs_restored'] = '1';
+        } else {
+            $args['jmrs_restore_error'] = '1';
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * Renders result notices on list/view screens.
      */
     public function render_notices(): void
     {
-        if (! $this->is_list_screen()) {
+        if (! $this->is_list_screen() && ! $this->is_view_screen()) {
             return;
         }
 
-        if (! isset($_GET['jmrs_deleted'])) {
-            return;
+        if (isset($_GET['jmrs_deleted'])) {
+            $deleted = sanitize_text_field(wp_unslash($_GET['jmrs_deleted']));
+
+            if ('1' === $deleted) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Referral deleted successfully.', 'jm-referral-system');
+                echo '</p></div>';
+            } else {
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html__('Unable to delete the referral.', 'jm-referral-system');
+                echo '</p></div>';
+            }
         }
 
-        $deleted = sanitize_text_field(wp_unslash($_GET['jmrs_deleted']));
-
-        if ('1' === $deleted) {
-            echo '<div class="notice notice-success is-dismissible"><p>';
-            echo esc_html__('Referral deleted successfully.', 'jm-referral-system');
+        if (isset($_GET['jmrs_delete_blocked'])) {
+            echo '<div class="notice notice-error is-dismissible"><p>';
+            echo esc_html__(
+                'This referral contains linked records and cannot be permanently deleted. Archive it instead.',
+                'jm-referral-system'
+            );
             echo '</p></div>';
-            return;
         }
 
-        echo '<div class="notice notice-error is-dismissible"><p>';
-        echo esc_html__('Unable to delete the referral.', 'jm-referral-system');
-        echo '</p></div>';
+        if (isset($_GET['jmrs_archived'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html__('Referral archived successfully.', 'jm-referral-system');
+            echo '</p></div>';
+        }
+
+        if (isset($_GET['jmrs_archive_error'])) {
+            echo '<div class="notice notice-error is-dismissible"><p>';
+            echo esc_html__('Unable to archive the referral.', 'jm-referral-system');
+            echo '</p></div>';
+        }
+
+        if (isset($_GET['jmrs_restored'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html__('Referral restored successfully.', 'jm-referral-system');
+            echo '</p></div>';
+        }
+
+        if (isset($_GET['jmrs_restore_error'])) {
+            echo '<div class="notice notice-error is-dismissible"><p>';
+            echo esc_html__('Unable to restore the referral.', 'jm-referral-system');
+            echo '</p></div>';
+        }
     }
 
     /**
@@ -182,6 +298,25 @@ class ReferralListController
         );
     }
 
+    /**
+     * Builds a nonce-protected restore URL for a referral.
+     */
+    public static function get_restore_url(int $referral_id): string
+    {
+        return wp_nonce_url(
+            add_query_arg(
+                [
+                    'page'        => 'jm-referrals-view',
+                    'action'      => 'restore',
+                    'referral_id' => $referral_id,
+                ],
+                admin_url('admin.php')
+            ),
+            'jmrs_restore_referral_' . $referral_id,
+            'jmrs_restore_nonce'
+        );
+    }
+
     private function is_list_screen(): bool
     {
         if (! is_admin()) {
@@ -191,5 +326,16 @@ class ReferralListController
         $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
 
         return 'jm-referrals-list' === $page;
+    }
+
+    private function is_view_screen(): bool
+    {
+        if (! is_admin()) {
+            return false;
+        }
+
+        $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
+
+        return 'jm-referrals-view' === $page;
     }
 }

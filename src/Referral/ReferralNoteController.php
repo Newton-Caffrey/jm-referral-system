@@ -48,6 +48,10 @@ class ReferralNoteController
             wp_die(esc_html__('You do not have permission to add notes to this referral.', 'jm-referral-system'));
         }
 
+        if ($this->access_policy->is_referral_archived($referral)) {
+            wp_die(esc_html__('Archived referrals are read-only.', 'jm-referral-system'));
+        }
+
         $note = isset($_POST['jmrs_note'])
             ? sanitize_textarea_field(wp_unslash($_POST['jmrs_note']))
             : '';

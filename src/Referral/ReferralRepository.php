@@ -135,7 +135,7 @@ class ReferralRepository
         $table = Tables::referrals_table();
         [$where_sql, $params] = $this->build_filter_clause($filters, $access_assigned_to);
 
-        $sql = "SELECT id, referral_number, client_name, client_email, client_phone, service_required, service_type_id, workflow_stage_id, priority, status, assigned_to, referral_source, care_start_date, preferred_contact_method, care_requirements, created_at, updated_at
+        $sql = "SELECT id, referral_number, client_name, client_email, client_phone, service_required, service_type_id, workflow_stage_id, priority, status, assigned_to, referral_source, care_start_date, preferred_contact_method, care_requirements, archived_at, archived_by, archive_reason, created_at, updated_at
             FROM {$table}
             WHERE {$where_sql}
             ORDER BY created_at DESC, id DESC";
@@ -195,7 +195,8 @@ class ReferralRepository
      *     search?: string,
      *     status?: string,
      *     priority?: string,
-     *     assigned_to?: int
+     *     assigned_to?: int,
+     *     archive_scope?: string
      * } $filters
      * @param int|null $access_assigned_to Optional record-level assignee constraint.
      * @return array{0: string, 1: array<int, mixed>}
@@ -241,10 +242,78 @@ class ReferralRepository
             }
         }
 
+        $this->append_archive_scope($where, (string) ($filters['archive_scope'] ?? 'active'));
+
         return [
             implode(' AND ', $where),
             $params,
         ];
+    }
+
+    /**
+     * Centralizes archive_scope SQL for list/count/dashboard helpers.
+     *
+     * @param array<int, string> $where
+     * @param string             $scope active|archived|all
+     * @param string             $column Qualified or unqualified archived_at column.
+     */
+    public function append_archive_scope(array &$where, string $scope = 'active', string $column = 'archived_at'): void
+    {
+        $scope = $this->normalize_archive_scope($scope);
+
+        if ('active' === $scope) {
+            $where[] = "{$column} IS NULL";
+            return;
+        }
+
+        if ('archived' === $scope) {
+            $where[] = "{$column} IS NOT NULL";
+        }
+    }
+
+    /**
+     * @return 'active'|'archived'|'all'
+     */
+    public function normalize_archive_scope(string $scope): string
+    {
+        $scope = sanitize_key($scope);
+
+        if (in_array($scope, ['active', 'archived', 'all'], true)) {
+            return $scope;
+        }
+
+        return 'active';
+    }
+
+    /**
+     * Sets or clears archive metadata for a referral.
+     */
+    public function set_archive_state(
+        int $id,
+        ?string $archived_at,
+        ?int $archived_by,
+        ?string $archive_reason
+    ): bool {
+        global $wpdb;
+
+        if ($id <= 0) {
+            return false;
+        }
+
+        $result = $wpdb->update(
+            Tables::referrals_table(),
+            [
+                'archived_at'    => $archived_at,
+                'archived_by'    => $archived_by,
+                'archive_reason' => $archive_reason,
+                'updated_at'     => current_time('mysql'),
+            ],
+            ['id' => $id],
+            ['%s', '%d', '%s', '%s'],
+            ['%d']
+        );
+
+        return false !== $result;
     }
 
     /**
@@ -358,114 +427,53 @@ class ReferralRepository
     }
 
     /**
-     * Counts all referrals.
-     */
-    /**
-     * @param int|null $access_assigned_to Optional record-level assignee constraint.
-     */
-    public function countAll(?int $access_assigned_to = null): int
-    {
-        global $wpdb;
-
-        $table = Tables::referrals_table();
-
-        if (null !== $access_assigned_to && $access_assigned_to > 0) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-            $count = $wpdb->get_var(
-                $wpdb->prepare(
-                    "SELECT COUNT(*) FROM {$table} WHERE assigned_to = %d",
-                    $access_assigned_to
-                )
-            );
-
-            return (int) $count;
-        }
-
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-        $count = $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
-
-        return (int) $count;
-    }
-
-    /**
-     * Counts referrals by status.
+     * Counts referrals (default: active / non-archived only).
      *
      * @param int|null $access_assigned_to Optional record-level assignee constraint.
+     * @param string   $archive_scope      active|archived|all
      */
-    public function countByStatus(string $status, ?int $access_assigned_to = null): int
+    public function countAll(?int $access_assigned_to = null, string $archive_scope = 'active'): int
     {
-        global $wpdb;
-
-        $table = Tables::referrals_table();
-
-        if (null !== $access_assigned_to && $access_assigned_to > 0) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-            $count = $wpdb->get_var(
-                $wpdb->prepare(
-                    "SELECT COUNT(*) FROM {$table} WHERE status = %s AND assigned_to = %d",
-                    $status,
-                    $access_assigned_to
-                )
-            );
-
-            return (int) $count;
-        }
-
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-        $count = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$table} WHERE status = %s",
-                $status
-            )
+        return $this->count_by_filters(
+            ['archive_scope' => $this->normalize_archive_scope($archive_scope)],
+            $access_assigned_to
         );
-
-        return (int) $count;
     }
 
     /**
-     * Returns the most recent referrals.
+     * Counts referrals by status (default: active only).
      *
      * @param int|null $access_assigned_to Optional record-level assignee constraint.
+     * @param string   $archive_scope      active|archived|all
+     */
+    public function countByStatus(string $status, ?int $access_assigned_to = null, string $archive_scope = 'active'): int
+    {
+        return $this->count_by_filters(
+            [
+                'status'         => $status,
+                'archive_scope'  => $this->normalize_archive_scope($archive_scope),
+            ],
+            $access_assigned_to
+        );
+    }
+
+    /**
+     * Returns the most recent referrals (default: active only).
+     *
+     * @param int|null $access_assigned_to Optional record-level assignee constraint.
+     * @param string   $archive_scope      active|archived|all
      * @return array<int, array<string, mixed>>
      */
-    public function recent(int $limit = 5, ?int $access_assigned_to = null): array
+    public function recent(int $limit = 5, ?int $access_assigned_to = null, string $archive_scope = 'active'): array
     {
-        global $wpdb;
-
         $limit = max(1, $limit);
-        $table = Tables::referrals_table();
 
-        if (null !== $access_assigned_to && $access_assigned_to > 0) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-            $results = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT id, referral_number, client_name, service_required, service_type_id, workflow_stage_id, status, created_at
-                    FROM {$table}
-                    WHERE assigned_to = %d
-                    ORDER BY created_at DESC, id DESC
-                    LIMIT %d",
-                    $access_assigned_to,
-                    $limit
-                ),
-                ARRAY_A
-            );
-
-            return is_array($results) ? $results : [];
-        }
-
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-        $results = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT id, referral_number, client_name, service_required, service_type_id, workflow_stage_id, status, created_at
-                FROM {$table}
-                ORDER BY created_at DESC, id DESC
-                LIMIT %d",
-                $limit
-            ),
-            ARRAY_A
+        return $this->find_by_filters(
+            ['archive_scope' => $this->normalize_archive_scope($archive_scope)],
+            $limit,
+            0,
+            $access_assigned_to
         );
-
-        return is_array($results) ? $results : [];
     }
 
     /**
@@ -551,29 +559,28 @@ class ReferralRepository
         global $wpdb;
 
         $table = Tables::referrals_table();
+        $where = [
+            'workflow_stage_id IS NOT NULL',
+            'archived_at IS NULL',
+        ];
+        $params = [];
 
         if (null !== $access_assigned_to && $access_assigned_to > 0) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-            $results = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT workflow_stage_id, COUNT(*) AS total
-                    FROM {$table}
-                    WHERE workflow_stage_id IS NOT NULL
-                      AND assigned_to = %d
-                    GROUP BY workflow_stage_id",
-                    $access_assigned_to
-                ),
-                ARRAY_A
-            );
+            $where[]  = 'assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT workflow_stage_id, COUNT(*) AS total
+            FROM {$table}
+            WHERE " . implode(' AND ', $where) . '
+            GROUP BY workflow_stage_id';
+
+        if ([] === $params) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- trusted fragments.
+            $results = $wpdb->get_results($sql, ARRAY_A);
         } else {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-            $results = $wpdb->get_results(
-                "SELECT workflow_stage_id, COUNT(*) AS total
-                FROM {$table}
-                WHERE workflow_stage_id IS NOT NULL
-                GROUP BY workflow_stage_id",
-                ARRAY_A
-            );
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- trusted fragments + prepared params.
+            $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
         }
 
         if (! is_array($results)) {
@@ -606,6 +613,7 @@ class ReferralRepository
             "priority IN ('high', 'urgent')",
             "status NOT IN ('completed', 'cancelled')",
             '(assigned_to IS NULL OR assigned_to = 0)',
+            'archived_at IS NULL',
         ];
         $params = [];
 
@@ -643,6 +651,7 @@ class ReferralRepository
             "r.status NOT IN ('completed', 'cancelled')",
             'a.id IS NULL',
             'r.created_at <= %s',
+            'r.archived_at IS NULL',
         ];
         $params = [$created_before];
 
@@ -681,6 +690,7 @@ class ReferralRepository
         $where       = [
             "r.status NOT IN ('completed', 'cancelled')",
             '(cp.id IS NULL OR cp.plan_status IN (\'draft\', \'under_review\'))',
+            'r.archived_at IS NULL',
         ];
         $params = [];
 
@@ -723,6 +733,7 @@ class ReferralRepository
         $where     = [
             "r.priority IN ('high', 'urgent')",
             "r.status NOT IN ('completed', 'cancelled')",
+            'r.archived_at IS NULL',
             "NOT EXISTS (
                 SELECT 1 FROM {$visits} v
                 WHERE v.referral_id = r.id

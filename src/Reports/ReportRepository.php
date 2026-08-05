@@ -761,6 +761,8 @@ class ReportRepository
      */
     private function append_referral_access(string &$sql, array &$params, ?int $access_assigned_to, string $alias): void
     {
+        $sql .= " AND {$alias}.archived_at IS NULL";
+
         if (null !== $access_assigned_to && $access_assigned_to > 0) {
             $sql     .= " AND {$alias}.assigned_to = %d";
             $params[] = $access_assigned_to;

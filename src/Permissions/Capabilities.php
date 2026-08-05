@@ -9,6 +9,8 @@ class Capabilities
     public const CREATE_REFERRALS = 'jmrs_create_referrals';
     public const EDIT_REFERRALS = 'jmrs_edit_referrals';
     public const DELETE_REFERRALS = 'jmrs_delete_referrals';
+    public const ARCHIVE_REFERRALS = 'jmrs_archive_referrals';
+    public const RESTORE_REFERRALS = 'jmrs_restore_referrals';
     public const ASSIGN_REFERRALS = 'jmrs_assign_referrals';
     public const ADD_NOTES = 'jmrs_add_notes';
     public const EXPORT_REFERRALS = 'jmrs_export_referrals';
@@ -46,6 +48,8 @@ class Capabilities
             self::CREATE_REFERRALS,
             self::EDIT_REFERRALS,
             self::DELETE_REFERRALS,
+            self::ARCHIVE_REFERRALS,
+            self::RESTORE_REFERRALS,
             self::ASSIGN_REFERRALS,
             self::ADD_NOTES,
             self::EXPORT_REFERRALS,

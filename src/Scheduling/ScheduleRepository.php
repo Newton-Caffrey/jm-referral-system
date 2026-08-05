@@ -147,12 +147,16 @@ class ScheduleRepository
             return 0;
         }
 
-        $table = Tables::visit_schedules_table();
+        $table     = Tables::visit_schedules_table();
+        $referrals = Tables::referrals_table();
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names are trusted.
         $count = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$table} WHERE status = %s",
+                "SELECT COUNT(*) FROM {$table} s
+                INNER JOIN {$referrals} r ON r.id = s.referral_id
+                WHERE s.status = %s
+                  AND r.archived_at IS NULL",
                 $status
             )
         );
@@ -175,6 +179,7 @@ class ScheduleRepository
         $care_team = Tables::care_team_table();
         $where     = [
             "s.status = 'active'",
+            'r.archived_at IS NULL',
             '(
                 s.team_assignment_id IS NULL
                 OR s.team_assignment_id = 0

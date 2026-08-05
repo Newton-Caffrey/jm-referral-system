@@ -247,7 +247,7 @@ On activation the plugin:
 | Role | Slug | Purpose |
 | --- | --- | --- |
 | **JM Administrator** | `jmrs_administrator` | Full plugin access across referrals, clinical modules, configuration, and settings |
-| **Referral Manager** | `jmrs_referral_manager` | End-to-end referral operations including delete, export, care plans, team, schedules, and visits |
+| **Referral Manager** | `jmrs_referral_manager` | End-to-end referral operations including archive/restore, delete (empty only), export, care plans, team, schedules, and visits |
 | **Care Coordinator** | `jmrs_care_coordinator` | Day-to-day coordination: referrals, care plans, team, schedules, and visits (no delete/export/settings) |
 | **Assessor** | `jmrs_assessor` | Clinical assessment and care planning; view visits/team/schedules; cannot manage visits or generate schedules |
 | **Support Worker** | `jmrs_support_worker` | Read-focused access scoped to assigned referrals; dashboard for own clients and upcoming visits |
@@ -263,7 +263,7 @@ Custom capabilities (prefix `jmrs_`):
 | Area | Capabilities |
 | --- | --- |
 | Dashboard | `jmrs_view_dashboard` |
-| Referrals | `jmrs_view_referrals`, `jmrs_create_referrals`, `jmrs_edit_referrals`, `jmrs_delete_referrals`, `jmrs_assign_referrals` |
+| Referrals | `jmrs_view_referrals`, `jmrs_create_referrals`, `jmrs_edit_referrals`, `jmrs_delete_referrals`, `jmrs_archive_referrals`, `jmrs_restore_referrals`, `jmrs_assign_referrals` |
 | Notes / export | `jmrs_add_notes`, `jmrs_export_referrals` |
 | Documents | `jmrs_upload_documents`, `jmrs_download_documents` |
 | Care plans | `jmrs_view_care_plans`, `jmrs_manage_care_plans`, `jmrs_review_care_plans` |
@@ -303,7 +303,28 @@ Repositories use `$wpdb->prepare()` for dynamic values. Table names come from tr
 
 ### Audit logging
 
-Meaningful domain events are written to the referral activity timeline (create/update, assignment, workflow, notes, documents, assessments, care plans, reviews, care team, schedules, visits, and schedule generation summaries).
+Meaningful domain events are written to the referral activity timeline (create/update, assignment, workflow, notes, documents, assessments, care plans, reviews, care team, schedules, visits, schedule generation summaries, archive, and restore).
+
+### Data retention and deletion
+
+Archive-first policy (see `docs/DATA_RETENTION_POLICY.md`):
+
+- Referrals with linked clinical/operational records cannot be permanently deleted; archive them instead
+- Empty test referrals (no blocking dependents) may be permanently deleted by users with `jmrs_delete_referrals`
+- Archived referrals are read-only and excluded by default from dashboard, alerts, and current-state reports
+- Archive / restore require `jmrs_archive_referrals` / `jmrs_restore_referrals` (Administrator, JM Administrator, Referral Manager)
+
+### Uninstall
+
+Default plugin deletion removes JM roles and capabilities only and **preserves** custom tables and `uploads/jmrs-private/` files.
+
+To wipe plugin data on uninstall (disposable sites only, after backups):
+
+```php
+define('JMRS_DELETE_DATA_ON_UNINSTALL', true);
+```
+
+Legacy Media Library attachments are never deleted automatically.
 
 ---
 
@@ -344,6 +365,10 @@ Automated test coverage is planned for a later production phase. For now, verify
 - Support Worker scoping on lists, dashboard, and visits
 - Duplicate visit generation (same window should skip existing `generation_key` rows)
 - Manual visit create/edit and completion still work after schedule generation
+- Empty referral permanent delete vs blocked delete when a note/assessment/visit/MAR exists
+- Archive / restore; archived mutation rejected server-side
+- List Active / Archived / All filter and CSV archive columns
+- Uninstall without constant preserves tables; with constant on a test site removes plugin tables/files
 
 ---
 

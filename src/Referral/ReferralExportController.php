@@ -97,6 +97,9 @@ class ReferralExportController
                 'Care Start Date',
                 'Preferred Contact Method',
                 'Care Requirements',
+                'Archived',
+                'Archived At',
+                'Archive Reason',
                 'Created Date',
                 'Updated Date',
             ]
@@ -124,6 +127,9 @@ class ReferralExportController
                 ? $stage_names[$workflow_stage_id]
                 : '';
 
+            $archived_at = (string) ($referral['archived_at'] ?? '');
+            $is_archived = '' !== $archived_at;
+
             CsvExportHelper::put_row(
                 $output,
                 [
@@ -139,6 +145,9 @@ class ReferralExportController
                     (string) ($referral['care_start_date'] ?? ''),
                     $contact_label,
                     (string) ($referral['care_requirements'] ?? ''),
+                    $is_archived ? 'Yes' : 'No',
+                    $archived_at,
+                    (string) ($referral['archive_reason'] ?? ''),
                     (string) ($referral['created_at'] ?? ''),
                     (string) ($referral['updated_at'] ?? ''),
                 ]
@@ -180,6 +189,10 @@ class ReferralExportController
 
         if (! empty($filters['assigned_to'])) {
             $args['jmrs_assigned_to'] = absint($filters['assigned_to']);
+        }
+
+        if (! empty($filters['archive_scope']) && 'active' !== $filters['archive_scope']) {
+            $args['jmrs_archive_scope'] = (string) $filters['archive_scope'];
         }
 
         return wp_nonce_url(

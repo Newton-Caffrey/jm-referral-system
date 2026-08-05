@@ -230,6 +230,10 @@ class MedicationAdministrationService
             return false;
         }
 
+        if ($this->access_policy->is_referral_archived($referral)) {
+            return false;
+        }
+
         if ($this->access_policy->should_scope_to_assigned()) {
             return absint($visit['assigned_user_id'] ?? 0) === get_current_user_id();
         }

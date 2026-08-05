@@ -335,7 +335,7 @@ class ReferralCarePlanService
             return $errors;
         }
 
-        if (! $this->access_policy->can_edit_referral($referral)) {
+        if (! $this->access_policy->can_mutate_referral($referral)) {
             $errors['permission'] = __('You do not have permission to manage a care plan for this referral.', 'jm-referral-system');
         }
 

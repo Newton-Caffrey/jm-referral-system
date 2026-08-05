@@ -367,7 +367,7 @@ class ReferralCarePlanReviewService
             return $errors;
         }
 
-        if (! $this->access_policy->can_edit_referral($referral)) {
+        if (! $this->access_policy->can_mutate_referral($referral)) {
             $errors['permission'] = __('You do not have permission to review this care plan.', 'jm-referral-system');
             return $errors;
         }

@@ -32,6 +32,7 @@ $search      = (string) ( $filters['search'] ?? '' );
 $status      = (string) ( $filters['status'] ?? '' );
 $priority    = (string) ( $filters['priority'] ?? '' );
 $assigned_to = (string) absint( $filters['assigned_to'] ?? 0 );
+$archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
 
 $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 ?>
@@ -63,6 +64,13 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 					value="<?php echo esc_attr( $search ); ?>"
 					placeholder="<?php echo esc_attr__( 'Search referrals…', 'jm-referral-system' ); ?>"
 				/>
+
+				<label class="screen-reader-text" for="jmrs_archive_scope"><?php echo esc_html__( 'Archive filter', 'jm-referral-system' ); ?></label>
+				<select name="jmrs_archive_scope" id="jmrs_archive_scope">
+					<option value="active" <?php selected( $archive_scope, 'active' ); ?>><?php echo esc_html__( 'Active', 'jm-referral-system' ); ?></option>
+					<option value="archived" <?php selected( $archive_scope, 'archived' ); ?>><?php echo esc_html__( 'Archived', 'jm-referral-system' ); ?></option>
+					<option value="all" <?php selected( $archive_scope, 'all' ); ?>><?php echo esc_html__( 'All', 'jm-referral-system' ); ?></option>
+				</select>
 
 				<label class="screen-reader-text" for="jmrs_status"><?php echo esc_html__( 'Filter by status', 'jm-referral-system' ); ?></label>
 				<select name="jmrs_status" id="jmrs_status">
@@ -160,12 +168,18 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 					$delete_url       = \JMReferral\Referral\ReferralListController::get_delete_url( $referral_id );
 					$edit_url         = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral_id );
 					$view_url         = \JMReferral\Referral\ReferralViewController::get_view_url( $referral_id );
+					$restore_url      = \JMReferral\Referral\ReferralListController::get_restore_url( $referral_id );
 					$can_edit         = ! empty( $referral['can_edit'] );
 					$can_delete       = ! empty( $referral['can_delete'] );
+					$can_restore      = ! empty( $referral['can_restore'] );
+					$is_archived      = ! empty( $referral['is_archived'] );
 					?>
 					<tr>
 						<td>
 							<strong><?php echo esc_html( $referral_number ); ?></strong>
+							<?php if ( $is_archived ) : ?>
+								<br /><span class="jmrs-badge" style="display:inline-block;margin-top:4px;padding:1px 6px;background:#646970;color:#fff;border-radius:3px;font-size:11px;"><?php echo esc_html__( 'Archived', 'jm-referral-system' ); ?></span>
+							<?php endif; ?>
 						</td>
 						<td><?php echo esc_html( $client_name ); ?></td>
 						<td><?php echo esc_html( $service_required ); ?></td>
@@ -183,8 +197,11 @@ $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 								if ( $can_edit ) {
 									$action_links[] = '<a href="' . esc_url( $edit_url ) . '">' . esc_html__( 'Edit', 'jm-referral-system' ) . '</a>';
 								}
+								if ( $can_restore ) {
+									$action_links[] = '<a href="' . esc_url( $restore_url ) . '" onclick="return confirm(\'' . esc_js( __( 'Restore this archived referral?', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Restore', 'jm-referral-system' ) . '</a>';
+								}
 								if ( $can_delete ) {
-									$action_links[] = '<a href="' . esc_url( $delete_url ) . '" class="submitdelete" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this referral?', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Delete', 'jm-referral-system' ) . '</a>';
+									$action_links[] = '<a href="' . esc_url( $delete_url ) . '" class="submitdelete" onclick="return confirm(\'' . esc_js( __( 'Permanently delete this empty referral? This cannot be undone.', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Delete', 'jm-referral-system' ) . '</a>';
 								}
 								echo implode( ' | ', $action_links ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links built with esc_url/esc_html above.
 								?>

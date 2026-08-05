@@ -420,7 +420,7 @@ class ScheduleService
         }
 
         $referral = $this->referral_repository->find(absint($schedule['referral_id'] ?? 0));
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
+        if (null === $referral || ! $this->access_policy->can_mutate_referral($referral)) {
             return [
                 'errors' => [
                     'permission' => __('You do not have permission to edit this schedule.', 'jm-referral-system'),
@@ -455,7 +455,7 @@ class ScheduleService
             return false;
         }
 
-        return $this->access_policy->can_edit_referral($referral);
+        return $this->access_policy->can_mutate_referral($referral);
     }
 
     /**
@@ -477,7 +477,7 @@ class ScheduleService
             return $errors;
         }
 
-        if (! $this->access_policy->can_edit_referral($referral)) {
+        if (! $this->access_policy->can_mutate_referral($referral)) {
             $errors['permission'] = __('You do not have permission to manage schedules for this referral.', 'jm-referral-system');
             return $errors;
         }

@@ -313,7 +313,7 @@ class CareTeamService
         }
 
         $referral = $this->referral_repository->find(absint($assignment['referral_id'] ?? 0));
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
+        if (null === $referral || ! $this->access_policy->can_mutate_referral($referral)) {
             return [
                 'errors' => [
                     'permission' => __('You do not have permission to edit this care team assignment.', 'jm-referral-system'),
@@ -348,7 +348,7 @@ class CareTeamService
             return false;
         }
 
-        return $this->access_policy->can_edit_referral($referral);
+        return $this->access_policy->can_mutate_referral($referral);
     }
 
     /**
@@ -370,7 +370,7 @@ class CareTeamService
             return $errors;
         }
 
-        if (! $this->access_policy->can_edit_referral($referral)) {
+        if (! $this->access_policy->can_mutate_referral($referral)) {
             $errors['permission'] = __('You do not have permission to manage the care team for this referral.', 'jm-referral-system');
             return $errors;
         }

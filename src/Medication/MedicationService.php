@@ -234,7 +234,7 @@ class MedicationService
 
         $referral_id = absint($medication['referral_id'] ?? 0);
         $referral    = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
+        if (null === $referral || ! $this->access_policy->can_mutate_referral($referral)) {
             return [
                 'errors' => [
                     'permission' => __('You do not have permission to edit medications for this referral.', 'jm-referral-system'),
@@ -284,7 +284,7 @@ class MedicationService
     public function can_manage_medications(array $referral): bool
     {
         return Capabilities::current_user_can(Capabilities::MANAGE_MEDICATIONS)
-            && $this->access_policy->can_edit_referral($referral);
+            && $this->access_policy->can_mutate_referral($referral);
     }
 
     /**
@@ -306,7 +306,7 @@ class MedicationService
             return $errors;
         }
 
-        if (! $this->access_policy->can_edit_referral($referral)) {
+        if (! $this->access_policy->can_mutate_referral($referral)) {
             $errors['permission'] = __('You do not have permission to manage medications for this referral.', 'jm-referral-system');
             return $errors;
         }

@@ -31,11 +31,13 @@ use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\ReferralActivityRepository;
 use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralEditController;
+use JMReferral\Referral\ReferralDependencyRepository;
 use JMReferral\Referral\ReferralFilters;
 use JMReferral\Referral\ReferralListController;
 use JMReferral\Referral\ReferralNoteRepository;
 use JMReferral\Referral\ReferralNumberGenerator;
 use JMReferral\Referral\ReferralRepository;
+use JMReferral\Referral\ReferralRetentionService;
 use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
@@ -117,18 +119,25 @@ class Menu
         $workflow_stage_service  ??= new WorkflowStageService($workflow_stage_repository, $repository);
         $workflow_stage_controller ??= new WorkflowStageController($workflow_stage_service);
 
+        $number_generator     = new ReferralNumberGenerator($repository);
+        $activity_repository  = new ReferralActivityRepository();
+        $activity_service     = new ReferralActivityService($activity_repository);
+        $retention_service    = new ReferralRetentionService(
+            $repository,
+            new ReferralDependencyRepository(),
+            $activity_service,
+            $access_policy
+        );
+
         $list_controller ??= new ReferralListController(
             $repository,
             $user_provider,
             $filters,
             $service_type_service,
             $workflow_stage_service,
-            $access_policy
+            $access_policy,
+            $retention_service
         );
-
-        $number_generator     = new ReferralNumberGenerator($repository);
-        $activity_repository  = new ReferralActivityRepository();
-        $activity_service     = new ReferralActivityService($activity_repository);
         $note_repository      = new ReferralNoteRepository();
         $email_service        = new EmailNotificationService();
         $notification_service = new NotificationService($email_service, $user_provider);
@@ -284,7 +293,8 @@ class Menu
             $visit_execution_service,
             $visit_task_service,
             $medication_service,
-            $medication_administration_service
+            $medication_administration_service,
+            $retention_service
         );
 
         $this->dashboard_page            = new DashboardPage(
@@ -304,7 +314,10 @@ class Menu
         $this->operational_alerts_page   = new OperationalAlertsPage($operational_alert_service);
         $this->referrals_page            = new ReferralsPage($list_controller);
         $this->add_referral_page         = new AddReferralPage($user_provider, $service_type_service);
-        $this->settings_page             = new SettingsPage($document_service);
+        $this->settings_page             = new SettingsPage(
+            $document_service,
+            new ReferralDependencyRepository()
+        );
         $this->edit_controller           = $edit_controller;
         $this->view_controller           = $view_controller;
         $this->service_type_controller   = $service_type_controller;

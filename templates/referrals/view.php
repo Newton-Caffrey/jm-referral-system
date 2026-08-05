@@ -161,11 +161,29 @@ $status_display   = ucfirst( str_replace( '_', ' ', $status ) );
 $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 $edit_url = \JMReferral\Referral\ReferralEditController::get_edit_url( $referral_id );
 $delete_url = \JMReferral\Referral\ReferralListController::get_delete_url( $referral_id );
+$restore_url = \JMReferral\Referral\ReferralListController::get_restore_url( $referral_id );
 $can_edit_referral = ! empty( $can_edit_referral );
 $can_delete_referral = ! empty( $can_delete_referral );
+$can_archive_referral = ! empty( $can_archive_referral );
+$can_restore_referral = ! empty( $can_restore_referral );
+$can_add_notes = ! empty( $can_add_notes );
+$is_archived = ! empty( $is_archived );
+$archived_by_name = isset( $archived_by_name ) ? (string) $archived_by_name : '';
+$archived_at = isset( $archived_at ) ? (string) $archived_at : '';
+$archive_reason = isset( $archive_reason ) ? (string) $archive_reason : '';
+$archived_display = '' !== $archived_at
+	? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $archived_at )
+	: '';
 ?>
 <div class="wrap">
-	<h1><?php echo esc_html__( 'Referral Details', 'jm-referral-system' ); ?></h1>
+	<h1>
+		<?php echo esc_html__( 'Referral Details', 'jm-referral-system' ); ?>
+		<?php if ( $is_archived ) : ?>
+			<span class="jmrs-badge" style="display:inline-block;margin-left:8px;padding:2px 8px;background:#646970;color:#fff;border-radius:3px;font-size:12px;vertical-align:middle;">
+				<?php echo esc_html__( 'Archived', 'jm-referral-system' ); ?>
+			</span>
+		<?php endif; ?>
+	</h1>
 
 	<p>
 		<a class="button" href="<?php echo esc_url( $list_url ); ?>">
@@ -176,16 +194,56 @@ $can_delete_referral = ! empty( $can_delete_referral );
 				<?php echo esc_html__( 'Edit Referral', 'jm-referral-system' ); ?>
 			</a>
 		<?php endif; ?>
+		<?php if ( $can_archive_referral ) : ?>
+			<a class="button" href="#jmrs-archive-referral">
+				<?php echo esc_html__( 'Archive', 'jm-referral-system' ); ?>
+			</a>
+		<?php endif; ?>
+		<?php if ( $can_restore_referral ) : ?>
+			<a
+				class="button button-primary"
+				href="<?php echo esc_url( $restore_url ); ?>"
+				onclick="return confirm('<?php echo esc_js( __( 'Restore this archived referral?', 'jm-referral-system' ) ); ?>');"
+			>
+				<?php echo esc_html__( 'Restore', 'jm-referral-system' ); ?>
+			</a>
+		<?php endif; ?>
 		<?php if ( $can_delete_referral ) : ?>
 			<a
 				class="button submitdelete"
 				href="<?php echo esc_url( $delete_url ); ?>"
-				onclick="return confirm('<?php echo esc_js( __( 'Are you sure you want to delete this referral?', 'jm-referral-system' ) ); ?>');"
+				onclick="return confirm('<?php echo esc_js( __( 'Permanently delete this empty referral? This cannot be undone.', 'jm-referral-system' ) ); ?>');"
 			>
-				<?php echo esc_html__( 'Delete Referral', 'jm-referral-system' ); ?>
+				<?php echo esc_html__( 'Permanent Delete', 'jm-referral-system' ); ?>
 			</a>
 		<?php endif; ?>
 	</p>
+
+	<?php if ( $is_archived ) : ?>
+		<div class="notice notice-warning inline">
+			<p>
+				<strong><?php echo esc_html__( 'This referral is archived and read-only.', 'jm-referral-system' ); ?></strong>
+			</p>
+			<p>
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: 1: archive date, 2: archiver name */
+						__( 'Archived on %1$s by %2$s.', 'jm-referral-system' ),
+						$archived_display,
+						'' !== $archived_by_name ? $archived_by_name : __( 'Unknown', 'jm-referral-system' )
+					)
+				);
+				?>
+			</p>
+			<?php if ( '' !== trim( $archive_reason ) ) : ?>
+				<p>
+					<strong><?php echo esc_html__( 'Reason:', 'jm-referral-system' ); ?></strong>
+					<?php echo esc_html( $archive_reason ); ?>
+				</p>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
 
 	<h2><?php echo esc_html__( 'Referral Information', 'jm-referral-system' ); ?></h2>
 	<table class="form-table" role="presentation">
@@ -223,6 +281,7 @@ $can_delete_referral = ! empty( $can_delete_referral );
 			<tr>
 				<th scope="row"><?php echo esc_html__( 'Workflow Stage', 'jm-referral-system' ); ?></th>
 				<td>
+					<?php if ( $can_edit_referral ) : ?>
 					<form method="post" action="" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 						<?php wp_nonce_field( 'jmrs_update_workflow_stage_' . $referral_id, 'jmrs_update_workflow_stage_nonce' ); ?>
 						<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
@@ -242,6 +301,9 @@ $can_delete_referral = ! empty( $can_delete_referral );
 						);
 						?>
 					</form>
+					<?php else : ?>
+						<?php echo '' !== $workflow_stage_name ? esc_html( $workflow_stage_name ) : '—'; ?>
+					<?php endif; ?>
 					<?php if ( '' === $workflow_stage_name && empty( $workflow_stages ) ) : ?>
 						—
 					<?php endif; ?>
@@ -2299,6 +2361,7 @@ $can_delete_referral = ! empty( $can_delete_referral );
 		</table>
 	<?php endif; ?>
 
+	<?php if ( $can_add_notes ) : ?>
 	<form method="post" action="">
 		<?php wp_nonce_field( 'jmrs_add_note_' . $referral_id, 'jmrs_add_note_nonce' ); ?>
 		<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
@@ -2333,6 +2396,43 @@ $can_delete_referral = ! empty( $can_delete_referral );
 		);
 		?>
 	</form>
+	<?php endif; ?>
+
+	<?php if ( $can_archive_referral ) : ?>
+		<h2 id="jmrs-archive-referral"><?php echo esc_html__( 'Archive Referral', 'jm-referral-system' ); ?></h2>
+		<p class="description">
+			<?php echo esc_html__( 'Archiving preserves all linked clinical and operational records. Permanent deletion is only allowed when a referral has no linked records.', 'jm-referral-system' ); ?>
+		</p>
+		<form method="post" action="" onsubmit="return confirm('<?php echo esc_js( __( 'Archive this referral? Clinical records will be preserved but the referral will become read-only.', 'jm-referral-system' ) ); ?>');">
+			<?php wp_nonce_field( 'jmrs_archive_referral_' . $referral_id, 'jmrs_archive_nonce' ); ?>
+			<input type="hidden" name="referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+			<table class="form-table" role="presentation">
+				<tbody>
+					<tr>
+						<th scope="row">
+							<label for="jmrs_archive_reason"><?php echo esc_html__( 'Archive reason', 'jm-referral-system' ); ?></label>
+						</th>
+						<td>
+							<textarea
+								name="archive_reason"
+								id="jmrs_archive_reason"
+								class="large-text"
+								rows="3"
+								required
+							></textarea>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<?php
+			submit_button(
+				__( 'Archive Referral', 'jm-referral-system' ),
+				'secondary',
+				'jmrs_archive_referral'
+			);
+			?>
+		</form>
+	<?php endif; ?>
 
 	<?php if ( ! empty( $can_download_documents ) || ! empty( $can_upload_documents ) ) : ?>
 		<h2><?php echo esc_html__( 'Documents', 'jm-referral-system' ); ?></h2>

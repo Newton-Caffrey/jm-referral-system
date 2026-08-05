@@ -214,6 +214,7 @@ class MedicationAdministrationRepository
         $where         = [
             "a.administration_status IN ('refused', 'omitted', 'unavailable', 'error')",
             '(DATE(a.administered_time) = %s OR (a.administered_time IS NULL AND DATE(a.created_at) = %s))',
+            'r.archived_at IS NULL',
         ];
         $params = [$date, $date];
 
@@ -250,6 +251,7 @@ class MedicationAdministrationRepository
         $where       = [
             "a.administration_status IN ('refused', 'omitted', 'unavailable', 'error')",
             '(DATE(a.administered_time) = %s OR (a.administered_time IS NULL AND DATE(a.created_at) = %s))',
+            'r.archived_at IS NULL',
         ];
         $params = [$date, $date];
 

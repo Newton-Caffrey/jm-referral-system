@@ -116,7 +116,7 @@ class ReferralService
             return false;
         }
 
-        if (! $this->access_policy->can_edit_referral($existing)) {
+        if (! $this->access_policy->can_mutate_referral($existing)) {
             return false;
         }
 
@@ -210,7 +210,7 @@ class ReferralService
             return false;
         }
 
-        if (! $this->access_policy->can_edit_referral($existing)) {
+        if (! $this->access_policy->can_mutate_referral($existing)) {
             return false;
         }
 
@@ -312,7 +312,7 @@ class ReferralService
                 : '';
 
             $recent[$index]['can_edit'] = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
-                && $this->access_policy->can_edit_referral($referral);
+                && $this->access_policy->can_mutate_referral($referral);
             $recent[$index]['can_delete'] = Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)
                 && $this->access_policy->can_edit_referral($referral);
             $recent[$index]['view_url'] = ReferralViewController::get_view_url(

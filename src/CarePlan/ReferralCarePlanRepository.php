@@ -156,6 +156,7 @@ class ReferralCarePlanRepository
             'cp.review_date IS NOT NULL',
             "cp.review_date != ''",
             'cp.review_date < %s',
+            'r.archived_at IS NULL',
         ];
         $params = [$today];
 
@@ -194,6 +195,7 @@ class ReferralCarePlanRepository
         $care_team  = Tables::care_team_table();
         $where      = [
             "cp.plan_status = 'active'",
+            'r.archived_at IS NULL',
             "NOT EXISTS (
                 SELECT 1 FROM {$care_team} t
                 WHERE t.referral_id = cp.referral_id

@@ -94,6 +94,16 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Full and section CSV exports
 - [x] Print-friendly report layout
 
+### Data Retention & Safe Deletion ✅
+
+- [x] Archive-first retention (`archived_at` / reason; no cascading clinical delete)
+- [x] Safe permanent delete for empty referrals only
+- [x] Archive / restore capabilities and UI
+- [x] Active / Archived / All list filter; archived excluded from ops defaults
+- [x] Settings Data Integrity Check (counts only)
+- [x] Uninstall: preserve data by default; opt-in wipe constant
+- [x] `docs/DATA_RETENTION_POLICY.md`
+
 ---
 
 ## In Progress 🚧
@@ -107,6 +117,13 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [ ] Staff workload views
 - [ ] Scheduled/email report delivery
 - [ ] Deeper referral analytics exports
+
+### Hardening (remaining)
+
+- [ ] List pagination / performance (audit Phase 5.3b)
+- [ ] Chart.js local pin
+- [ ] Legacy Media Library cleanup after private migration
+- [ ] Timed retention purge (only after legal/compliance sign-off)
 
 ---
 

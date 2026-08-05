@@ -266,6 +266,7 @@ class VisitTaskRepository
         $referrals   = Tables::referrals_table();
         $where       = [
             "t.task_status IN ('refused', 'not_completed')",
+            'r.archived_at IS NULL',
         ];
         $params = [];
 

@@ -62,7 +62,7 @@ class ReferralEditController
             wp_die(esc_html__('Referral not found.', 'jm-referral-system'));
         }
 
-        if (! $this->access_policy->can_edit_referral($referral)) {
+        if (! $this->access_policy->can_mutate_referral($referral)) {
             wp_die(esc_html__('You do not have permission to edit this referral.', 'jm-referral-system'));
         }
 
@@ -105,7 +105,7 @@ class ReferralEditController
             wp_die(esc_html__('Referral not found.', 'jm-referral-system'));
         }
 
-        if (! $this->access_policy->can_edit_referral($existing)) {
+        if (! $this->access_policy->can_mutate_referral($existing)) {
             wp_die(esc_html__('You do not have permission to edit this referral.', 'jm-referral-system'));
         }
 

@@ -90,7 +90,7 @@ class ScheduleGenerationService
         }
 
         $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
+        if (null === $referral || ! $this->access_policy->can_mutate_referral($referral)) {
             $errors['permission'] = __('You do not have permission to generate visits for this referral.', 'jm-referral-system');
             return ['errors' => $errors];
         }

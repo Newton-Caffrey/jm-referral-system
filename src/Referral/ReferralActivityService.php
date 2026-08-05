@@ -10,6 +10,38 @@ class ReferralActivityService
     }
 
     /**
+     * Logs a custom activity action for a referral.
+     */
+    public function log_action(int $referral_id, string $action, string $description): void
+    {
+        $this->log($referral_id, $action, $description);
+    }
+
+    /**
+     * Logs that a referral was archived.
+     */
+    public function log_archived(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'referral_archived',
+            __('Referral archived', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * Logs that a referral was restored from archive.
+     */
+    public function log_restored(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'referral_restored',
+            __('Referral restored', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Logs that a referral was created.
      */
     public function log_created(int $referral_id): void

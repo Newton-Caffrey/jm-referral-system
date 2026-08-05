@@ -11,7 +11,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.14.0';
+    public const DB_VERSION = '2.15.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -133,6 +133,12 @@ class Migrator
             // Private document storage columns via Tables::create(); ensure directory exists.
             $storage = new PrivateDocumentStorage();
             $storage->ensure_ready();
+        }
+
+        if (version_compare($from_version, '2.15.0', '<')) {
+            // Archive columns on referrals via Tables::create(); sync archive/restore caps.
+            Capabilities::grant_to_administrators();
+            Roles::register();
         }
     }
 

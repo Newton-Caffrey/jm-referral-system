@@ -75,27 +75,29 @@ Do **not** place live client health data into production until Critical findings
 
 | Field | Detail |
 | --- | --- |
-| **Severity** | Critical |
+| **Severity** | Critical → **Partially remediated (Phase 5.3)** |
+| **Status** | Archive-first retention: permanent delete is blocked when any clinical/operational dependent exists; empty referrals may be deleted after dependency check. Soft-archive via `archived_at` / `archived_by` / `archive_reason`. No cascading clinical delete. See `docs/DATA_RETENTION_POLICY.md`. |
 | **Category** | Data integrity / Healthcare data |
-| **Affected** | `ReferralRepository::delete`, `ReferralListController::handle_delete`; child tables (notes, activity, documents, assessments, care plans/versions/reviews, visits, tasks, schedules, care team, medications, MAR) |
-| **Explanation** | Deleting a referral removes only the `jmrs_referrals` row. No FK constraints; no application cascade; documents and WP attachments remain. |
-| **Real-world risk** | Orphaned health records remain queryable/restorable inconsistently; incomplete erasure; reporting/alerts may behave oddly. |
-| **Recommended fix** | Explicit cascade (or soft-delete) with attachment cleanup; transaction; audit log of erasure. |
-| **Hardening phase** | 5.2 / 5.4 |
-| **Break risk** | High if cascade is wrong — define retention policy first. |
+| **Affected** | `ReferralRetentionService`, `ReferralDependencyRepository`, `ReferralListController`; child tables remain preserved on archive |
+| **Explanation** | Broad cascade deletion of healthcare records is intentionally **not** implemented. Orphan risk from **pre-5.3** deletes may still exist; Settings → Data Integrity Check reports counts only. |
+| **Real-world risk** | Reduced for new deletes. Legacy orphans and incomplete erasure vs legal “right to erase” still need process outside the plugin. |
+| **Recommended next steps** | Legal retention periods; optional timed purge design; orphan repair tooling (manual/controlled). |
+| **Hardening phase** | 5.3 (archive-first); further erasure work later |
+| **Break risk** | Medium — staff must use Archive for records with history. |
 
 ### AUDIT-C-004 — Uninstall leaves all clinical data and media
 
 | Field | Detail |
 | --- | --- |
-| **Severity** | Critical |
+| **Severity** | Critical → **Partially remediated (Phase 5.3)** |
+| **Status** | Default uninstall still preserves tables and private files (roles/caps only). Opt-in wipe via `JMRS_DELETE_DATA_ON_UNINSTALL` strictly `true`. Documented in Settings and `docs/DATA_RETENTION_POLICY.md`. Legacy Media Library attachments are never auto-deleted. |
 | **Category** | Data lifecycle / Security |
-| **Affected** | `uninstall.php`, `Roles::remove`, `Capabilities::revoke_from_administrators` |
-| **Explanation** | Uninstall removes custom roles and admin caps only. All `jmrs_*` tables, options (`jmrs_db_version`), transients, and uploaded files remain. |
-| **Real-world risk** | Site owners assume delete removes PHI; data persists on shared hosting. |
-| **Recommended fix** | Document retention clearly; optional controlled wipe with confirmation; never silent-delete without backup guidance. |
-| **Hardening phase** | 5.2 / 5.7 |
-| **Break risk** | High if auto-wipe is added without backup — prefer explicit opt-in wipe. |
+| **Affected** | `uninstall.php` |
+| **Explanation** | Safe default avoids accidental PHI wipe on plugin delete. Explicit constant enables disposable-site cleanup. |
+| **Real-world risk** | Operators who expect automatic wipe must set the constant after backup; host snapshots may still retain data. |
+| **Recommended next steps** | Host backup/restore runbook; staff training. |
+| **Hardening phase** | 5.3 |
+| **Break risk** | High if constant is enabled on production without backup. |
 
 ---
 
@@ -578,23 +580,34 @@ Do **not** place live client health data into production until Critical findings
 | **Risk** | High (security) |
 | **Order** | **First** |
 | **Tests** | Upload/download ACL; Linux email smoke; export spreadsheet open; role matrix smoke |
-| **Progress** | **5.2.1** private documents implemented. **5.2.2** email path, CSV formula escape, status/source allowlists, AccessPolicy delete/upload, MAR witness validation, secure download/error messaging implemented. Still open in 5.2+: Chart.js local pin, delete cascade / uninstall policy (C-003/C-004). |
+| **Progress** | **5.2.1** private documents implemented. **5.2.2** email path, CSV formula escape, status/source allowlists, AccessPolicy delete/upload, MAR witness validation, secure download/error messaging implemented. Still open in 5.2+: Chart.js local pin. |
 
-## Phase 5.3: Pagination and Performance
+## Phase 5.3: Data Retention, Archiving and Safe Referral Deletion
+
+| | |
+| --- | --- |
+| **Scope** | Archive-first retention; safe empty-referral delete; archive/restore caps; list Active/Archived/All; exclude archived from dashboard/alerts/current reports; integrity diagnostic; uninstall opt-in wipe |
+| **Modules** | Referrals, AccessPolicy, Reports, Alerts, Settings, Uninstall |
+| **Risk** | High (data lifecycle) |
+| **Order** | After 5.2 security |
+| **Tests** | Empty delete; blocked delete with dependents; archive/restore; archived mutation rejection; filters; CSV archive columns; uninstall with/without constant |
+| **Progress** | **Implemented** (DB `2.15.0`). No timed retention purge; no auto-orphan repair; no cascading clinical delete. |
+
+## Phase 5.3b: Pagination and Performance
 
 | | |
 | --- | --- |
 | **Scope** | Referral list pagination; chunked export; View visit batching/pagination; alert/report query reduction; version list without snapshots |
 | **Modules** | Referral list/view, Reports, Alerts, Care plan versions |
 | **Risk** | Medium |
-| **Order** | Second |
+| **Order** | After retention |
 | **Tests** | Load tests at 1k referrals / 10k visits; View timing |
 
 ## Phase 5.4: Data Integrity and Migration Hardening
 
 | | |
 | --- | --- |
-| **Scope** | Cascade/soft-delete; UNIQUE referral_number; MAR/task uniqueness; integrity repair scripts; timezone-safe reporting dates |
+| **Scope** | UNIQUE referral_number; MAR/task uniqueness; optional integrity repair scripts; timezone-safe reporting dates; further erasure tooling |
 | **Modules** | All repositories, Migrator |
 | **Risk** | High (data) |
 | **Order** | Third (after backup strategy) |

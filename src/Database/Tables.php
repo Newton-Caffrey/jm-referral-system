@@ -219,6 +219,9 @@ class Tables
             care_requirements LONGTEXT NULL,
             service_type_id BIGINT UNSIGNED NULL,
             workflow_stage_id BIGINT UNSIGNED NULL,
+            archived_at DATETIME NULL,
+            archived_by BIGINT UNSIGNED NULL,
+            archive_reason TEXT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -227,7 +230,9 @@ class Tables
             KEY assigned_to (assigned_to),
             KEY referral_source (referral_source),
             KEY service_type_id (service_type_id),
-            KEY workflow_stage_id (workflow_stage_id)
+            KEY workflow_stage_id (workflow_stage_id),
+            KEY archived_at (archived_at),
+            KEY archived_by (archived_by)
         ) {$charset};";
 
         dbDelta($sql);

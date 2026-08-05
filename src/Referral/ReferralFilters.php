@@ -21,6 +21,12 @@ class ReferralFilters
         'urgent',
     ];
 
+    private const ALLOWED_ARCHIVE_SCOPES = [
+        'active',
+        'archived',
+        'all',
+    ];
+
     public function __construct(
         private UserProvider $user_provider,
         private AccessPolicy $access_policy
@@ -33,11 +39,14 @@ class ReferralFilters
      * When the user is scoped to assigned referrals, assignee request filters are
      * ignored so they cannot bypass record-level access.
      *
+     * Default archive_scope is active (non-archived only).
+     *
      * @return array{
      *     search: string,
      *     status: string,
      *     priority: string,
-     *     assigned_to: int
+     *     assigned_to: int,
+     *     archive_scope: string
      * }
      */
     public function from_request(): array
@@ -62,6 +71,14 @@ class ReferralFilters
             $priority = '';
         }
 
+        $archive_scope = isset($_GET['jmrs_archive_scope'])
+            ? sanitize_key(wp_unslash($_GET['jmrs_archive_scope']))
+            : 'active';
+
+        if (! in_array($archive_scope, self::ALLOWED_ARCHIVE_SCOPES, true)) {
+            $archive_scope = 'active';
+        }
+
         $assigned_to = 0;
 
         if (! $this->access_policy->should_scope_to_assigned()) {
@@ -75,10 +92,11 @@ class ReferralFilters
         }
 
         return [
-            'search'      => $search,
-            'status'      => $status,
-            'priority'    => $priority,
-            'assigned_to' => $assigned_to,
+            'search'         => $search,
+            'status'         => $status,
+            'priority'       => $priority,
+            'assigned_to'    => $assigned_to,
+            'archive_scope'  => $archive_scope,
         ];
     }
 }

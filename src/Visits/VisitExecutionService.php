@@ -274,7 +274,7 @@ class VisitExecutionService
             return false;
         }
 
-        return $this->access_policy->can_edit_referral($referral);
+        return $this->access_policy->can_mutate_referral($referral);
     }
 
     /**

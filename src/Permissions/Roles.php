@@ -40,6 +40,8 @@ class Roles
                     Capabilities::CREATE_REFERRALS,
                     Capabilities::EDIT_REFERRALS,
                     Capabilities::DELETE_REFERRALS,
+                    Capabilities::ARCHIVE_REFERRALS,
+                    Capabilities::RESTORE_REFERRALS,
                     Capabilities::ASSIGN_REFERRALS,
                     Capabilities::ADD_NOTES,
                     Capabilities::EXPORT_REFERRALS,

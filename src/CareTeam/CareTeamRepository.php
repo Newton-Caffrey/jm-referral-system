@@ -251,15 +251,18 @@ class CareTeamRepository
             return 0;
         }
 
-        $table = Tables::care_team_table();
+        $table     = Tables::care_team_table();
+        $referrals = Tables::referrals_table();
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names are trusted.
         $count = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(DISTINCT referral_id)
-                FROM {$table}
-                WHERE user_id = %d
-                  AND assignment_status = %s",
+                "SELECT COUNT(DISTINCT t.referral_id)
+                FROM {$table} t
+                INNER JOIN {$referrals} r ON r.id = t.referral_id
+                WHERE t.user_id = %d
+                  AND t.assignment_status = %s
+                  AND r.archived_at IS NULL",
                 $user_id,
                 'active'
             )

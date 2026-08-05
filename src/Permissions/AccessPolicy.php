@@ -53,6 +53,34 @@ class AccessPolicy
     }
 
     /**
+     * Whether the referral is archived (soft-retained).
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function is_referral_archived(array $referral): bool
+    {
+        $archived_at = $referral['archived_at'] ?? null;
+
+        return null !== $archived_at && '' !== (string) $archived_at;
+    }
+
+    /**
+     * Whether the user may mutate clinical/operational data on the referral.
+     *
+     * Archived referrals are read-only aside from restore/archive flows.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_mutate_referral(array $referral, ?int $user_id = null): bool
+    {
+        if ($this->is_referral_archived($referral)) {
+            return false;
+        }
+
+        return $this->can_edit_referral($referral, $user_id);
+    }
+
+    /**
      * Whether list/query results should be limited to the user's assigned referrals.
      */
     public function should_scope_to_assigned(?int $user_id = null): bool

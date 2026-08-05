@@ -348,6 +348,7 @@ class CareVisitRepository
         $referrals = Tables::referrals_table();
         $where     = [
             "v.visit_status IN ('scheduled', 'confirmed', 'in_progress')",
+            'r.archived_at IS NULL',
             '(
                 v.visit_date < %s
                 OR (
@@ -397,6 +398,7 @@ class CareVisitRepository
             'v.visit_outcome IS NOT NULL',
             "v.visit_outcome != ''",
             '(v.reviewed_at IS NULL OR v.reviewed_at = \'\')',
+            'r.archived_at IS NULL',
         ];
         $params = [];
 

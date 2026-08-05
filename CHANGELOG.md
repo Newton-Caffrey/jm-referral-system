@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 5.3 data retention: archive / restore / safe permanent delete (`ReferralRetentionService`)
+- Referral columns `archived_at`, `archived_by`, `archive_reason` (DB `2.15.0`)
+- Capabilities `jmrs_archive_referrals` and `jmrs_restore_referrals` (WP Admin, JM Admin, Referral Manager)
+- Referral list Active / Archived / All filter (default Active)
+- Settings → Data Integrity Check (counts only)
+- `docs/DATA_RETENTION_POLICY.md`
+- Uninstall opt-in data wipe via `JMRS_DELETE_DATA_ON_UNINSTALL`
 - Private referral document storage under `uploads/jmrs-private/` (Phase 5.2.1)
 - Document table columns: `storage_type`, `relative_path`, `stored_name`, `checksum_sha256` (DB `2.14.0`)
 - Settings → Private Document Migration batch tool (copies legacy Media Library files; does not delete originals)
@@ -19,17 +26,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Permanent referral delete blocked when linked clinical/operational records exist (archive instead)
+- Archived referrals excluded by default from dashboard, alerts, scheduling counts, and current-state report metrics
+- Clinical mutation services reject changes on archived referrals (`AccessPolicy::can_mutate_referral`)
+- CSV referral export includes Archived / Archived At / Archive Reason and follows archive filter
+- Default uninstall preserves tables and private files
 - New uploads no longer create public Media Library attachments
 - Document downloads stream from private storage or legacy attachments with stricter cache headers
 - Settings page documents storage design, server access-control limits, and backup requirements
 - Email templates resolve from `src/Notifications/Templates/` on Linux and Windows
 - Referral create/edit sanitize status, referral source, and preferred contact against allowlists
-- Referral delete and document upload require `can_edit_referral`
+- Referral delete and document upload require `can_edit_referral` / mutate checks
 - MAR witness user IDs must be capability-bearing staff
 - Security-related download/export failures use generic user messages
 
 ### Security
 
+- Archive-first retention reduces accidental permanent deletion of referrals with health records
 - New sensitive files are not exposed via public uploads URLs or the Media Library
 - Legacy documents remain potentially public until migrated and originals are cleaned up in a later phase
 - CSV exports neutralize leading `= + - @` / tab / CR in string cells
