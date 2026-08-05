@@ -58,6 +58,7 @@ Milestone release covering the foundation, security, and clinical operations del
 - Reporting foundation with KPI cards and date-range filters
 - Capability `jmrs_view_reports` for Administrators, JM Administrators, Referral Managers, and Care Coordinators
 - Dashboard Reports shortcut card
+- Report trends and analytics sections (referral, visit, medication, task, staff, compliance) with chart-ready datasets
 
 ### Changed
 

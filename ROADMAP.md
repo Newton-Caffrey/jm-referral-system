@@ -85,6 +85,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Capability-gated Reports admin page with date-range filters
 - [x] KPI cards for referrals, clients, assessments, care plans, visits, medication, and compliance
 - [x] Dashboard Reports shortcut
+- [x] Trends and analytics sections with summary tables and chart-ready datasets
 
 ---
 
@@ -96,9 +97,9 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 
 ### Reporting
 
-- [ ] Advanced reports
+- [ ] Advanced reports / chart library integration
 - [ ] Staff workload views
-- [ ] Referral analytics and performance metrics
+- [ ] Referral analytics and performance metrics (export workflows)
 
 ---
 

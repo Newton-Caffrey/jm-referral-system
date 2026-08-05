@@ -224,7 +224,8 @@ class Menu
         $report_service = new ReportService(
             new ReportRepository(),
             $access_policy,
-            $operational_alert_service
+            $operational_alert_service,
+            $user_provider
         );
         $this->report_controller = new ReportController($report_service);
 

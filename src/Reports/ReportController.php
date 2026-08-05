@@ -41,6 +41,7 @@ class ReportController
         );
 
         $kpis          = $result['kpis'];
+        $sections      = $result['sections'] ?? [];
         $range_labels  = $result['range_labels'];
         $filter_range  = $result['range'];
         $filter_start  = $result['start_date'];

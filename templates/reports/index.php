@@ -12,6 +12,7 @@
  * @var array<string, string> $filter_errors
  * @var string $reports_url
  * @var string $alerts_url
+ * @var array<int, array<string, mixed>> $sections
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -26,6 +27,7 @@ $filter_end    = (string) ( $filter_end ?? '' );
 $filter_errors = is_array( $filter_errors ?? null ) ? $filter_errors : array();
 $reports_url   = (string) ( $reports_url ?? '' );
 $alerts_url    = (string) ( $alerts_url ?? '' );
+$sections      = is_array( $sections ?? null ) ? $sections : array();
 
 $kpi = static function ( string $key ) use ( $kpis ): int {
 	return absint( $kpis[ $key ] ?? 0 );
@@ -60,6 +62,10 @@ $kpi = static function ( string $key ) use ( $kpis ): int {
 			margin: 0 0 12px;
 			font-size: 1.15em;
 		}
+		.jmrs-report-section h3 {
+			margin: 16px 0 8px;
+			font-size: 1em;
+		}
 		.jmrs-report-kpis {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -89,6 +95,76 @@ $kpi = static function ( string $key ) use ( $kpis ): int {
 		.jmrs-report-range-note {
 			margin: 0 0 16px;
 			color: #646970;
+		}
+		.jmrs-report-dataset {
+			background: #fff;
+			border: 1px solid #c3c4c7;
+			padding: 12px 16px;
+			margin: 0 0 16px;
+		}
+		.jmrs-report-dataset-note {
+			margin: 0 0 10px;
+			color: #646970;
+			font-size: 13px;
+		}
+		.jmrs-report-dataset-grid {
+			display: grid;
+			grid-template-columns: minmax(220px, 1fr) minmax(220px, 1.2fr);
+			gap: 16px;
+		}
+		@media (max-width: 782px) {
+			.jmrs-report-dataset-grid { grid-template-columns: 1fr; }
+		}
+		.jmrs-chart-placeholder {
+			border: 1px dashed #c3c4c7;
+			background: #f6f7f7;
+			padding: 12px;
+		}
+		.jmrs-chart-placeholder-title {
+			margin: 0 0 8px;
+			font-size: 12px;
+			font-weight: 600;
+			color: #646970;
+			text-transform: uppercase;
+			letter-spacing: 0.03em;
+		}
+		.jmrs-chart-bar-row {
+			display: grid;
+			grid-template-columns: minmax(80px, 140px) 1fr auto;
+			gap: 8px;
+			align-items: center;
+			margin: 0 0 6px;
+		}
+		.jmrs-chart-bar-label {
+			font-size: 12px;
+			color: #1d2327;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+		.jmrs-chart-bar-track {
+			background: #dcdcde;
+			height: 10px;
+			border-radius: 2px;
+			overflow: hidden;
+		}
+		.jmrs-chart-bar-fill {
+			display: block;
+			height: 100%;
+			background: #2271b1;
+			min-width: 0;
+		}
+		.jmrs-chart-bar-value {
+			font-size: 12px;
+			font-weight: 600;
+			color: #1d2327;
+			min-width: 2.5em;
+			text-align: right;
+		}
+		.jmrs-chart-empty {
+			margin: 0;
+			color: #646970;
+			font-size: 13px;
 		}
 	</style>
 
@@ -248,4 +324,96 @@ $kpi = static function ( string $key ) use ( $kpis ): int {
 			</p>
 		<?php endif; ?>
 	</section>
+
+	<?php if ( ! empty( $sections ) ) : ?>
+		<hr />
+		<h2><?php echo esc_html__( 'Trends & Analytics', 'jm-referral-system' ); ?></h2>
+
+		<?php foreach ( $sections as $section ) : ?>
+			<?php
+			$section_title = (string) ( $section['title'] ?? '' );
+			$datasets      = is_array( $section['datasets'] ?? null ) ? $section['datasets'] : array();
+			?>
+			<section class="jmrs-report-section">
+				<h2><?php echo esc_html( $section_title ); ?></h2>
+
+				<?php foreach ( $datasets as $dataset ) : ?>
+					<?php
+					$dataset_title = (string) ( $dataset['title'] ?? '' );
+					$dataset_note  = (string) ( $dataset['note'] ?? '' );
+					$dataset_rows  = is_array( $dataset['rows'] ?? null ) ? $dataset['rows'] : array();
+					$chart         = is_array( $dataset['chart'] ?? null ) ? $dataset['chart'] : array();
+					$chart_labels  = is_array( $chart['labels'] ?? null ) ? $chart['labels'] : array();
+					$chart_values  = is_array( $chart['values'] ?? null ) ? $chart['values'] : array();
+					$chart_max     = isset( $chart['max'] ) ? (float) $chart['max'] : 0.0;
+					$export        = is_array( $dataset['export'] ?? null ) ? $dataset['export'] : array();
+					$export_cols   = is_array( $export['columns'] ?? null ) ? $export['columns'] : array();
+					$export_rows   = is_array( $export['rows'] ?? null ) ? $export['rows'] : array();
+					?>
+					<div
+						class="jmrs-report-dataset"
+						data-dataset-id="<?php echo esc_attr( (string) ( $dataset['id'] ?? '' ) ); ?>"
+						data-chart-labels="<?php echo esc_attr( wp_json_encode( $chart_labels ) ); ?>"
+						data-chart-values="<?php echo esc_attr( wp_json_encode( $chart_values ) ); ?>"
+						data-export-columns="<?php echo esc_attr( wp_json_encode( $export_cols ) ); ?>"
+						data-export-rows="<?php echo esc_attr( wp_json_encode( $export_rows ) ); ?>"
+					>
+						<h3><?php echo esc_html( $dataset_title ); ?></h3>
+						<?php if ( '' !== $dataset_note ) : ?>
+							<p class="jmrs-report-dataset-note"><?php echo esc_html( $dataset_note ); ?></p>
+						<?php endif; ?>
+
+						<div class="jmrs-report-dataset-grid">
+							<div>
+								<table class="widefat striped">
+									<thead>
+										<tr>
+											<th scope="col"><?php echo esc_html__( 'Label', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Value', 'jm-referral-system' ); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php if ( empty( $dataset_rows ) ) : ?>
+											<tr>
+												<td colspan="2"><?php echo esc_html__( 'No data for this range.', 'jm-referral-system' ); ?></td>
+											</tr>
+										<?php else : ?>
+											<?php foreach ( $dataset_rows as $row ) : ?>
+												<tr>
+													<td><?php echo esc_html( (string) ( $row['label'] ?? '' ) ); ?></td>
+													<td><?php echo esc_html( (string) ( $row['value'] ?? 0 ) ); ?></td>
+												</tr>
+											<?php endforeach; ?>
+										<?php endif; ?>
+									</tbody>
+								</table>
+							</div>
+							<div class="jmrs-chart-placeholder" aria-label="<?php echo esc_attr__( 'Chart placeholder', 'jm-referral-system' ); ?>">
+								<p class="jmrs-chart-placeholder-title"><?php echo esc_html__( 'Chart placeholder', 'jm-referral-system' ); ?></p>
+								<?php if ( empty( $chart_labels ) ) : ?>
+									<p class="jmrs-chart-empty"><?php echo esc_html__( 'No chart data.', 'jm-referral-system' ); ?></p>
+								<?php else : ?>
+									<?php foreach ( $chart_labels as $idx => $label ) : ?>
+										<?php
+										$value   = isset( $chart_values[ $idx ] ) ? (float) $chart_values[ $idx ] : 0.0;
+										$percent = $chart_max > 0 ? min( 100, ( $value / $chart_max ) * 100 ) : 0;
+										?>
+										<div class="jmrs-chart-bar-row">
+											<span class="jmrs-chart-bar-label" title="<?php echo esc_attr( (string) $label ); ?>">
+												<?php echo esc_html( (string) $label ); ?>
+											</span>
+											<span class="jmrs-chart-bar-track">
+												<span class="jmrs-chart-bar-fill" style="width: <?php echo esc_attr( (string) round( $percent, 1 ) ); ?>%;"></span>
+											</span>
+											<span class="jmrs-chart-bar-value"><?php echo esc_html( (string) $value ); ?></span>
+										</div>
+									<?php endforeach; ?>
+								<?php endif; ?>
+							</div>
+						</div>
+					</div>
+				<?php endforeach; ?>
+			</section>
+		<?php endforeach; ?>
+	<?php endif; ?>
 </div>
