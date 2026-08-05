@@ -112,8 +112,8 @@ class MedicationController
             echo '<div class="notice notice-success is-dismissible"><p>';
             echo esc_html(
                 $created
-                    ? __('Medication added.', 'jm-referral-system')
-                    : __('Medication updated.', 'jm-referral-system')
+                    ? __('Medication created successfully.', 'jm-referral-system')
+                    : __('Medication updated successfully.', 'jm-referral-system')
             );
             echo '</p></div>';
         }
@@ -129,7 +129,7 @@ class MedicationController
         }
 
         echo '<div class="notice notice-error is-dismissible"><p>';
-        echo esc_html__('Please correct the medication errors below.', 'jm-referral-system');
+        echo esc_html__('Please fix the following errors:', 'jm-referral-system');
         echo '</p><ul>';
         foreach ($state['errors'] as $message) {
             echo '<li>' . esc_html((string) $message) . '</li>';

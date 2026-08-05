@@ -61,8 +61,7 @@ $add_url       = admin_url( 'admin.php?page=jm-referrals-service-types-add' );
 								|
 								<a
 									href="<?php echo esc_url( $delete_url ); ?>"
-									class="submitdelete"
-									onclick="return confirm('<?php echo esc_js( __( 'Are you sure you want to delete this service type?', 'jm-referral-system' ) ); ?>');"
+									class="jmrs-button-danger" data-jmrs-confirm="<?php echo esc_attr__( 'Delete this service type? This cannot be undone.', 'jm-referral-system' ); ?>"
 								>
 									<?php echo esc_html__( 'Delete', 'jm-referral-system' ); ?>
 								</a>

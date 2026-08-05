@@ -174,7 +174,7 @@ class ScheduleController
             echo '<div class="notice notice-success is-dismissible"><p>';
             echo esc_html(
                 $created
-                    ? __('Schedule saved successfully.', 'jm-referral-system')
+                    ? __('Schedule created successfully.', 'jm-referral-system')
                     : __('Schedule updated successfully.', 'jm-referral-system')
             );
             echo '</p></div>';

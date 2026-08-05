@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 5.5: shared admin CSS/JS (`assets/css/admin.css`, `assets/js/admin.js`) on all plugin screens
+- Phase 5.5: `UiHelper` badges and empty states; `docs/UI_STYLE_GUIDE.md` and `docs/ACCESSIBILITY_REVIEW.md`
 - Phase 5.4.2B: Referral View visit pagination (20/50/100) with SQL LIMIT/OFFSET
 - Phase 5.4.2B: bulk visit task / MAR / schedule-name / staff-name loading on View
 - Phase 5.4.2B: schedule generation batch insert + batch visit tasks; hard max 2,000 occurrences/request
@@ -33,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Consistent notice wording (`… successfully.` / `Please fix the following errors:`)
+- Standardized primary/secondary/danger buttons, confirms (`data-jmrs-confirm`), and double-submit busy labels
+- Priority/status/archive/alert badges and improved empty states on list, view, and alerts
 - Referral View GET no longer generates visit tasks (create/generate paths only)
 - Activity/notes limited to 50; care-plan reviews/versions to 25; version list omits snapshot payloads
 - Schedule generation validates once, prefetches care plan, bulk-skips existing `generation_key`s
@@ -53,6 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Referral delete and document upload require `can_edit_referral` / mutate checks
 - MAR witness user IDs must be capability-bearing staff
 - Security-related download/export failures use generic user messages
+
+### Fixed
+
+- Phase 5.5 double-submit guard: preserve clicked submit button name/value via hidden input before disabling (fixes Update Referral and other named submit actions)
 
 ### Security
 

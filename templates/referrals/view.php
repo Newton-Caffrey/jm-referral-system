@@ -189,14 +189,14 @@ $archived_display = '' !== $archived_at
 <div class="wrap">
 	<h1>
 		<?php echo esc_html__( 'Referral Details', 'jm-referral-system' ); ?>
-		<?php if ( $is_archived ) : ?>
-			<span class="jmrs-badge" style="display:inline-block;margin-left:8px;padding:2px 8px;background:#646970;color:#fff;border-radius:3px;font-size:12px;vertical-align:middle;">
-				<?php echo esc_html__( 'Archived', 'jm-referral-system' ); ?>
-			</span>
-		<?php endif; ?>
+		<?php
+		if ( $is_archived ) {
+			echo \JMReferral\Support\UiHelper::badge( __( 'Archived', 'jm-referral-system' ), 'archive' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes.
+		}
+		?>
 	</h1>
 
-	<p>
+	<p class="jmrs-page-actions">
 		<a class="button" href="<?php echo esc_url( $list_url ); ?>">
 			<?php echo esc_html__( 'Back to Referrals', 'jm-referral-system' ); ?>
 		</a>
@@ -206,7 +206,7 @@ $archived_display = '' !== $archived_at
 			</a>
 		<?php endif; ?>
 		<?php if ( $can_archive_referral ) : ?>
-			<a class="button" href="#jmrs-archive-referral">
+			<a class="button jmrs-button-danger" href="#jmrs-archive-referral">
 				<?php echo esc_html__( 'Archive', 'jm-referral-system' ); ?>
 			</a>
 		<?php endif; ?>
@@ -214,18 +214,20 @@ $archived_display = '' !== $archived_at
 			<a
 				class="button button-primary"
 				href="<?php echo esc_url( $restore_url ); ?>"
-				onclick="return confirm('<?php echo esc_js( __( 'Restore this archived referral?', 'jm-referral-system' ) ); ?>');"
+				data-jmrs-confirm="<?php echo esc_attr__( 'Restore this archived referral?', 'jm-referral-system' ); ?>"
+				data-jmrs-busy="<?php echo esc_attr__( 'Restoring...', 'jm-referral-system' ); ?>"
 			>
 				<?php echo esc_html__( 'Restore', 'jm-referral-system' ); ?>
 			</a>
 		<?php endif; ?>
 		<?php if ( $can_delete_referral ) : ?>
 			<a
-				class="button submitdelete"
+				class="button jmrs-button-danger"
 				href="<?php echo esc_url( $delete_url ); ?>"
-				onclick="return confirm('<?php echo esc_js( __( 'Permanently delete this empty referral? This cannot be undone.', 'jm-referral-system' ) ); ?>');"
+				data-jmrs-confirm="<?php echo esc_attr__( 'Permanently delete this empty referral? This cannot be undone.', 'jm-referral-system' ); ?>"
+				data-jmrs-busy="<?php echo esc_attr__( 'Deleting...', 'jm-referral-system' ); ?>"
 			>
-				<?php echo esc_html__( 'Permanent Delete', 'jm-referral-system' ); ?>
+				<?php echo esc_html__( 'Delete', 'jm-referral-system' ); ?>
 			</a>
 		<?php endif; ?>
 	</p>
@@ -939,7 +941,7 @@ $archived_display = '' !== $archived_at
 				</tbody>
 			</table>
 		<?php elseif ( $can_manage_care_plan ) : ?>
-			<p><?php echo esc_html__( 'No care plan has been created yet.', 'jm-referral-system' ); ?></p>
+			<?php echo \JMReferral\Support\UiHelper::empty_state( __( 'No care plans available.', 'jm-referral-system' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?>
 			<div class="jmrs-care-plan-actions">
 				<?php if ( $has_assessment ) : ?>
 					<form method="post" action="" style="display:inline-block; margin-right:8px;">
@@ -1297,7 +1299,7 @@ $archived_display = '' !== $archived_at
 							<td><?php echo esc_html( (string) ( $med_row['dosage'] ?? '' ) ); ?></td>
 							<td><?php echo esc_html( (string) $route_text ); ?></td>
 							<td><?php echo esc_html( (string) ( $med_row['frequency'] ?? '' ) ?: '—' ); ?></td>
-							<td><?php echo esc_html( (string) $status_text ); ?></td>
+							<td><?php echo \JMReferral\Support\UiHelper::status_badge( $status_key, (string) $status_text ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 							<td><?php echo esc_html( (string) ( $med_row['start_date'] ?? '' ) ?: '—' ); ?></td>
 							<td><?php echo esc_html( (string) ( $med_row['end_date'] ?? '' ) ?: '—' ); ?></td>
 							<?php if ( $can_manage_medications ) : ?>
@@ -1453,7 +1455,7 @@ $archived_display = '' !== $archived_at
 		<?php endif; ?>
 
 		<?php if ( empty( $care_team_members ) ) : ?>
-			<p><?php echo esc_html__( 'No care team members assigned yet.', 'jm-referral-system' ); ?></p>
+			<?php echo \JMReferral\Support\UiHelper::empty_state( __( 'No care team members assigned.', 'jm-referral-system' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?>
 		<?php else : ?>
 			<table class="wp-list-table widefat fixed striped table-view-list">
 				<thead>
@@ -1547,7 +1549,7 @@ $archived_display = '' !== $archived_at
 		<?php endif; ?>
 
 		<?php if ( empty( $visit_schedules ) ) : ?>
-			<p><?php echo esc_html__( 'No schedules created yet.', 'jm-referral-system' ); ?></p>
+			<?php echo \JMReferral\Support\UiHelper::empty_state( __( 'No schedules available.', 'jm-referral-system' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?>
 		<?php else : ?>
 			<table class="wp-list-table widefat fixed striped table-view-list">
 				<thead>
@@ -1613,7 +1615,7 @@ $archived_display = '' !== $archived_at
 									$gen_end_value         = (string) ( $schedule_row['generation_end_date'] ?? '' );
 									?>
 									<?php if ( $schedule_id_row > 0 && $can_generate ) : ?>
-										<form method="post" action="" style="margin-top:8px;">
+										<form method="post" action="" class="jmrs-generate-form" style="margin-top:8px;" data-jmrs-confirm="<?php echo esc_attr__( 'Generate visits for this schedule and date range?', 'jm-referral-system' ); ?>">
 											<?php wp_nonce_field( 'jmrs_generate_schedule_visits_' . $schedule_id_row, 'jmrs_generate_schedule_nonce' ); ?>
 											<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
 											<input type="hidden" name="jmrs_schedule_id" value="<?php echo esc_attr( (string) $schedule_id_row ); ?>" />
@@ -1903,7 +1905,7 @@ $archived_display = '' !== $archived_at
 		?>
 
 		<?php if ( empty( $care_visits ) ) : ?>
-			<p><?php echo esc_html__( 'No care visits scheduled yet.', 'jm-referral-system' ); ?></p>
+			<?php echo \JMReferral\Support\UiHelper::empty_state( __( 'No visits scheduled.', 'jm-referral-system' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?>
 		<?php else : ?>
 			<?php $jmrs_render_visits_pagination( 'jmrs_visits_per_page_top' ); ?>
 			<table class="wp-list-table widefat fixed striped table-view-list">
@@ -1947,7 +1949,7 @@ $archived_display = '' !== $archived_at
 							<td><?php echo '' !== $assigned_name ? esc_html( $assigned_name ) : '—'; ?></td>
 							<td><?php echo '' !== trim( $visit_type ) ? esc_html( $visit_type ) : '—'; ?></td>
 							<td><?php echo esc_html( $source_label ); ?></td>
-							<td><?php echo esc_html( $status_label ); ?></td>
+							<td><?php echo \JMReferral\Support\UiHelper::status_badge( $status_key, $status_label ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 							<?php if ( $can_manage_visits ) : ?>
 								<td>
 									<?php if ( '' !== $edit_url ) : ?>
@@ -2245,7 +2247,11 @@ $archived_display = '' !== $archived_at
 												__( 'Complete Visit', 'jm-referral-system' ),
 												'primary small',
 												'jmrs_execute_care_visit',
-												false
+												false,
+												array(
+													'data-jmrs-busy'    => __( 'Completing Visit...', 'jm-referral-system' ),
+													'data-jmrs-confirm' => __( 'Complete this visit? Recorded tasks and medication administrations will be saved.', 'jm-referral-system' ),
+												)
 											);
 											?>
 										</form>
@@ -2358,10 +2364,14 @@ $archived_display = '' !== $archived_at
 													</p>
 													<?php
 													submit_button(
-														__( 'Review', 'jm-referral-system' ),
+														__( 'Review Visit', 'jm-referral-system' ),
 														'secondary small',
 														'jmrs_review_care_visit',
-														false
+														false,
+														array(
+															'data-jmrs-busy'    => __( 'Reviewing...', 'jm-referral-system' ),
+															'data-jmrs-confirm' => __( 'Mark this visit as reviewed?', 'jm-referral-system' ),
+														)
 													);
 													?>
 												</form>
@@ -2488,7 +2498,7 @@ $archived_display = '' !== $archived_at
 		<p class="description">
 			<?php echo esc_html__( 'Archiving preserves all linked clinical and operational records. Permanent deletion is only allowed when a referral has no linked records.', 'jm-referral-system' ); ?>
 		</p>
-		<form method="post" action="" onsubmit="return confirm('<?php echo esc_js( __( 'Archive this referral? Clinical records will be preserved but the referral will become read-only.', 'jm-referral-system' ) ); ?>');">
+		<form method="post" action="" data-jmrs-confirm="<?php echo esc_attr__( 'Archive this referral? Clinical records will be preserved but the referral will become read-only.', 'jm-referral-system' ); ?>">
 			<?php wp_nonce_field( 'jmrs_archive_referral_' . $referral_id, 'jmrs_archive_nonce' ); ?>
 			<input type="hidden" name="referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
 			<table class="form-table" role="presentation">

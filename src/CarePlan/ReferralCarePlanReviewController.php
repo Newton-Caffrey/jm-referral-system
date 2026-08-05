@@ -110,7 +110,7 @@ class ReferralCarePlanReviewController
 
         if (isset($_GET['jmrs_care_plan_reviewed']) && '1' === $_GET['jmrs_care_plan_reviewed']) {
             echo '<div class="notice notice-success is-dismissible"><p>';
-            echo esc_html__('Care plan review saved successfully.', 'jm-referral-system');
+            echo esc_html__('Care plan review recorded successfully.', 'jm-referral-system');
             echo '</p></div>';
         }
 

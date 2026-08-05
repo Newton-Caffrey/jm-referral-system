@@ -3,6 +3,7 @@
 namespace JMReferral\Core;
 
 use JMReferral\Admin\Menu;
+use JMReferral\Admin\AdminAssets;
 use JMReferral\Assessment\ReferralAssessmentController;
 use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\Assessment\ReferralAssessmentService;
@@ -97,6 +98,7 @@ class Plugin
     {
         add_action('plugins_loaded', [Migrator::class, 'maybe_migrate']);
         add_action('admin_menu', [$this, 'registerAdminMenu']);
+        AdminAssets::register();
 
         $this->registerReferralControllers();
     }

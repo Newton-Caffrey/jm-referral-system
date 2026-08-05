@@ -256,7 +256,7 @@ class CareVisitController
 
         if (isset($_GET['jmrs_visit_executed']) && '1' === $_GET['jmrs_visit_executed']) {
             echo '<div class="notice notice-success is-dismissible"><p>';
-            echo esc_html__('Visit completed by staff successfully.', 'jm-referral-system');
+            echo esc_html__('Visit completed successfully.', 'jm-referral-system');
             echo '</p></div>';
         }
 
@@ -271,7 +271,7 @@ class CareVisitController
 
         if (isset($_GET['jmrs_visit_reviewed']) && '1' === $_GET['jmrs_visit_reviewed']) {
             echo '<div class="notice notice-success is-dismissible"><p>';
-            echo esc_html__('Visit reviewed by manager successfully.', 'jm-referral-system');
+            echo esc_html__('Visit reviewed successfully.', 'jm-referral-system');
             echo '</p></div>';
         }
 

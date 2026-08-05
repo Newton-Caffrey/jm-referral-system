@@ -356,6 +356,15 @@ PSR-4 mapping:
 
 Prefer additive schema changes. Do not remove or rewrite existing clinical data in place.
 
+### Documentation
+
+| Doc | Purpose |
+| --- | --- |
+| `docs/DATA_RETENTION_POLICY.md` | Archive-first retention and deletion rules |
+| `docs/PERFORMANCE_AUDIT.md` | Performance findings and mitigations |
+| `docs/UI_STYLE_GUIDE.md` | Buttons, badges, tables, forms, colours |
+| `docs/ACCESSIBILITY_REVIEW.md` | Keyboard, screen reader, remaining a11y limits |
+
 ### Testing
 
 Automated test coverage is planned for a later production phase. For now, verify changes manually against:
@@ -380,7 +389,7 @@ Automated test coverage is planned for a later production phase. For now, verify
 | **2 — Security** | Roles, capabilities, workflow, service types, sources, record-level access | Complete |
 | **3 — Clinical operations** | Documents, assessments, care plans, scheduling, visits | Largely complete |
 | **4 — Reporting** | Reports foundation, trends/analytics, charts, CSV exports, print | In progress |
-| **5 — Production** | Performance, UX polish, documentation, automated testing, v1.0 | Planned |
+| **5 — Production** | Retention, performance, UX polish & accessibility | In progress / largely delivered |
 
 Near-term scheduling enhancements (not yet in scope) may include automatic cron generation, schedule-change synchronisation of future visits, calendar UI, and conflict detection.
 

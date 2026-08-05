@@ -196,7 +196,7 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 		<tbody>
 			<?php if ( empty( $referrals ) ) : ?>
 				<tr class="no-items">
-					<td colspan="10"><?php echo esc_html__( 'No referrals found.', 'jm-referral-system' ); ?></td>
+					<td colspan="10"><?php echo \JMReferral\Support\UiHelper::empty_state( __( 'No referrals found.', 'jm-referral-system' ), '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=jm-referrals-add' ) ) . '">' . esc_html__( 'Add New Referral', 'jm-referral-system' ) . '</a>' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 				</tr>
 			<?php else : ?>
 				<?php foreach ( $referrals as $referral ) : ?>
@@ -230,14 +230,14 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 						<td>
 							<strong><?php echo esc_html( $referral_number ); ?></strong>
 							<?php if ( $is_archived ) : ?>
-								<br /><span class="jmrs-badge" style="display:inline-block;margin-top:4px;padding:1px 6px;background:#646970;color:#fff;border-radius:3px;font-size:11px;"><?php echo esc_html__( 'Archived', 'jm-referral-system' ); ?></span>
+								<br /><?php echo \JMReferral\Support\UiHelper::badge( __( 'Archived', 'jm-referral-system' ), 'archive' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?>
 							<?php endif; ?>
 						</td>
 						<td><?php echo esc_html( $client_name ); ?></td>
 						<td><?php echo esc_html( $service_required ); ?></td>
 						<td><?php echo '' !== $workflow_stage_name ? esc_html( $workflow_stage_name ) : '—'; ?></td>
-						<td><?php echo esc_html( ucfirst( $priority_value ) ); ?></td>
-						<td><?php echo esc_html( ucfirst( str_replace( '_', ' ', $status_value ) ) ); ?></td>
+						<td><?php echo \JMReferral\Support\UiHelper::priority_badge( $priority_value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
+						<td><?php echo \JMReferral\Support\UiHelper::status_badge( $status_value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 						<td><?php echo '' !== $source_label ? esc_html( $source_label ) : '—'; ?></td>
 						<td><?php echo '' !== $assigned_to_name ? esc_html( $assigned_to_name ) : esc_html__( 'Unassigned', 'jm-referral-system' ); ?></td>
 						<td><?php echo esc_html( $created_display ); ?></td>
@@ -253,7 +253,7 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 									$action_links[] = '<a href="' . esc_url( $archive_url ) . '">' . esc_html__( 'Archive', 'jm-referral-system' ) . '</a>';
 								}
 								if ( $can_restore ) {
-									$action_links[] = '<a href="' . esc_url( $restore_url ) . '" onclick="return confirm(\'' . esc_js( __( 'Restore this archived referral?', 'jm-referral-system' ) ) . '\');">' . esc_html__( 'Restore', 'jm-referral-system' ) . '</a>';
+									$action_links[] = '<a href="' . esc_url( $restore_url ) . '" data-jmrs-confirm="' . esc_attr__( 'Restore this archived referral?', 'jm-referral-system' ) . '" data-jmrs-busy="' . esc_attr__( 'Restoring...', 'jm-referral-system' ) . '">' . esc_html__( 'Restore', 'jm-referral-system' ) . '</a>';
 								}
 								echo implode( ' | ', $action_links ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- links built with esc_url/esc_html above.
 								?>

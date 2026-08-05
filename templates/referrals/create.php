@@ -38,7 +38,7 @@ $contact_options  = \JMReferral\Referral\PreferredContactMethods::options();
 <div class="wrap">
 	<h1><?php echo esc_html__( 'Add Referral', 'jm-referral-system' ); ?></h1>
 
-	<form method="post" action="">
+	<form method="post" action="" class="jmrs-form">
 		<?php wp_nonce_field( 'jmrs_add_referral', 'jmrs_add_referral_nonce' ); ?>
 
 		<h2><?php echo esc_html__( 'Client Information', 'jm-referral-system' ); ?></h2>
@@ -46,7 +46,7 @@ $contact_options  = \JMReferral\Referral\PreferredContactMethods::options();
 			<tbody>
 				<tr>
 					<th scope="row">
-						<label for="jmrs_client_name"><?php echo esc_html__( 'Client Name', 'jm-referral-system' ); ?></label>
+						<label for="jmrs_client_name" class="jmrs-required"><?php echo esc_html__( 'Client Name', 'jm-referral-system' ); ?></label>
 					</th>
 					<td>
 						<input

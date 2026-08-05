@@ -138,7 +138,7 @@ $total_count       = absint( $counts['total'] ?? 0 );
 			</div>
 			<div>
 				<button type="submit" class="button button-primary"><?php echo esc_html__( 'Filter', 'jm-referral-system' ); ?></button>
-				<a class="button" href="<?php echo esc_url( $alerts_page_url ); ?>"><?php echo esc_html__( 'Reset', 'jm-referral-system' ); ?></a>
+				<a class="button" href="<?php echo esc_url( $alerts_page_url ); ?>"><?php echo esc_html__( 'Reset Filters', 'jm-referral-system' ); ?></a>
 			</div>
 		</div>
 	</form>
@@ -156,7 +156,7 @@ $total_count       = absint( $counts['total'] ?? 0 );
 		<tbody>
 			<?php if ( empty( $alerts ) ) : ?>
 				<tr class="no-items">
-					<td colspan="5"><?php echo esc_html__( 'No operational alerts match your filters.', 'jm-referral-system' ); ?></td>
+					<td colspan="5"><?php echo \JMReferral\Support\UiHelper::empty_state( __( 'No operational alerts match your filters.', 'jm-referral-system' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 				</tr>
 			<?php else : ?>
 				<?php foreach ( $alerts as $alert ) : ?>
@@ -191,7 +191,7 @@ $total_count       = absint( $counts['total'] ?? 0 );
 					}
 					?>
 					<tr>
-						<td><span class="<?php echo esc_attr( $severity_class ); ?>"><?php echo esc_html( (string) $severity_label ); ?></span></td>
+						<td><?php echo \JMReferral\Support\UiHelper::alert_badge( $severity_key, (string) $severity_label ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 						<td>
 							<strong><?php echo esc_html( $title ); ?></strong>
 							<?php if ( '' !== $description ) : ?>
