@@ -38,6 +38,9 @@ use JMReferral\Referral\ReferralRepository;
 use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
+use JMReferral\Reports\ReportController;
+use JMReferral\Reports\ReportRepository;
+use JMReferral\Reports\ReportService;
 use JMReferral\Scheduling\ScheduleController;
 use JMReferral\Scheduling\ScheduleGenerationService;
 use JMReferral\Scheduling\ScheduleRepository;
@@ -60,6 +63,7 @@ class Menu
 {
     private DashboardPage $dashboard_page;
     private OperationalAlertsPage $operational_alerts_page;
+    private ReportController $report_controller;
     private ReferralsPage $referrals_page;
     private AddReferralPage $add_referral_page;
     private SettingsPage $settings_page;
@@ -217,6 +221,13 @@ class Menu
             $medication_administration_repository
         );
 
+        $report_service = new ReportService(
+            new ReportRepository(),
+            $access_policy,
+            $operational_alert_service
+        );
+        $this->report_controller = new ReportController($report_service);
+
         $care_visit_service ??= new CareVisitService(
             $visit_repository,
             $repository,
@@ -281,7 +292,8 @@ class Menu
             $visit_execution_service,
             $visit_task_service,
             $operational_alert_service,
-            $medication_administration_service
+            $medication_administration_service,
+            $report_service
         );
         $this->operational_alerts_page   = new OperationalAlertsPage($operational_alert_service);
         $this->referrals_page            = new ReferralsPage($list_controller);
@@ -354,6 +366,15 @@ class Menu
             Capabilities::VIEW_OPERATIONAL_ALERTS,
             'jm-referrals-operational-alerts',
             [$this->operational_alerts_page, 'render']
+        );
+
+        add_submenu_page(
+            'jm-referrals',
+            __('Reports', 'jm-referral-system'),
+            __('Reports', 'jm-referral-system'),
+            Capabilities::VIEW_REPORTS,
+            'jm-referrals-reports',
+            [$this->report_controller, 'render']
         );
 
         add_submenu_page(

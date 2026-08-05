@@ -55,6 +55,9 @@ Milestone release covering the foundation, security, and clinical operations del
 - Capabilities `jmrs_view_medications`, `jmrs_manage_medications`, and `jmrs_administer_medications`
 - Dashboard widgets for Medication Exceptions Today / My Medication Exceptions Today
 - Operational alert for medication administration exceptions
+- Reporting foundation with KPI cards and date-range filters
+- Capability `jmrs_view_reports` for Administrators, JM Administrators, Referral Managers, and Care Coordinators
+- Dashboard Reports shortcut card
 
 ### Changed
 
@@ -67,7 +70,7 @@ Milestone release covering the foundation, security, and clinical operations del
 - Visit execution can record medication administrations alongside visit completion
 - Generated visit inserts are insert-only and do not rewrite manual, completed, cancelled, or missed visits
 - Schedule visit generation logs a single `schedule_visits_generated` activity entry instead of one `visit_created` entry per generated visit
-- Database schema advanced through additive migrations (current schema version `2.12.1`)
+- Database schema advanced through additive migrations (current schema version `2.13.0`)
 
 ### Security
 

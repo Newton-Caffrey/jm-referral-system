@@ -80,6 +80,12 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Medication administration outcomes during visit execution
 - [x] Exception reason codes, dashboard counts, and operational alerts
 
+### Reporting Foundation ✅
+
+- [x] Capability-gated Reports admin page with date-range filters
+- [x] KPI cards for referrals, clients, assessments, care plans, visits, medication, and compliance
+- [x] Dashboard Reports shortcut
+
 ---
 
 ## In Progress 🚧
@@ -91,7 +97,6 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 ### Reporting
 
 - [ ] Advanced reports
-- [ ] KPI dashboard
 - [ ] Staff workload views
 - [ ] Referral analytics and performance metrics
 
@@ -138,8 +143,8 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 1 — Foundation | Architecture, referrals, dashboard, notes, export, notifications | ✅ Complete |
 | Phase 2 — Security | Roles, capabilities, workflow, service types, sources, access policy | ✅ Complete |
 | Phase 3 — Clinical Operations | Documents, assessments, care plans, care team, scheduling, generated visits | ✅ Complete |
-| Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, operational alerts, and MAR foundation | 🚧 In progress |
-| Phase 5 — Reporting | Advanced reports, KPIs, workload, analytics | 🚧 In progress |
+| Phase 4 — Visit Execution & Medication | Field visit delivery, task checklists, operational alerts, and MAR foundation | ✅ Complete |
+| Phase 5 — Reporting | Reporting foundation KPIs; advanced reports, workload, analytics next | 🚧 In progress |
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
 | Phase 7 — Production Hardening | Performance, UX polish, automated testing, v1.0 | 🚀 Future |
 

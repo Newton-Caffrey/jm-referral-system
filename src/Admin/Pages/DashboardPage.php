@@ -14,6 +14,7 @@ use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskService;
 use JMReferral\Alerts\OperationalAlertService;
 use JMReferral\Medication\MedicationAdministrationService;
+use JMReferral\Reports\ReportService;
 
 class DashboardPage
 {
@@ -28,7 +29,8 @@ class DashboardPage
         private VisitExecutionService $visit_execution_service,
         private VisitTaskService $visit_task_service,
         private OperationalAlertService $alert_service,
-        private MedicationAdministrationService $medication_administration_service
+        private MedicationAdministrationService $medication_administration_service,
+        private ReportService $report_service
     ) {
     }
 
@@ -155,6 +157,13 @@ class DashboardPage
         $my_medication_exceptions_today = 0;
         if ($show_my_medication_exceptions) {
             $my_medication_exceptions_today = $this->medication_administration_service->count_my_exceptions_today();
+        }
+
+        $show_reports_shortcut = false;
+        $reports_summary       = null;
+        if (Capabilities::current_user_can(Capabilities::VIEW_REPORTS)) {
+            $reports_summary = $this->report_service->get_dashboard_summary();
+            $show_reports_shortcut = is_array($reports_summary);
         }
 
         include JMRS_PLUGIN_PATH . 'templates/dashboard/index.php';

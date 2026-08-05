@@ -10,7 +10,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.12.1';
+    public const DB_VERSION = '2.13.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -119,6 +119,11 @@ class Migrator
 
         if (version_compare($from_version, '2.12.1', '<')) {
             // Re-sync medication capabilities onto JM roles (Support Worker administer).
+            Capabilities::grant_to_administrators();
+            Roles::register();
+        }
+
+        if (version_compare($from_version, '2.13.0', '<')) {
             Capabilities::grant_to_administrators();
             Roles::register();
         }

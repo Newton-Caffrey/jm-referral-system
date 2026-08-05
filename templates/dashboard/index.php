@@ -148,6 +148,37 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 		<?php endif; ?>
 	</div>
 
+	<?php if ( ! empty( $show_reports_shortcut ) && is_array( $reports_summary ?? null ) ) : ?>
+		<?php
+		$reports_url              = (string) ( $reports_summary['reports_url'] ?? '' );
+		$reports_referrals_total  = absint( $reports_summary['referrals_total'] ?? 0 );
+		$reports_visits_completed = absint( $reports_summary['visits_completed'] ?? 0 );
+		$reports_alerts_total     = absint( $reports_summary['operational_alerts'] ?? 0 );
+		?>
+		<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Reports', 'jm-referral-system' ); ?></h2>
+		<div class="jmrs-stats">
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) $reports_referrals_total ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Referrals This Month', 'jm-referral-system' ); ?></span>
+			</div>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) $reports_visits_completed ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Visits Completed This Month', 'jm-referral-system' ); ?></span>
+			</div>
+			<div class="jmrs-stat">
+				<span class="jmrs-stat-number"><?php echo esc_html( (string) $reports_alerts_total ); ?></span>
+				<span class="jmrs-stat-label"><?php echo esc_html__( 'Operational Alerts', 'jm-referral-system' ); ?></span>
+			</div>
+		</div>
+		<?php if ( '' !== $reports_url ) : ?>
+			<p>
+				<a class="button button-secondary" href="<?php echo esc_url( $reports_url ); ?>">
+					<?php echo esc_html__( 'Open Reports', 'jm-referral-system' ); ?>
+				</a>
+			</p>
+		<?php endif; ?>
+	<?php endif; ?>
+
 	<?php if ( ! empty( $show_operational_alerts ) && is_array( $operational_alerts ?? null ) ) : ?>
 		<?php
 		$alert_counts  = is_array( $operational_alerts['counts'] ?? null ) ? $operational_alerts['counts'] : array();
