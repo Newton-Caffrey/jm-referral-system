@@ -46,7 +46,7 @@ Genuine remaining limitations after Phase 5.6 readiness review. Do not treat thi
 | No automatic/cron visit generation | Generation is on-demand from the UI |
 | No calendar UI | List/schedule forms only |
 | No client or family portal | Staff admin only |
-| Public intake: no multi-step wizard yet | Phase 6.1A is single-page; wizard is 6.1B |
+| Public intake wizard has no save-and-resume | Values live in the DOM for the session; refresh clears unsaved input |
 | Public intake: no CAPTCHA / tracking portal | Honeypot + rate limit + timing only; see `docs/PUBLIC_REFERRAL_INTAKE.md` |
 | Consent checkboxes are operational evidence | Not a full legal consent-management product |
 | No digital signatures | Not implemented |

@@ -111,7 +111,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 ### Public Referral Intake
 
 - [x] Phase 6.1A: shortcode form, settings, spam controls, private uploads, notifications (`docs/PUBLIC_REFERRAL_INTAKE.md`)
-- [ ] Phase 6.1B: multi-step wizard UX
+- [x] Phase 6.1B: multi-step wizard, branding, review summary, no-JS fallback
 - [ ] CAPTCHA option / tracking portal / public edit (later)
 
 ### Medication Administration (advanced)
@@ -190,7 +190,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 | Phase 5 — Reporting | Reporting foundation KPIs; advanced reports, workload, analytics next | ✅ Foundation complete |
 | Phase 5.x — Production Hardening | Audit → private docs → retention → performance → UX/a11y → v1.0 readiness | ✅ Complete (v1.0.0) |
 | Phase 6 — Platforms & Integrations | Calendar, sync, portals, signatures, API, mobile | 🚀 Future |
-| Phase 6.1 — Public referral intake | 6.1A foundation done; 6.1B wizard next | 🚧 In progress |
+| Phase 6.1 — Public referral intake | 6.1A + 6.1B wizard complete | ✅ Complete |
 | Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Backlog |
 
 **Current release:** plugin `1.0.0` · DB `2.17.0` (after public intake migration) · see `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md`.

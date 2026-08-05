@@ -25,7 +25,7 @@ Before go-live, use `docs/RELEASE_CHECKLIST.md`. Remaining constraints are liste
 - Staff assignment and reassignment
 - Search, filtering, and status tracking
 - Full referral detail view with related clinical and operational modules
-- **Public website intake (Phase 6.1A):** shortcode `[jmrs_public_referral_form]` for unauthenticated referrals (see `docs/PUBLIC_REFERRAL_INTAKE.md`)
+- **Public website intake:** shortcode `[jmrs_public_referral_form]` — multi-step wizard with no-JS fallback (see `docs/PUBLIC_REFERRAL_INTAKE.md`)
 
 ### Workflow Management
 

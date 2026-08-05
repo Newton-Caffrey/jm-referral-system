@@ -65,15 +65,20 @@ class PublicReferralShortcode
             }
         }
 
+        // Resolve receipt/success before choosing a template (never assume form).
         $context = $this->controller->get_form_context();
+        $is_success = (($context['mode'] ?? '') === 'success');
+
+        if ($is_success) {
+            nocache_headers();
+        }
+
+        // Linux-sensitive path: templates/frontend/public-referral-success.php
+        $template = $is_success
+            ? JMRS_PLUGIN_PATH . 'templates/frontend/public-referral-success.php'
+            : JMRS_PLUGIN_PATH . 'templates/frontend/public-referral-form.php';
 
         ob_start();
-
-        if (($context['mode'] ?? '') === 'success') {
-            $template = JMRS_PLUGIN_PATH . 'templates/frontend/public-referral-success.php';
-        } else {
-            $template = JMRS_PLUGIN_PATH . 'templates/frontend/public-referral-form.php';
-        }
 
         if (is_readable($template)) {
             // phpcs:ignore WordPress.PHP.DontExtract.extract_extract -- scoped template vars.

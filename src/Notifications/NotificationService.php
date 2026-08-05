@@ -2,6 +2,7 @@
 
 namespace JMReferral\Notifications;
 
+use JMReferral\Frontend\PublicBranding;
 use JMReferral\Frontend\PublicReferralSettings;
 use JMReferral\Frontend\ReferrerTypes;
 use JMReferral\Referral\ReferralViewController;
@@ -153,12 +154,20 @@ class NotificationService
             return;
         }
 
+        $settings = PublicReferralSettings::all();
+        $contact_email = (string) ($settings['contact_email'] ?? '');
+        if ('' === $contact_email || ! is_email($contact_email)) {
+            $contact_email = (string) get_option('admin_email');
+        }
+
         $context = [
             'referral_number' => (string) ($referral['referral_number'] ?? ''),
             'referrer_name'   => (string) ($referral['referrer_name'] ?? ''),
-            'site_name'       => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
+            'site_name'       => PublicBranding::company_name($settings),
+            'company_name'    => PublicBranding::company_name($settings),
             'site_url'        => home_url('/'),
-            'admin_email'     => (string) get_option('admin_email'),
+            'admin_email'     => $contact_email,
+            'contact_phone'   => (string) ($settings['contact_phone'] ?? ''),
         ];
 
         $subject = sprintf(

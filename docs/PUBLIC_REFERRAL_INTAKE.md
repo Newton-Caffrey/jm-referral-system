@@ -1,8 +1,8 @@
-# Public Referral Intake (Phase 6.1A)
+# Public Referral Intake
 
 Frontend referral form for members of the public, families, hospitals, GPs, social workers, and partner organisations — without WordPress Admin access.
 
-**Plugin version context:** 1.0.x feature phase · **DB schema:** `2.17.0` (public intake columns)
+**Phases:** 6.1A foundation · **6.1B multi-step wizard** · **DB schema:** `2.17.0`
 
 ---
 
@@ -12,123 +12,133 @@ Frontend referral form for members of the public, families, hospitals, GPs, soci
 [jmrs_public_referral_form]
 ```
 
-Place on any normal WordPress page (for example `/make-a-referral/`). Theme- and Elementor-independent. CSS/JS load only when the shortcode is present.
+Place on any normal WordPress page (for example `/make-a-referral/`). Theme-independent. CSS/JS load only when the shortcode is present.
 
-Root wrapper class: `.jmrs-public-referral` (scoped styles; CSS variables for colours).
+Root wrapper: `.jmrs-public-referral` (scoped styles; CSS variables including `--jmrs-primary` from settings).
 
 ---
 
-## Settings
+## Wizard steps (Phase 6.1B)
+
+| Step | Name | Purpose |
+| --- | --- | --- |
+| 0 | Welcome | Intro + Start Referral |
+| 1 | About You | Referrer details |
+| 2 | Person Needing Care | Client details |
+| 3 | Care Needs | Service, priority, requirements |
+| 4 | Documents | Optional private uploads |
+| 5 | Review & Submit | Summary cards + consent + final send |
+
+Progress shows the five user-facing steps (not Welcome). Labels: completed / current (`aria-current="step"`) / upcoming. Mobile: compact “Step X of 5” + progress bar.
+
+Navigation: **Back** / **Continue**. Final button: **Send Referral to {Company Name}**.
+
+JavaScript only controls step visibility. **One native HTML POST** still creates the referral. No AJAX. No partial server saves.
+
+---
+
+## No-JavaScript fallback
+
+Without JS:
+
+- All sections render visible in order (wizard panels are not hidden by default)
+- Wizard-only controls stay `hidden`
+- Native POST submit button remains available
+- Server errors render with the error summary
+
+JS adds `.jmrs-js` to activate step hiding.
+
+---
+
+## Branding settings
 
 **J&M Referrals → Settings → Public Referral Intake**
 
 | Setting | Default |
 | --- | --- |
 | Enable Public Referral Form | Off |
-| Privacy Notice URL | empty |
-| Public Consent Version | `1.0` |
-| Public Referral Notification Email | empty → falls back to WP admin email |
+| Company Name | JM Healthcare |
+| Public Referral Heading | Make a Referral |
+| Public Referral Intro | 5–10 minute welcome copy |
+| Contact phone / email | empty |
+| Primary Brand Colour | `#0b5f4b` |
 | Success Message | thank-you copy |
-| Allow Public Document Uploads | Off |
-| Maximum Public Upload Count | 3 |
-| Maximum Public Upload Size | 10 MB |
+| Success Page Next-Steps Text | one item per line |
+| Privacy Notice URL | empty |
+| Consent Version | `1.0` |
+| Notification Email | empty → WP admin email |
+| Allow uploads / max count / max size | Off / 3 / 10 MB |
+
+Accessor: `src/Frontend/PublicBranding.php`
 
 ---
 
-## Form sections
+## Conditional fields
 
-1. **About the referrer** — type, name, organisation, email, phone, relationship  
-2. **Client details** — names, contact, DOB, address  
-3. **Care requirements** — service type, start date, preferred contact, priority (`routine` / `urgent`), requirements, additional info, optional uploads  
-4. **Consent** — permission, assessment use, privacy notice  
-
-Public priority maps to internal priority: `routine` → `medium`, `urgent` → `urgent`.
-
-Internal fields are **not** exposed: assignee, workflow stage, status, internal notes UI, care plan, staff fields.
+Organisation shown for professional types: hospital, gp, social_worker, local_authority, care_provider, other.  
+Hidden (but still in DOM) for self, family, friend — values still POST without JS.
 
 ---
 
-## Creation mapping
+## Validation
 
-`PublicReferralService` validates/sanitizes public input, then calls existing `ReferralService::create()`:
-
-| Public | Stored |
-| --- | --- |
-| First + last name | `client_name` (+ split columns) |
-| — | `submission_channel` = `public_website` |
-| — | `referral_source` = `website` |
-| — | `status` = `new` |
-| — | default workflow stage (New Referral) |
-| — | `assigned_to` = NULL |
-| Consents | `public_consent_at`, `public_consent_version` |
-| Additional information | `notes` |
-
-Activity logging and referral numbering use the normal create path.
+- **Continue:** client-side checks for the current step only (inline errors, `aria-invalid`, focus, `aria-live`)
+- **Final submit:** server-side validation remains authoritative
+- On server failure: earliest error step opens automatically; summary links to fields; not left on Welcome
 
 ---
 
-## Security
+## Success receipt (PRG)
 
-- WordPress nonce  
-- Server-side validation / sanitization / allowlists  
-- Honeypot (`jmrs_website`)  
-- Minimum completion time (3 seconds)  
-- Rate limit: 5 submissions / hour per hashed fingerprint (IP + UA + action) — **raw IP is not stored**  
-- Generic error messages for abuse paths  
-- No login required  
+After create succeeds:
 
-Failed spam attempts are **not** stored as referrals. Optional `WP_DEBUG` logs are event-only (no PHI).
-
----
-
-## Uploads
-
-When enabled: PDF/DOC/DOCX/JPG/JPEG/PNG into **private** `uploads/jmrs-private/` only. Never Media Library. Uploads run **after** referral create; partial upload failure keeps the referral and shows a safe message.
+1. Store transient `jmrs_pub_rcpt_{token}` with referral number + safe flags only (no form PII).
+2. Redirect to the **page permalink** with `?jmrs_referral_receipt={token}`.
+3. Shortcode checks the token **before** rendering the form → `templates/frontend/public-referral-success.php`.
+4. Transient TTL **20 minutes**; not deleted on first view (refresh/print OK).
+5. If storage fails: `?jmrs_referral_received=1` shows generic success without a number.
+6. `nocache_headers()` when a receipt/received flag is present.
 
 ---
 
-## Notifications
+## Security (unchanged)
 
-1. **Ops inbox** — settings email (or admin email): summary + secure View link (`public-referral-received`)  
-2. **Referrer confirmation** — only if referrer email supplied (`public-referral-confirmation`)  
-
-Care requirements are not emailed in full to ops; use the admin View link.
+Nonce · honeypot · 3s minimum completion · 5/hour hashed rate limit (no raw IP) · sanitization · allowlists · private uploads · PRG receipt · no PII in URL/logs
 
 ---
 
-## Success flow
+## Analytics hooks (optional)
 
-Post → Redirect → Get with opaque receipt token (transient). Refresh does not resubmit. Shows reference number, configured message, next steps, Print/Save. No sensitive submitted fields on the success screen.
+```js
+document.addEventListener('jmrs:publicReferralStepChanged', (e) => {
+  // e.detail.step — number only, no PII
+});
+document.addEventListener('jmrs:publicReferralSubmitted', () => {});
+```
 
----
-
-## Admin / reports
-
-- Referral View: Submission Channel; for website referrals also referrer type, organisation, relationship, consent date/version, address/DOB summary  
-- List: Website badge under Source when channel is public  
-- CSV export includes public-intake columns (formula protection preserved)  
-- Counts, source analytics, alerts, archive/restore use the same referral records and AccessPolicy  
-
-Consent fields are **operational evidence**, not a complete legal consent-management system.
+No provider integration yet.
 
 ---
 
-## Manual test matrix
+## Manual tests
 
 | Case | Expect |
 | --- | --- |
-| Form disabled | Message; no accept |
-| Valid family / professional | Creates referral; channel Website; source Website |
-| Missing required / bad email/date/options | Field errors; focus summary |
-| Honeypot / too-fast / rate limit | Generic error; no referral |
-| Success refresh | Same receipt; no duplicate |
-| Notification + confirmation emails | Ops + referrer when email set |
-| Uploads off / valid / invalid / oversized / partial | Per settings; referral kept on partial fail |
-| Admin display / CSV / alerts / archive | Public fields visible; retention unchanged |
-| Theme / mobile / keyboard | Scoped CSS; labels; error focus |
+| JS full flow | Steps 0→5, review, native POST, receipt |
+| JS disabled | Full form visible; native POST works |
+| Back/Continue | Values retained |
+| Organisation conditional | Show/hide by referrer type |
+| Per-step validation | Stay on step; focus first invalid |
+| Server errors | Correct earliest step + summary |
+| Review Edit | Returns to step; values kept |
+| File summary | Names only; size/count checks |
+| Double-click | Deferred disable; submitter preserved |
+| Mobile progress | Compact step text + bar |
+| Branding | Company name on button/success/email |
+| Events | Step number only; no PII |
 
 ---
 
-## Out of scope (later phases)
+## Out of scope
 
-Multi-step wizard (6.1B), CAPTCHA, tracking portal, public edit, referrer accounts, payments, signatures, eligibility automation, staff frontend portal.
+AJAX submit · save/resume · CAPTCHA · tracking portal · public edit · accounts · payments · staff portal

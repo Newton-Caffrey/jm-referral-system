@@ -3,7 +3,7 @@
 namespace JMReferral\Frontend;
 
 /**
- * Settings for the public referral intake form.
+ * Settings for the public referral intake form and branding.
  *
  * Stored as a single option array (imperative Settings UI, not WP Settings API).
  */
@@ -16,16 +16,7 @@ class PublicReferralSettings
     public const DEFAULT_MAX_UPLOAD_SIZE_MB = 10;
 
     /**
-     * @return array{
-     *   enabled: bool,
-     *   privacy_notice_url: string,
-     *   consent_version: string,
-     *   notification_email: string,
-     *   success_message: string,
-     *   allow_uploads: bool,
-     *   max_upload_count: int,
-     *   max_upload_size_mb: int
-     * }
+     * @return array<string, mixed>
      */
     public static function defaults(): array
     {
@@ -41,20 +32,24 @@ class PublicReferralSettings
             'allow_uploads'       => false,
             'max_upload_count'    => self::DEFAULT_MAX_UPLOAD_COUNT,
             'max_upload_size_mb'  => self::DEFAULT_MAX_UPLOAD_SIZE_MB,
+            'company_name'        => PublicBranding::DEFAULT_COMPANY_NAME,
+            'public_heading'      => __('Make a Referral', 'jm-referral-system'),
+            'public_intro'        => __(
+                "We're here to help.\n\nCompleting this referral usually takes around 5–10 minutes.\n\nIf you do not know every answer, that is okay. Provide as much information as you can and our team will contact you if anything else is needed.",
+                'jm-referral-system'
+            ),
+            'contact_phone'       => '',
+            'contact_email'       => '',
+            'primary_colour'      => PublicBranding::DEFAULT_PRIMARY_COLOUR,
+            'success_next_steps'  => __(
+                "Our team will review your referral.\nWe may contact you using the details you provided.\nPlease quote your reference number in any follow-up.",
+                'jm-referral-system'
+            ),
         ];
     }
 
     /**
-     * @return array{
-     *   enabled: bool,
-     *   privacy_notice_url: string,
-     *   consent_version: string,
-     *   notification_email: string,
-     *   success_message: string,
-     *   allow_uploads: bool,
-     *   max_upload_count: int,
-     *   max_upload_size_mb: int
-     * }
+     * @return array<string, mixed>
      */
     public static function all(): array
     {
@@ -103,16 +98,7 @@ class PublicReferralSettings
 
     /**
      * @param array<string, mixed> $settings
-     * @return array{
-     *   enabled: bool,
-     *   privacy_notice_url: string,
-     *   consent_version: string,
-     *   notification_email: string,
-     *   success_message: string,
-     *   allow_uploads: bool,
-     *   max_upload_count: int,
-     *   max_upload_size_mb: int
-     * }
+     * @return array<string, mixed>
      */
     private static function sanitize_settings(array $settings): array
     {
@@ -154,6 +140,49 @@ class PublicReferralSettings
             $max_mb = 20;
         }
 
+        $company = isset($settings['company_name'])
+            ? sanitize_text_field((string) $settings['company_name'])
+            : PublicBranding::DEFAULT_COMPANY_NAME;
+        if ('' === trim($company)) {
+            $company = PublicBranding::DEFAULT_COMPANY_NAME;
+        }
+
+        $heading = isset($settings['public_heading'])
+            ? sanitize_text_field((string) $settings['public_heading'])
+            : '';
+        if ('' === trim($heading)) {
+            $heading = (string) self::defaults()['public_heading'];
+        }
+
+        $intro = isset($settings['public_intro'])
+            ? sanitize_textarea_field((string) $settings['public_intro'])
+            : '';
+        if ('' === trim($intro)) {
+            $intro = (string) self::defaults()['public_intro'];
+        }
+
+        $contact_phone = isset($settings['contact_phone'])
+            ? sanitize_text_field((string) $settings['contact_phone'])
+            : '';
+
+        $contact_email = isset($settings['contact_email'])
+            ? sanitize_email((string) $settings['contact_email'])
+            : '';
+
+        $colour = isset($settings['primary_colour'])
+            ? strtolower(sanitize_text_field((string) $settings['primary_colour']))
+            : PublicBranding::DEFAULT_PRIMARY_COLOUR;
+        if (! preg_match('/^#[0-9a-f]{6}$/', $colour)) {
+            $colour = PublicBranding::DEFAULT_PRIMARY_COLOUR;
+        }
+
+        $next_steps = isset($settings['success_next_steps'])
+            ? sanitize_textarea_field((string) $settings['success_next_steps'])
+            : '';
+        if ('' === trim($next_steps)) {
+            $next_steps = (string) self::defaults()['success_next_steps'];
+        }
+
         return [
             'enabled'            => ! empty($settings['enabled']),
             'privacy_notice_url' => $privacy,
@@ -163,6 +192,13 @@ class PublicReferralSettings
             'allow_uploads'      => ! empty($settings['allow_uploads']),
             'max_upload_count'   => $max_count,
             'max_upload_size_mb' => $max_mb,
+            'company_name'       => $company,
+            'public_heading'     => $heading,
+            'public_intro'       => $intro,
+            'contact_phone'      => $contact_phone,
+            'contact_email'      => $contact_email,
+            'primary_colour'     => $colour,
+            'success_next_steps' => $next_steps,
         ];
     }
 }

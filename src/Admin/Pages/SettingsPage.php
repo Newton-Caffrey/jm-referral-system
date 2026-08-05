@@ -204,6 +204,27 @@ class SettingsPage
                 'max_upload_size_mb' => isset($_POST['jmrs_public_max_upload_size_mb'])
                     ? absint(wp_unslash((string) $_POST['jmrs_public_max_upload_size_mb']))
                     : PublicReferralSettings::DEFAULT_MAX_UPLOAD_SIZE_MB,
+                'company_name'       => isset($_POST['jmrs_company_name'])
+                    ? wp_unslash((string) $_POST['jmrs_company_name'])
+                    : '',
+                'public_heading'     => isset($_POST['jmrs_public_heading'])
+                    ? wp_unslash((string) $_POST['jmrs_public_heading'])
+                    : '',
+                'public_intro'       => isset($_POST['jmrs_public_intro'])
+                    ? wp_unslash((string) $_POST['jmrs_public_intro'])
+                    : '',
+                'contact_phone'      => isset($_POST['jmrs_public_contact_phone'])
+                    ? wp_unslash((string) $_POST['jmrs_public_contact_phone'])
+                    : '',
+                'contact_email'      => isset($_POST['jmrs_public_contact_email'])
+                    ? wp_unslash((string) $_POST['jmrs_public_contact_email'])
+                    : '',
+                'primary_colour'     => isset($_POST['jmrs_primary_colour'])
+                    ? wp_unslash((string) $_POST['jmrs_primary_colour'])
+                    : '',
+                'success_next_steps' => isset($_POST['jmrs_success_next_steps'])
+                    ? wp_unslash((string) $_POST['jmrs_success_next_steps'])
+                    : '',
             ]
         );
 
@@ -250,6 +271,36 @@ class SettingsPage
 
         echo '<tr><th scope="row"><label for="jmrs_public_success_message">' . esc_html__('Success Message', 'jm-referral-system') . '</label></th><td>';
         echo '<textarea class="large-text" rows="3" name="jmrs_public_success_message" id="jmrs_public_success_message">' . esc_textarea((string) $settings['success_message']) . '</textarea>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_company_name">' . esc_html__('Company Name', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_company_name" id="jmrs_company_name" value="' . esc_attr((string) $settings['company_name']) . '" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_heading">' . esc_html__('Public Referral Heading', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_public_heading" id="jmrs_public_heading" value="' . esc_attr((string) $settings['public_heading']) . '" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_intro">' . esc_html__('Public Referral Intro', 'jm-referral-system') . '</label></th><td>';
+        echo '<textarea class="large-text" rows="5" name="jmrs_public_intro" id="jmrs_public_intro">' . esc_textarea((string) $settings['public_intro']) . '</textarea>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_contact_phone">' . esc_html__('Public Referral Contact Phone', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_public_contact_phone" id="jmrs_public_contact_phone" value="' . esc_attr((string) $settings['contact_phone']) . '" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_public_contact_email">' . esc_html__('Public Referral Contact Email', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="email" class="regular-text" name="jmrs_public_contact_email" id="jmrs_public_contact_email" value="' . esc_attr((string) $settings['contact_email']) . '" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_primary_colour">' . esc_html__('Primary Brand Colour', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_primary_colour" id="jmrs_primary_colour" value="' . esc_attr((string) $settings['primary_colour']) . '" placeholder="#0b5f4b" />';
+        echo '<p class="description">' . esc_html__('Hex colour used by the public wizard (for example #0b5f4b).', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_success_next_steps">' . esc_html__('Success Page Next-Steps Text', 'jm-referral-system') . '</label></th><td>';
+        echo '<textarea class="large-text" rows="4" name="jmrs_success_next_steps" id="jmrs_success_next_steps">' . esc_textarea((string) $settings['success_next_steps']) . '</textarea>';
+        echo '<p class="description">' . esc_html__('One next-step item per line.', 'jm-referral-system') . '</p>';
         echo '</td></tr>';
 
         echo '<tr><th scope="row">' . esc_html__('Allow Public Document Uploads', 'jm-referral-system') . '</th><td>';

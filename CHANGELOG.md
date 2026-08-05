@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 6.1B: multi-step public referral wizard (Welcome → About You → Person → Care Needs → Documents → Review)
+- Public branding settings (company name, heading, intro, contact, primary colour, success next-steps) via `PublicBranding`
+- Wizard progress indicator, review summary cards with Edit, optional analytics CustomEvents (step number only)
 - Phase 6.1A: public referral intake shortcode `[jmrs_public_referral_form]`
 - Public intake settings (enable, privacy URL, consent version, notification email, success message, uploads)
 - Public referrer/client/consent fields and `submission_channel` (DB `2.17.0`)
@@ -17,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Public form remains one native HTML POST; JS only controls wizard step visibility
+- Confirmation / success copy uses configured company branding
 - Referral create path accepts public-intake columns without forking admin create
 - Referral View / list / CSV export surface website channel and public fields
 - CSV export includes referral source and public-intake columns
@@ -25,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Public form: nonce, honeypot, minimum completion time, hashed rate limit (no raw IP storage)
 - Public uploads use private storage only; never Media Library
+- Wizard does not weaken spam controls or introduce AJAX submission
+
+### Fixed
+
+- Public form submit hang: preserve submitter and defer disable so native POST proceeds
 
 ## [1.0.0] - 2026-08-05
 
