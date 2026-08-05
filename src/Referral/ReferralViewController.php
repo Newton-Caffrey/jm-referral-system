@@ -32,6 +32,16 @@ use JMReferral\Workflow\WorkflowStageService;
 
 class ReferralViewController
 {
+    public const VISITS_DEFAULT_PER_PAGE = 20;
+
+    /** @var array<int, int> */
+    public const VISITS_ALLOWED_PER_PAGE = [20, 50, 100];
+
+    private const ACTIVITY_LIMIT = 50;
+    private const NOTES_LIMIT = 50;
+    private const REVIEWS_LIMIT = 25;
+    private const VERSIONS_LIMIT = 25;
+
     public function __construct(
         private ReferralRepository $repository,
         private ReferralActivityRepository $activity_repository,
@@ -74,6 +84,9 @@ class ReferralViewController
             wp_die(esc_html__('You do not have permission to view referrals.', 'jm-referral-system'));
         }
 
+        global $wpdb;
+        $queries_before = defined('WP_DEBUG') && WP_DEBUG ? (int) $wpdb->num_queries : 0;
+
         $referral_id = isset($_GET['referral_id']) ? absint($_GET['referral_id']) : 0;
         $referral    = $this->repository->find($referral_id);
 
@@ -85,7 +98,9 @@ class ReferralViewController
             wp_die(esc_html__('You do not have permission to view this referral.', 'jm-referral-system'));
         }
 
-        $activities       = $this->activity_repository->get_by_referral_id($referral_id);
+        $activity_total   = $this->activity_repository->count_by_referral_id($referral_id);
+        $activities       = $this->activity_repository->get_by_referral_id($referral_id, self::ACTIVITY_LIMIT);
+        $activities_truncated = $activity_total > self::ACTIVITY_LIMIT;
         $assigned_to      = absint($referral['assigned_to'] ?? 0);
         $assigned_to_name = $assigned_to > 0
             ? $this->user_provider->get_display_name($assigned_to)
@@ -118,8 +133,10 @@ class ReferralViewController
 
         $workflow_stages = $this->workflow_stage_service->get_options_for_referral($workflow_stage_id);
 
-        $notes = [];
-        foreach ($this->note_repository->get_by_referral_id($referral_id) as $note_row) {
+        $notes_total   = $this->note_repository->count_by_referral_id($referral_id);
+        $notes         = [];
+        $notes_truncated = $notes_total > self::NOTES_LIMIT;
+        foreach ($this->note_repository->get_by_referral_id($referral_id, self::NOTES_LIMIT) as $note_row) {
             $author_id               = absint($note_row['user_id'] ?? 0);
             $note_row['author_name'] = $author_id > 0
                 ? $this->user_provider->get_display_name($author_id)
@@ -247,8 +264,15 @@ class ReferralViewController
 
         $care_plan_reviews = [];
         $care_plan_versions = [];
+        $care_plan_reviews_truncated  = false;
+        $care_plan_versions_truncated = false;
         if ($can_view_care_plan && null !== $care_plan) {
-            foreach ($this->care_plan_review_service->get_reviews_for_referral($referral_id) as $review_row) {
+            $reviews_total  = $this->care_plan_review_service->count_reviews_for_referral($referral_id);
+            $versions_total = $this->care_plan_review_service->count_versions_for_referral($referral_id);
+            $care_plan_reviews_truncated  = $reviews_total > self::REVIEWS_LIMIT;
+            $care_plan_versions_truncated = $versions_total > self::VERSIONS_LIMIT;
+
+            foreach ($this->care_plan_review_service->get_reviews_for_referral($referral_id, self::REVIEWS_LIMIT) as $review_row) {
                 $reviewed_by_id = absint($review_row['reviewed_by'] ?? 0);
                 $review_row['reviewed_by_name'] = $reviewed_by_id > 0
                     ? $this->user_provider->get_display_name($reviewed_by_id)
@@ -256,7 +280,7 @@ class ReferralViewController
                 $care_plan_reviews[] = $review_row;
             }
 
-            foreach ($this->care_plan_review_service->get_versions_for_referral($referral_id) as $version_row) {
+            foreach ($this->care_plan_review_service->get_versions_for_referral($referral_id, self::VERSIONS_LIMIT) as $version_row) {
                 $version_created_by = absint($version_row['created_by'] ?? 0);
                 $version_row['created_by_name'] = $version_created_by > 0
                     ? $this->user_provider->get_display_name($version_created_by)
@@ -469,20 +493,88 @@ class ReferralViewController
             $visit_outcome_labels = VisitExecutionService::outcome_labels();
             $visit_task_statuses  = VisitTaskService::status_labels();
 
-            foreach ($this->care_visit_service->get_visits_for_referral($referral_id) as $visit_row) {
+            $visits_pagination = $this->visits_pagination_from_request();
+            $visits_per_page   = $visits_pagination['per_page'];
+            $visits_page       = $visits_pagination['page'];
+            $visits_total      = $this->care_visit_service->count_visits_for_referral($referral_id);
+            $visits_total_pages = max(1, (int) ceil($visits_total / $visits_per_page));
+            if ($visits_page > $visits_total_pages) {
+                $visits_page = $visits_total_pages;
+            }
+            $visits_offset = ($visits_page - 1) * $visits_per_page;
+            $visits_from   = 0 === $visits_total ? 0 : $visits_offset + 1;
+            $visits_to     = min($visits_offset + $visits_per_page, $visits_total);
+
+            $visit_rows = $this->care_visit_service->get_visits_for_referral(
+                $referral_id,
+                $visits_per_page,
+                $visits_offset
+            );
+
+            $visit_ids    = [];
+            $user_ids     = [];
+            $schedule_ids = [];
+            foreach ($visit_rows as $visit_row) {
+                $vid = absint($visit_row['id'] ?? 0);
+                if ($vid > 0) {
+                    $visit_ids[] = $vid;
+                }
+                $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
+                if ($assigned_id > 0) {
+                    $user_ids[$assigned_id] = $assigned_id;
+                }
+                $reviewed_by = absint($visit_row['reviewed_by'] ?? 0);
+                if ($reviewed_by > 0) {
+                    $user_ids[$reviewed_by] = $reviewed_by;
+                }
+                $sid = absint($visit_row['schedule_id'] ?? 0);
+                if ($sid > 0 && ! isset($schedule_name_by_id[$sid])) {
+                    $schedule_ids[$sid] = $sid;
+                }
+            }
+
+            if ([] !== $schedule_ids) {
+                foreach ($this->schedule_service->get_names_by_ids(array_values($schedule_ids)) as $sid => $name) {
+                    $schedule_name_by_id[(int) $sid] = $name;
+                }
+            }
+
+            $display_names = $this->user_provider->get_display_names_by_ids(array_values($user_ids));
+            $tasks_by_visit = $this->visit_task_service->get_tasks_by_visit_ids($visit_ids);
+            $admins_by_visit = $this->medication_administration_service->get_by_visit_ids($visit_ids);
+            $active_medications = $this->medication_service->get_active_for_referral($referral_id);
+
+            $visits_base_args = [
+                'page'                 => 'jm-referrals-view',
+                'referral_id'          => $referral_id,
+                'jmrs_visits_per_page' => $visits_per_page,
+            ];
+            $visits_base_url = add_query_arg($visits_base_args, admin_url('admin.php'));
+            $visits_pagination_links = '';
+            if ($visits_total_pages > 1) {
+                $visits_pagination_links = paginate_links(
+                    [
+                        'base'      => esc_url_raw($visits_base_url) . '%_%',
+                        'format'    => '&jmrs_visits_page=%#%',
+                        'current'   => $visits_page,
+                        'total'     => $visits_total_pages,
+                        'prev_text' => '&laquo;',
+                        'next_text' => '&raquo;',
+                        'type'      => 'plain',
+                    ]
+                );
+            }
+
+            foreach ($visit_rows as $visit_row) {
                 $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
                 $visit_row['assigned_staff_name'] = $assigned_id > 0
-                    ? $this->user_provider->get_display_name($assigned_id)
+                    ? (string) ($display_names[$assigned_id] ?? '')
                     : '';
                 $visit_row['edit_url'] = CareVisitController::get_edit_url(absint($visit_row['id'] ?? 0));
 
                 $schedule_id = absint($visit_row['schedule_id'] ?? 0);
                 if ($schedule_id > 0) {
                     $name = $schedule_name_by_id[$schedule_id] ?? '';
-                    if ('' === $name) {
-                        $linked = $this->schedule_service->get_schedule($schedule_id);
-                        $name   = is_array($linked) ? (string) ($linked['schedule_name'] ?? '') : '';
-                    }
                     $visit_row['source_label'] = '' !== $name
                         ? sprintf(
                             /* translators: %s: schedule name */
@@ -511,37 +603,30 @@ class ReferralViewController
 
                 $reviewed_by = absint($visit_row['reviewed_by'] ?? 0);
                 $visit_row['reviewed_by_name'] = $reviewed_by > 0
-                    ? $this->user_provider->get_display_name($reviewed_by)
+                    ? (string) ($display_names[$reviewed_by] ?? '')
                     : '';
 
                 $visit_id_row = absint($visit_row['id'] ?? 0);
-                if ($visit_id_row > 0 && ! $is_executed) {
-                    $this->visit_task_service->generate_for_visit($visit_id_row);
-                }
-                $visit_row['visit_tasks'] = $visit_id_row > 0
-                    ? $this->visit_task_service->get_tasks_for_visit($visit_id_row)
+                $visit_tasks  = $visit_id_row > 0
+                    ? ($tasks_by_visit[$visit_id_row] ?? [])
                     : [];
-                $visit_row['task_summaries'] = $visit_id_row > 0
-                    ? $this->visit_task_service->get_summaries($visit_id_row)
-                    : [
-                        'completed'        => [],
-                        'outstanding'      => [],
-                        'refused'          => [],
-                        'completed_text'   => '',
-                        'outstanding_text' => '',
-                        'refused_text'     => '',
-                    ];
+                $visit_row['visit_tasks']    = $visit_tasks;
+                $visit_row['task_summaries'] = $this->visit_task_service->summarize_tasks($visit_tasks);
 
-                $visit_active_medications = $this->medication_administration_service
-                    ->get_active_medications_valid_on_visit($visit_row);
+                $visit_active_medications = [];
+                $visit_date = (string) ($visit_row['visit_date'] ?? '');
+                foreach ($active_medications as $medication) {
+                    if ($this->medication_administration_service->is_medication_valid_on_date($medication, $visit_date)) {
+                        $visit_active_medications[] = $medication;
+                    }
+                }
+
                 $visit_row['can_administer_medications'] = ! $is_executed
-                    && $this->medication_administration_service->can_show_administration_for_visit(
-                        $referral,
-                        $visit_row
-                    );
+                    && $this->medication_administration_service->can_administer_for_visit($referral, $visit_row)
+                    && [] !== $visit_active_medications;
                 $visit_row['active_medications'] = $visit_active_medications;
                 $visit_row['medication_administrations'] = $visit_id_row > 0
-                    ? $this->medication_administration_service->get_for_visit($visit_id_row)
+                    ? ($admins_by_visit[$visit_id_row] ?? [])
                     : [];
 
                 $admin_by_med = [];
@@ -587,9 +672,49 @@ class ReferralViewController
         } else {
             $visit_outcome_labels = [];
             $visit_task_statuses  = [];
+            $visits_total         = 0;
+            $visits_page          = 1;
+            $visits_per_page      = self::VISITS_DEFAULT_PER_PAGE;
+            $visits_from          = 0;
+            $visits_to            = 0;
+            $visits_total_pages   = 1;
+            $visits_pagination_links = '';
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $delta = (int) $wpdb->num_queries - $queries_before;
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated by WP_DEBUG.
+            error_log(
+                sprintf(
+                    '[JMRS] referral view query count: %d; visits loaded: %d',
+                    max(0, $delta),
+                    count($care_visits)
+                )
+            );
         }
 
         include JMRS_PLUGIN_PATH . 'templates/referrals/view.php';
+    }
+
+    /**
+     * @return array{page: int, per_page: int}
+     */
+    private function visits_pagination_from_request(): array
+    {
+        $per_page = isset($_GET['jmrs_visits_per_page'])
+            ? absint($_GET['jmrs_visits_per_page'])
+            : self::VISITS_DEFAULT_PER_PAGE;
+
+        if (! in_array($per_page, self::VISITS_ALLOWED_PER_PAGE, true)) {
+            $per_page = self::VISITS_DEFAULT_PER_PAGE;
+        }
+
+        $page = isset($_GET['jmrs_visits_page']) ? absint($_GET['jmrs_visits_page']) : 1;
+
+        return [
+            'page'     => max(1, $page),
+            'per_page' => $per_page,
+        ];
     }
 
     /**

@@ -299,6 +299,15 @@ class MedicationAdministrationService
         return $this->administration_repository->get_by_visit($visit_id);
     }
 
+    /**
+     * @param array<int, int> $visit_ids
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function get_by_visit_ids(array $visit_ids): array
+    {
+        return $this->administration_repository->get_by_visit_ids($visit_ids);
+    }
+
     public function count_exceptions_today_for_managers(): int
     {
         if (! Capabilities::current_user_can(Capabilities::MANAGE_VISITS)) {

@@ -138,12 +138,18 @@ class CareVisitRepository
     }
 
     /**
-     * Visits for a referral, upcoming/newest first.
+     * Visits for a referral, newest date/time first.
      *
+     * @param int|null $limit  Optional page size.
+     * @param int      $offset Offset for pagination.
      * @return array<int, array<string, mixed>>
      */
-    public function get_by_referral(int $referral_id, ?int $assigned_user_id = null): array
-    {
+    public function get_by_referral(
+        int $referral_id,
+        ?int $assigned_user_id = null,
+        ?int $limit = null,
+        int $offset = 0
+    ): array {
         global $wpdb;
 
         if ($referral_id <= 0) {
@@ -152,36 +158,265 @@ class CareVisitRepository
 
         $table   = Tables::care_visits_table();
         $columns = self::SELECT_COLUMNS;
+        $where   = ['referral_id = %d'];
+        $params  = [$referral_id];
 
         if (null !== $assigned_user_id && $assigned_user_id > 0) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
-            $results = $wpdb->get_results(
+            $where[]  = 'assigned_user_id = %d';
+            $params[] = $assigned_user_id;
+        }
+
+        $sql = "SELECT {$columns}
+            FROM {$table}
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY visit_date DESC, start_time DESC, id DESC';
+
+        if (null !== $limit && $limit > 0) {
+            $sql     .= ' LIMIT %d OFFSET %d';
+            $params[] = $limit;
+            $params[] = max(0, $offset);
+        }
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- trusted fragments + prepared params.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Counts visits for a referral (optional assignee filter).
+     */
+    public function count_by_referral(int $referral_id, ?int $assigned_user_id = null): int
+    {
+        global $wpdb;
+
+        if ($referral_id <= 0) {
+            return 0;
+        }
+
+        $table = Tables::care_visits_table();
+
+        if (null !== $assigned_user_id && $assigned_user_id > 0) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+            $count = $wpdb->get_var(
                 $wpdb->prepare(
-                    "SELECT {$columns}
-                    FROM {$table}
-                    WHERE referral_id = %d
-                      AND assigned_user_id = %d
-                    ORDER BY visit_date DESC, start_time DESC, id DESC",
+                    "SELECT COUNT(*) FROM {$table} WHERE referral_id = %d AND assigned_user_id = %d",
                     $referral_id,
                     $assigned_user_id
-                ),
-                ARRAY_A
+                )
             );
         } else {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/column names are trusted.
-            $results = $wpdb->get_results(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+            $count = $wpdb->get_var(
                 $wpdb->prepare(
-                    "SELECT {$columns}
-                    FROM {$table}
-                    WHERE referral_id = %d
-                    ORDER BY visit_date DESC, start_time DESC, id DESC",
+                    "SELECT COUNT(*) FROM {$table} WHERE referral_id = %d",
                     $referral_id
-                ),
-                ARRAY_A
+                )
             );
         }
 
-        return is_array($results) ? $results : [];
+        return (int) $count;
+    }
+
+    /**
+     * Returns generation keys that already exist (for batch generation).
+     *
+     * @param array<int, string> $keys
+     * @return array<string, true> Set of existing keys
+     */
+    public function find_existing_generation_keys(array $keys): array
+    {
+        global $wpdb;
+
+        $normalized = [];
+        foreach ($keys as $key) {
+            $key = trim((string) $key);
+            if ('' !== $key) {
+                $normalized[$key] = $key;
+            }
+        }
+
+        if ([] === $normalized) {
+            return [];
+        }
+
+        $table   = Tables::care_visits_table();
+        $existing = [];
+        $chunks  = array_chunk(array_values($normalized), 200);
+
+        foreach ($chunks as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '%s'));
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+            $rows = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT generation_key FROM {$table} WHERE generation_key IN ({$placeholders})",
+                    ...$chunk
+                )
+            );
+
+            if (! is_array($rows)) {
+                continue;
+            }
+
+            foreach ($rows as $row_key) {
+                $existing[(string) $row_key] = true;
+            }
+        }
+
+        return $existing;
+    }
+
+    /**
+     * Inserts generated visit rows in chunks. Caller must pass only non-existing keys.
+     * Uses INSERT IGNORE so UNIQUE generation_key races are safe.
+     *
+     * Compromise: after each chunk, IDs are resolved by generation_key lookup (avoids
+     * unreliable multi-row insert_id mapping under INSERT IGNORE). Task generation should
+     * remain idempotent for any race-inserted rows included in the ID set.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array{
+     *   inserted: array<int, array{id: int, generation_key: string}>,
+     *   created: int,
+     *   skipped_duplicates: int,
+     *   errors: int
+     * }
+     */
+    public function insert_generated_batch(array $rows): array
+    {
+        global $wpdb;
+
+        $inserted           = [];
+        $created            = 0;
+        $skipped_duplicates = 0;
+        $errors             = 0;
+        $table              = Tables::care_visits_table();
+        $chunks             = array_chunk($rows, 100);
+
+        foreach ($chunks as $chunk) {
+            if ([] === $chunk) {
+                continue;
+            }
+
+            $value_parts = [];
+            $keys        = [];
+
+            foreach ($chunk as $data) {
+                $row = $this->map_row($data, true);
+                $key = (string) ($row['generation_key'] ?? '');
+                if ('' === $key) {
+                    ++$errors;
+                    continue;
+                }
+
+                $keys[] = $key;
+
+                $value_parts[] = sprintf(
+                    '(%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s)',
+                    absint($row['referral_id'] ?? 0),
+                    $this->sql_nullable_int($row['care_plan_id'] ?? null),
+                    $this->sql_nullable_int($row['assigned_user_id'] ?? null),
+                    $this->sql_nullable_int($row['schedule_id'] ?? null),
+                    $this->sql_nullable_string($row['schedule_occurrence_date'] ?? null),
+                    $this->sql_quote_string($key),
+                    $this->sql_quote_string((string) ($row['visit_date'] ?? '')),
+                    $this->sql_quote_string((string) ($row['start_time'] ?? '')),
+                    $this->sql_quote_string((string) ($row['end_time'] ?? '')),
+                    $this->sql_quote_string((string) ($row['visit_status'] ?? 'scheduled')),
+                    $this->sql_nullable_string($row['visit_type'] ?? null),
+                    $this->sql_nullable_string($row['notes'] ?? null),
+                    absint($row['created_by'] ?? 0),
+                    $this->sql_quote_string((string) ($row['created_at'] ?? current_time('mysql'))),
+                    $this->sql_quote_string((string) ($row['updated_at'] ?? current_time('mysql')))
+                );
+            }
+
+            if ([] === $value_parts) {
+                continue;
+            }
+
+            $sql = "INSERT IGNORE INTO {$table}
+                (referral_id, care_plan_id, assigned_user_id, schedule_id, schedule_occurrence_date,
+                 generation_key, visit_date, start_time, end_time, visit_status, visit_type, notes,
+                 created_by, created_at, updated_at)
+                VALUES " . implode(',', $value_parts);
+
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- values escaped via helper quotes.
+            $result = $wpdb->query($sql);
+
+            if (false === $result) {
+                $errors += count($keys);
+                continue;
+            }
+
+            $affected            = (int) $result;
+            $created            += $affected;
+            $skipped_duplicates += max(0, count($keys) - $affected);
+
+            $placeholders = implode(',', array_fill(0, count($keys), '%s'));
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+            $id_rows = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT id, generation_key FROM {$table} WHERE generation_key IN ({$placeholders})",
+                    ...$keys
+                ),
+                ARRAY_A
+            );
+
+            $found = [];
+            if (is_array($id_rows)) {
+                foreach ($id_rows as $id_row) {
+                    $gk = (string) ($id_row['generation_key'] ?? '');
+                    $id = absint($id_row['id'] ?? 0);
+                    if ('' !== $gk && $id > 0) {
+                        $found[$gk] = $id;
+                    }
+                }
+            }
+
+            foreach ($keys as $key) {
+                if (isset($found[$key])) {
+                    $inserted[] = [
+                        'id'             => $found[$key],
+                        'generation_key' => $key,
+                    ];
+                } else {
+                    ++$errors;
+                }
+            }
+        }
+
+        return [
+            'inserted'           => $inserted,
+            'created'            => $created,
+            'skipped_duplicates' => $skipped_duplicates,
+            'errors'             => $errors,
+        ];
+    }
+
+    private function sql_nullable_int(mixed $value): string
+    {
+        if (null === $value || '' === $value) {
+            return 'NULL';
+        }
+
+        return (string) absint($value);
+    }
+
+    private function sql_nullable_string(mixed $value): string
+    {
+        if (null === $value || (is_string($value) && '' === trim($value))) {
+            return 'NULL';
+        }
+
+        return $this->sql_quote_string((string) $value);
+    }
+
+    private function sql_quote_string(string $value): string
+    {
+        global $wpdb;
+
+        return $wpdb->prepare('%s', $value);
     }
 
     /**

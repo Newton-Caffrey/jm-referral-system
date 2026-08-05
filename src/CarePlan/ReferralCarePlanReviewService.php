@@ -176,7 +176,7 @@ class ReferralCarePlanReviewService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function get_reviews_for_referral(int $referral_id): array
+    public function get_reviews_for_referral(int $referral_id, ?int $limit = null): array
     {
         if (! $this->can_view_care_plan_history($referral_id)) {
             return [];
@@ -187,13 +187,27 @@ class ReferralCarePlanReviewService
             return [];
         }
 
-        return $this->review_repository->get_by_care_plan(absint($care_plan['id'] ?? 0));
+        return $this->review_repository->get_by_care_plan(absint($care_plan['id'] ?? 0), $limit);
+    }
+
+    public function count_reviews_for_referral(int $referral_id): int
+    {
+        if (! $this->can_view_care_plan_history($referral_id)) {
+            return 0;
+        }
+
+        $care_plan = $this->care_plan_repository->find_by_referral($referral_id);
+        if (null === $care_plan) {
+            return 0;
+        }
+
+        return $this->review_repository->count_by_care_plan(absint($care_plan['id'] ?? 0));
     }
 
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function get_versions_for_referral(int $referral_id): array
+    public function get_versions_for_referral(int $referral_id, ?int $limit = null): array
     {
         if (! $this->can_view_care_plan_history($referral_id)) {
             return [];
@@ -204,7 +218,25 @@ class ReferralCarePlanReviewService
             return [];
         }
 
-        return $this->version_repository->get_by_care_plan(absint($care_plan['id'] ?? 0));
+        return $this->version_repository->get_by_care_plan(
+            absint($care_plan['id'] ?? 0),
+            $limit,
+            false
+        );
+    }
+
+    public function count_versions_for_referral(int $referral_id): int
+    {
+        if (! $this->can_view_care_plan_history($referral_id)) {
+            return 0;
+        }
+
+        $care_plan = $this->care_plan_repository->find_by_referral($referral_id);
+        if (null === $care_plan) {
+            return 0;
+        }
+
+        return $this->version_repository->count_by_care_plan(absint($care_plan['id'] ?? 0));
     }
 
     /**

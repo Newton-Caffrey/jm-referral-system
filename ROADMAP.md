@@ -122,7 +122,8 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 
 - [x] Performance & scalability audit (`docs/PERFORMANCE_AUDIT.md`, Phase 5.4.1)
 - [x] List pagination + dashboard alert/enrichment fixes (Phase 5.4.2A)
-- [ ] Referral View / schedule generation / indexes / chunked CSV (Phase 5.4.2B+)
+- [x] Referral View pagination / N+1 / generation batching / chunked CSV / indexes (Phase 5.4.2B)
+- [ ] Remaining performance: search strategy, Menu DI reuse, report DATE() predicates, View docs/schedules pagination
 - [ ] Chart.js local pin
 - [ ] Legacy Media Library cleanup after private migration
 - [ ] Timed retention purge (only after legal/compliance sign-off)

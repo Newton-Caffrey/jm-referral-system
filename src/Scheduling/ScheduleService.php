@@ -390,6 +390,15 @@ class ScheduleService
     }
 
     /**
+     * @param array<int, int> $schedule_ids
+     * @return array<int, string>
+     */
+    public function get_names_by_ids(array $schedule_ids): array
+    {
+        return $this->schedule_repository->get_names_by_ids($schedule_ids);
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function get_schedule(int $schedule_id): ?array

@@ -202,8 +202,11 @@ class CareVisitService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function get_visits_for_referral(int $referral_id): array
-    {
+    public function get_visits_for_referral(
+        int $referral_id,
+        ?int $limit = null,
+        int $offset = 0
+    ): array {
         $referral = $this->referral_repository->find($referral_id);
 
         if (null === $referral || ! $this->can_view_visits_for_referral($referral)) {
@@ -212,7 +215,24 @@ class CareVisitService
 
         $assigned_filter = $this->visit_assigned_user_filter();
 
-        return $this->visit_repository->get_by_referral($referral_id, $assigned_filter);
+        return $this->visit_repository->get_by_referral($referral_id, $assigned_filter, $limit, $offset);
+    }
+
+    /**
+     * Counts visits the current user may see for a referral.
+     */
+    public function count_visits_for_referral(int $referral_id): int
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral || ! $this->can_view_visits_for_referral($referral)) {
+            return 0;
+        }
+
+        return $this->visit_repository->count_by_referral(
+            $referral_id,
+            $this->visit_assigned_user_filter()
+        );
     }
 
     /**

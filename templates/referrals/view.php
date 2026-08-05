@@ -32,7 +32,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $referral         = is_array( $referral ?? null ) ? $referral : array();
 $activities       = is_array( $activities ?? null ) ? $activities : array();
+$activities_truncated = ! empty( $activities_truncated );
 $notes            = is_array( $notes ?? null ) ? $notes : array();
+$notes_truncated   = ! empty( $notes_truncated );
+$care_plan_reviews_truncated  = ! empty( $care_plan_reviews_truncated );
+$care_plan_versions_truncated = ! empty( $care_plan_versions_truncated );
+$visits_total       = isset( $visits_total ) ? absint( $visits_total ) : 0;
+$visits_page        = isset( $visits_page ) ? max( 1, absint( $visits_page ) ) : 1;
+$visits_per_page    = isset( $visits_per_page ) ? absint( $visits_per_page ) : 20;
+$visits_from        = isset( $visits_from ) ? absint( $visits_from ) : 0;
+$visits_to          = isset( $visits_to ) ? absint( $visits_to ) : 0;
+$visits_total_pages = isset( $visits_total_pages ) ? max( 1, absint( $visits_total_pages ) ) : 1;
+$visits_pagination_links = $visits_pagination_links ?? '';
 $assigned_to_name = isset( $assigned_to_name ) ? (string) $assigned_to_name : '';
 $service_name     = isset( $service_name ) ? (string) $service_name : '';
 $workflow_stage_name = isset( $workflow_stage_name ) ? (string) $workflow_stage_name : '';
@@ -1048,6 +1059,9 @@ $archived_display = '' !== $archived_at
 
 		<?php if ( null !== $care_plan && $can_view_care_plan ) : ?>
 			<h2><?php echo esc_html__( 'Care Plan Reviews', 'jm-referral-system' ); ?></h2>
+			<?php if ( $care_plan_reviews_truncated ) : ?>
+				<p class="description"><?php echo esc_html__( 'Showing the most recent 25 records.', 'jm-referral-system' ); ?></p>
+			<?php endif; ?>
 			<?php if ( empty( $care_plan_reviews ) ) : ?>
 				<p><?php echo esc_html__( 'No care plan reviews recorded yet.', 'jm-referral-system' ); ?></p>
 			<?php else : ?>
@@ -1098,6 +1112,9 @@ $archived_display = '' !== $archived_at
 			<?php endif; ?>
 
 			<h2><?php echo esc_html__( 'Care Plan Version History', 'jm-referral-system' ); ?></h2>
+			<?php if ( $care_plan_versions_truncated ) : ?>
+				<p class="description"><?php echo esc_html__( 'Showing the most recent 25 records.', 'jm-referral-system' ); ?></p>
+			<?php endif; ?>
 			<?php if ( empty( $care_plan_versions ) ) : ?>
 				<p><?php echo esc_html__( 'No previous versions yet. A snapshot is created when the care plan is updated.', 'jm-referral-system' ); ?></p>
 			<?php else : ?>
@@ -1823,9 +1840,72 @@ $archived_display = '' !== $archived_at
 			</form>
 		<?php endif; ?>
 
+		<?php
+		$jmrs_render_visits_pagination = static function ( string $select_id ) use (
+			$referral_id,
+			$visits_from,
+			$visits_to,
+			$visits_total,
+			$visits_per_page,
+			$visits_pagination_links
+		) {
+			?>
+			<div class="tablenav">
+				<div class="alignleft actions">
+					<form method="get" action="">
+						<input type="hidden" name="page" value="jm-referrals-view" />
+						<input type="hidden" name="referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
+						<input type="hidden" name="jmrs_visits_page" value="1" />
+						<label for="<?php echo esc_attr( $select_id ); ?>" class="screen-reader-text"><?php echo esc_html__( 'Visits per page', 'jm-referral-system' ); ?></label>
+						<select name="jmrs_visits_per_page" id="<?php echo esc_attr( $select_id ); ?>" onchange="this.form.submit();">
+							<?php foreach ( \JMReferral\Referral\ReferralViewController::VISITS_ALLOWED_PER_PAGE as $size ) : ?>
+								<option value="<?php echo esc_attr( (string) $size ); ?>" <?php selected( $visits_per_page, $size ); ?>>
+									<?php
+									echo esc_html(
+										sprintf(
+											/* translators: %d: number of visits per page */
+											__( '%d per page', 'jm-referral-system' ),
+											$size
+										)
+									);
+									?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</form>
+				</div>
+				<div class="tablenav-pages">
+					<span class="displaying-num">
+						<?php
+						if ( $visits_total > 0 ) {
+							echo esc_html(
+								sprintf(
+									/* translators: 1: first visit number, 2: last visit number, 3: total visits */
+									__( 'Displaying %1$s–%2$s of %3$s visits', 'jm-referral-system' ),
+									number_format_i18n( $visits_from ),
+									number_format_i18n( $visits_to ),
+									number_format_i18n( $visits_total )
+								)
+							);
+						} else {
+							echo esc_html__( 'Displaying 0 visits', 'jm-referral-system' );
+						}
+						?>
+					</span>
+					<?php if ( is_string( $visits_pagination_links ) && '' !== $visits_pagination_links ) : ?>
+						<span class="pagination-links"><?php echo $visits_pagination_links; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- paginate_links() HTML. ?></span>
+					<?php endif; ?>
+				</div>
+				<br class="clear" />
+			</div>
+			<?php
+		};
+		?>
+
 		<?php if ( empty( $care_visits ) ) : ?>
 			<p><?php echo esc_html__( 'No care visits scheduled yet.', 'jm-referral-system' ); ?></p>
 		<?php else : ?>
+			<?php $jmrs_render_visits_pagination( 'jmrs_visits_per_page_top' ); ?>
 			<table class="wp-list-table widefat fixed striped table-view-list">
 				<thead>
 					<tr>
@@ -2313,10 +2393,15 @@ $archived_display = '' !== $archived_at
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+			<?php $jmrs_render_visits_pagination( 'jmrs_visits_per_page_bottom' ); ?>
 		<?php endif; ?>
 	<?php endif; ?>
 
 	<h2><?php echo esc_html__( 'Internal Notes', 'jm-referral-system' ); ?></h2>
+
+	<?php if ( $notes_truncated ) : ?>
+		<p class="description"><?php echo esc_html__( 'Showing the most recent 50 records.', 'jm-referral-system' ); ?></p>
+	<?php endif; ?>
 
 	<?php
 	$notes_list = $notes ?? array();
@@ -2527,6 +2612,9 @@ $archived_display = '' !== $archived_at
 	<?php endif; ?>
 
 	<h2><?php echo esc_html__( 'Activity Timeline', 'jm-referral-system' ); ?></h2>
+	<?php if ( $activities_truncated ) : ?>
+		<p class="description"><?php echo esc_html__( 'Showing the most recent 50 records.', 'jm-referral-system' ); ?></p>
+	<?php endif; ?>
 	<table class="wp-list-table widefat fixed striped table-view-list">
 		<thead>
 			<tr>

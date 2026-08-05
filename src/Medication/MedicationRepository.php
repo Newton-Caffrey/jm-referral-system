@@ -131,6 +131,57 @@ class MedicationRepository
         return $this->get_by_referral($referral_id, false);
     }
 
+    /**
+     * Medication names keyed by id.
+     *
+     * @param array<int, int> $medication_ids
+     * @return array<int, string>
+     */
+    public function get_names_by_ids(array $medication_ids): array
+    {
+        global $wpdb;
+
+        $ids = [];
+        foreach ($medication_ids as $medication_id) {
+            $medication_id = absint($medication_id);
+            if ($medication_id > 0) {
+                $ids[$medication_id] = $medication_id;
+            }
+        }
+
+        if ([] === $ids) {
+            return [];
+        }
+
+        $table = Tables::medications_table();
+        $names = [];
+
+        foreach (array_chunk(array_values($ids), 200) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '%d'));
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+            $results = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT id, medication_name FROM {$table} WHERE id IN ({$placeholders})",
+                    ...$chunk
+                ),
+                ARRAY_A
+            );
+
+            if (! is_array($results)) {
+                continue;
+            }
+
+            foreach ($results as $row) {
+                $id = absint($row['id'] ?? 0);
+                if ($id > 0) {
+                    $names[$id] = (string) ($row['medication_name'] ?? '');
+                }
+            }
+        }
+
+        return $names;
+    }
+
     public function count_active_by_referral(int $referral_id): int
     {
         global $wpdb;

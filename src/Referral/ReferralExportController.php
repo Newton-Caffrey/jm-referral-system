@@ -11,6 +11,8 @@ use JMReferral\Workflow\WorkflowStageService;
 
 class ReferralExportController
 {
+    private const CHUNK_SIZE = 500;
+
     public function __construct(
         private ReferralRepository $repository,
         private ReferralFilters $filters,
@@ -30,7 +32,7 @@ class ReferralExportController
     }
 
     /**
-     * Streams a CSV download of the currently filtered referrals.
+     * Streams a CSV download of the currently filtered referrals in chunks.
      */
     public function handle_export(): void
     {
@@ -44,26 +46,15 @@ class ReferralExportController
 
         check_admin_referer('jmrs_export_referrals');
 
+        global $wpdb;
+        $queries_before = defined('WP_DEBUG') && WP_DEBUG ? (int) $wpdb->num_queries : 0;
+        $chunks_processed = 0;
+
         $filters            = $this->filters->from_request();
         $access_assigned_to = $this->access_policy->get_assigned_user_constraint();
-        $referrals          = $this->repository->find_by_filters($filters, null, 0, $access_assigned_to);
         $filename           = 'referrals-export-' . current_time('Y-m-d') . '.csv';
 
-        $service_type_ids   = [];
-        $workflow_stage_ids = [];
-        foreach ($referrals as $referral) {
-            $service_type_id = absint($referral['service_type_id'] ?? 0);
-            if ($service_type_id > 0) {
-                $service_type_ids[] = $service_type_id;
-            }
-
-            $workflow_stage_id = absint($referral['workflow_stage_id'] ?? 0);
-            if ($workflow_stage_id > 0) {
-                $workflow_stage_ids[] = $workflow_stage_id;
-            }
-        }
-        $service_names = $this->service_type_service->get_names_by_ids($service_type_ids);
-        $stage_names   = $this->workflow_stage_service->get_names_by_ids($workflow_stage_ids);
+        // Export always streams the full filtered set (ignores list paged / jmrs_per_page).
 
         nocache_headers();
         header('Content-Type: text/csv; charset=utf-8');
@@ -72,6 +63,10 @@ class ReferralExportController
         header('Cache-Control: private, no-store, no-cache, must-revalidate');
         header('Pragma: no-cache');
         header('Expires: 0');
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
 
         $output = fopen('php://output', 'w');
 
@@ -105,52 +100,125 @@ class ReferralExportController
             ]
         );
 
-        foreach ($referrals as $referral) {
-            $assigned_to = absint($referral['assigned_to'] ?? 0);
-            $assigned_to_name = $assigned_to > 0
-                ? $this->user_provider->get_display_name($assigned_to)
-                : '';
+        $offset            = 0;
+        $service_name_cache = [];
+        $stage_name_cache   = [];
+        $assignee_cache     = [];
 
-            $contact_method = (string) ($referral['preferred_contact_method'] ?? '');
-            $contact_label  = '' !== $contact_method
-                ? PreferredContactMethods::label($contact_method)
-                : '';
+        do {
+            $referrals = $this->repository->find_by_filters(
+                $filters,
+                self::CHUNK_SIZE,
+                $offset,
+                $access_assigned_to
+            );
 
-            $service_type_id = absint($referral['service_type_id'] ?? 0);
-            $service_name    = (string) ($referral['service_required'] ?? '');
-            if ($service_type_id > 0 && isset($service_names[$service_type_id])) {
-                $service_name = $service_names[$service_type_id];
+            $batch_count = count($referrals);
+            if (0 === $batch_count) {
+                break;
             }
 
-            $workflow_stage_id = absint($referral['workflow_stage_id'] ?? 0);
-            $stage_name        = ($workflow_stage_id > 0 && isset($stage_names[$workflow_stage_id]))
-                ? $stage_names[$workflow_stage_id]
-                : '';
+            ++$chunks_processed;
 
-            $archived_at = (string) ($referral['archived_at'] ?? '');
-            $is_archived = '' !== $archived_at;
+            $service_type_ids   = [];
+            $workflow_stage_ids = [];
+            $assignee_ids       = [];
 
-            CsvExportHelper::put_row(
-                $output,
-                [
-                    (string) ($referral['referral_number'] ?? ''),
-                    (string) ($referral['client_name'] ?? ''),
-                    (string) ($referral['client_email'] ?? ''),
-                    (string) ($referral['client_phone'] ?? ''),
-                    $service_name,
-                    $stage_name,
-                    (string) ($referral['priority'] ?? ''),
-                    (string) ($referral['status'] ?? ''),
-                    $assigned_to_name,
-                    (string) ($referral['care_start_date'] ?? ''),
-                    $contact_label,
-                    (string) ($referral['care_requirements'] ?? ''),
-                    $is_archived ? 'Yes' : 'No',
-                    $archived_at,
-                    (string) ($referral['archive_reason'] ?? ''),
-                    (string) ($referral['created_at'] ?? ''),
-                    (string) ($referral['updated_at'] ?? ''),
-                ]
+            foreach ($referrals as $referral) {
+                $service_type_id = absint($referral['service_type_id'] ?? 0);
+                if ($service_type_id > 0 && ! isset($service_name_cache[$service_type_id])) {
+                    $service_type_ids[] = $service_type_id;
+                }
+
+                $workflow_stage_id = absint($referral['workflow_stage_id'] ?? 0);
+                if ($workflow_stage_id > 0 && ! isset($stage_name_cache[$workflow_stage_id])) {
+                    $workflow_stage_ids[] = $workflow_stage_id;
+                }
+
+                $assigned_to = absint($referral['assigned_to'] ?? 0);
+                if ($assigned_to > 0 && ! isset($assignee_cache[$assigned_to])) {
+                    $assignee_ids[] = $assigned_to;
+                }
+            }
+
+            if ([] !== $service_type_ids) {
+                foreach ($this->service_type_service->get_names_by_ids($service_type_ids) as $id => $name) {
+                    $service_name_cache[(int) $id] = $name;
+                }
+            }
+            if ([] !== $workflow_stage_ids) {
+                foreach ($this->workflow_stage_service->get_names_by_ids($workflow_stage_ids) as $id => $name) {
+                    $stage_name_cache[(int) $id] = $name;
+                }
+            }
+            if ([] !== $assignee_ids) {
+                foreach ($this->user_provider->get_display_names_by_ids($assignee_ids) as $id => $name) {
+                    $assignee_cache[(int) $id] = $name;
+                }
+            }
+
+            foreach ($referrals as $referral) {
+                $assigned_to = absint($referral['assigned_to'] ?? 0);
+                $assigned_to_name = $assigned_to > 0
+                    ? (string) ($assignee_cache[$assigned_to] ?? '')
+                    : '';
+
+                $contact_method = (string) ($referral['preferred_contact_method'] ?? '');
+                $contact_label  = '' !== $contact_method
+                    ? PreferredContactMethods::label($contact_method)
+                    : '';
+
+                $service_type_id = absint($referral['service_type_id'] ?? 0);
+                $service_name    = (string) ($referral['service_required'] ?? '');
+                if ($service_type_id > 0 && isset($service_name_cache[$service_type_id])) {
+                    $service_name = $service_name_cache[$service_type_id];
+                }
+
+                $workflow_stage_id = absint($referral['workflow_stage_id'] ?? 0);
+                $stage_name        = ($workflow_stage_id > 0 && isset($stage_name_cache[$workflow_stage_id]))
+                    ? $stage_name_cache[$workflow_stage_id]
+                    : '';
+
+                $archived_at = (string) ($referral['archived_at'] ?? '');
+                $is_archived = '' !== $archived_at;
+
+                CsvExportHelper::put_row(
+                    $output,
+                    [
+                        (string) ($referral['referral_number'] ?? ''),
+                        (string) ($referral['client_name'] ?? ''),
+                        (string) ($referral['client_email'] ?? ''),
+                        (string) ($referral['client_phone'] ?? ''),
+                        $service_name,
+                        $stage_name,
+                        (string) ($referral['priority'] ?? ''),
+                        (string) ($referral['status'] ?? ''),
+                        $assigned_to_name,
+                        (string) ($referral['care_start_date'] ?? ''),
+                        $contact_label,
+                        (string) ($referral['care_requirements'] ?? ''),
+                        $is_archived ? 'Yes' : 'No',
+                        $archived_at,
+                        (string) ($referral['archive_reason'] ?? ''),
+                        (string) ($referral['created_at'] ?? ''),
+                        (string) ($referral['updated_at'] ?? ''),
+                    ]
+                );
+            }
+
+            $offset += $batch_count;
+            unset($referrals);
+        } while ($batch_count === self::CHUNK_SIZE);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $delta = (int) $wpdb->num_queries - $queries_before;
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated by WP_DEBUG.
+            error_log(
+                sprintf(
+                    '[JMRS] referral export query count: %d; chunks processed: %d',
+                    max(0, $delta),
+                    $chunks_processed
+                )
             );
         }
 

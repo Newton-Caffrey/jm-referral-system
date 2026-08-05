@@ -11,7 +11,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.15.0';
+    public const DB_VERSION = '2.16.0';
 
     /**
      * Option key used to store the installed DB version.

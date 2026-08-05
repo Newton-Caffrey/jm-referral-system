@@ -117,6 +117,64 @@ class MedicationAdministrationRepository
     }
 
     /**
+     * Administrations for many visits, grouped by visit_id.
+     *
+     * @param array<int, int> $visit_ids
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function get_by_visit_ids(array $visit_ids): array
+    {
+        global $wpdb;
+
+        $ids = [];
+        foreach ($visit_ids as $visit_id) {
+            $visit_id = absint($visit_id);
+            if ($visit_id > 0) {
+                $ids[$visit_id] = $visit_id;
+            }
+        }
+
+        if ([] === $ids) {
+            return [];
+        }
+
+        $table   = Tables::medication_administrations_table();
+        $columns = self::SELECT_COLUMNS;
+        $grouped = [];
+        foreach ($ids as $id) {
+            $grouped[$id] = [];
+        }
+
+        foreach (array_chunk(array_values($ids), 200) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '%d'));
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+            $results = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT {$columns}
+                    FROM {$table}
+                    WHERE visit_id IN ({$placeholders})
+                    ORDER BY visit_id ASC, scheduled_time ASC, id ASC",
+                    ...$chunk
+                ),
+                ARRAY_A
+            );
+
+            if (! is_array($results)) {
+                continue;
+            }
+
+            foreach ($results as $row) {
+                $visit_id = absint($row['visit_id'] ?? 0);
+                if ($visit_id > 0) {
+                    $grouped[$visit_id][] = $row;
+                }
+            }
+        }
+
+        return $grouped;
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function get_by_medication(int $medication_id): array

@@ -1,9 +1,10 @@
 # JM Referral System — Performance & Scalability Audit
 
-**Phase:** 5.4.1 (analysis only)  
-**Date:** 2026-08-05  
+**Phase:** 5.4.1 (analysis) + 5.4.2A/B (mitigations marked in status column)  
+**Date:** 2026-08-05 (audit); mitigations through 2026-08-05  
 **Scope:** Complete plugin review — referrals, view, dashboard, alerts, reports, visits/schedules, documents, schema, PHP/DI, WordPress admin  
-**Out of scope:** Code changes, index application, premature optimization
+**Out of scope for 5.4.1:** Code changes, index application, premature optimization  
+**Applied later:** Phase 5.4.2A (list/dashboard), Phase 5.4.2B (view pagination, generation batching, chunked CSV, indexes `2.16.0`)
 
 This document records measured code behaviour and estimated impact at scale. It is not a load-test report; estimates assume typical MySQL on shared hosting (e.g. one.com), PHP request timeout ~30–60s, and no persistent object cache unless WordPress has one.
 
@@ -15,13 +16,15 @@ The plugin is functionally rich and correctly layered (Repository → Service �
 
 **Verdict:** Not production-safe at multi-thousand referral / visit scale without Phase 5.4.2 work. Current small pilots (tens–low hundreds of referrals) will feel slow on list/view/dashboard for managers; 10k+ referrals or dense visit schedules will time out or exhaust memory on the hottest paths.
 
-**Hottest paths (today):**
+**Hottest paths (after 5.4.2A/B):**
 
-1. Referral list with delete capability (no pagination + ~13 dependency COUNTs per row)
-2. Referral view with many visits (task/MAR/med N+1)
-3. Dashboard for managers (full alert engine ×2 when Reports shortcut is shown)
-4. Schedule generation (per-visit SELECT + INSERT + task generation)
-5. CSV referral export (full filtered set in memory)
+1. ~~Referral list with delete capability~~ → paginated; delete off list
+2. ~~Referral view with many visits~~ → paginated visits + bulk load; remaining: docs/schedules/meds still full; nested service re-finds
+3. ~~Dashboard double alert engine~~ → fixed
+4. ~~Schedule generation N+1~~ → batched; still synchronous in one request (cap 2,000)
+5. ~~CSV referral export full memory~~ → chunked stream
+
+**Still open hotspots:** leading-wildcard search; Menu DI duplication; report `DATE()` predicates; unbounded documents/schedules on View.
 
 **Good news:** Document downloads stream via `readfile()` (bounded by 10 MB upload cap). Report CSV exports are aggregate rows (low memory) and reuse `get_report_data()` shape for page/charts/CSV. Alert rules already use `LIMIT 200`. Care-plan review/version uniqueness and visit `generation_key` UNIQUE keys exist.
 
@@ -29,20 +32,20 @@ The plugin is functionally rich and correctly layered (Repository → Service �
 
 # Top Performance Risks
 
-| ID | Severity | Area | Finding | Impact | Effort | Status (5.4.2A) |
+| ID | Severity | Area | Finding | Impact | Effort | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| PERF-C-001 | **Critical** | List | No pagination: `query($filters, null, …)` loads all matching referrals | Timeout / OOM at 1k–10k+ | Low | **Resolved** — default 20/page (20/50/100) |
-| PERF-C-002 | **Critical** | List | `can_permanently_delete()` → 13 COUNTs **per list row** for delete-capable users | ~13N queries; list unusable at hundreds | Medium | **Resolved** — Delete removed from list/dashboard; View-only |
-| PERF-C-003 | **Critical** | View | Unbounded visits + per-visit task generate / tasks×2 / meds×2 / MAR | ~10–15 SQL/unexecuted visit; 100 visits ≈ 1k+ queries | High | Open (later phase) |
-| PERF-C-004 | **Critical** | Dashboard | Alert engine runs **twice** (alerts widget + reports summary) | +11 heavy queries every manager dashboard | Low | **Resolved** — calculate once; pass counts to summary |
-| PERF-C-005 | **Critical** | Schedules | Synchronous generation: SELECT+INSERT+task N+1 per occurrence | ~300–2,000 queries / 100 visits; timeouts | High | Open |
-| PERF-H-001 | **High** | Export | Referral CSV loads entire filtered set (`find_by_filters` unlimited) | Memory/time at 10k–100k | Medium | Open (export still unpaginated by design for completeness) |
-| PERF-H-002 | **High** | View | Care-plan versions load full `snapshot` LONGTEXT for every version | Memory on busy plans | Medium | Open |
-| PERF-H-003 | **High** | View | All child collections unbounded (notes, activity, docs, schedules, meds) | Memory + transfer | Medium | Open |
-| PERF-H-004 | **High** | Alerts/Reports | Full 11-rule alert fan-out on every reports page and CSV | +11 queries; no cache | Medium | **Reduced** on dashboard only; reports page still runs full engine |
-| PERF-H-005 | **High** | Dashboard | N+1 `ReferralRepository::find` when enriching visit/task widgets | +10–30 PK queries | Low | **Resolved** — JOIN `client_name` + batch display names |
+| PERF-C-001 | **Critical** | List | No pagination: `query($filters, null, …)` loads all matching referrals | Timeout / OOM at 1k–10k+ | Low | **Resolved** (5.4.2A) — default 20/page (20/50/100) |
+| PERF-C-002 | **Critical** | List | `can_permanently_delete()` → 13 COUNTs **per list row** for delete-capable users | ~13N queries; list unusable at hundreds | Medium | **Resolved** (5.4.2A) — Delete removed from list/dashboard; View-only |
+| PERF-C-003 | **Critical** | View | Unbounded visits + per-visit task generate / tasks×2 / meds×2 / MAR | ~10–15 SQL/unexecuted visit; 100 visits ≈ 1k+ queries | High | **Resolved** (5.4.2B) — visit page 20/50/100; bulk tasks/MAR/names; no GET task gen |
+| PERF-C-004 | **Critical** | Dashboard | Alert engine runs **twice** (alerts widget + reports summary) | +11 heavy queries every manager dashboard | Low | **Resolved** (5.4.2A) — calculate once; pass counts to summary |
+| PERF-C-005 | **Critical** | Schedules | Synchronous generation: SELECT+INSERT+task N+1 per occurrence | ~300–2,000 queries / 100 visits; timeouts | High | **Resolved** (5.4.2B) — batch key lookup + chunked INSERT IGNORE + batch tasks; max 2,000/request |
+| PERF-H-001 | **High** | Export | Referral CSV loads entire filtered set (`find_by_filters` unlimited) | Memory/time at 10k–100k | Medium | **Resolved** (5.4.2B) — stream in chunks of 500 |
+| PERF-H-002 | **High** | View | Care-plan versions load full `snapshot` LONGTEXT for every version | Memory on busy plans | Medium | **Reduced** (5.4.2B) — list omits snapshot; LIMIT 25 |
+| PERF-H-003 | **High** | View | All child collections unbounded (notes, activity, docs, schedules, meds) | Memory + transfer | Medium | **Reduced** (5.4.2B) — activity/notes 50; reviews/versions 25; visits paginated (docs/schedules/meds still full) |
+| PERF-H-004 | **High** | Alerts/Reports | Full 11-rule alert fan-out on every reports page and CSV | +11 queries; no cache | Medium | **Reduced** — dashboard once (5.4.2A); reports KPI+compliance reuse one `get_alerts()` per `get_report_data()` |
+| PERF-H-005 | **High** | Dashboard | N+1 `ReferralRepository::find` when enriching visit/task widgets | +10–30 PK queries | Low | **Resolved** (5.4.2A) — JOIN `client_name` + batch display names |
 | PERF-H-006 | **High** | Search | `LIKE '%…%'` on four referral columns | Full scans as table grows | Medium–High | Open |
-| PERF-H-007 | **High** | Schema | Missing composites / `created_at` / care-plan `(plan_status, review_date)` | Alert/report/list sort scans | Low–Medium | Open |
+| PERF-H-007 | **High** | Schema | Missing composites / `created_at` / care-plan `(plan_status, review_date)` | Alert/report/list sort scans | Low–Medium | **Resolved** (5.4.2B) — DB `2.16.0` composite indexes (see below) |
 | PERF-H-008 | **High** | DI | `Menu` rebuilds repos/services Plugin already constructed | Extra CPU; duplicate graphs | Medium | Open |
 | PERF-M-001 | **Medium** | Dashboard | Five separate status COUNTs vs one `GROUP BY status` | +4 avoidable queries | Low | Open |
 | PERF-M-002 | **Medium** | Reports | Duplicate `get_visit_tasks_by_status` inside one report load | +1 query | Low | Open |
@@ -237,20 +240,29 @@ PHP `memory_limit` on shared hosts (often 256M) will fail first on **unpaginated
 
 Ordered by **impact ÷ effort** and risk reduction:
 
-| Step | Work | Addresses | Effort |
-| --- | --- | --- | --- |
+| Step | Work | Addresses | Effort | Status |
+| --- | --- | --- | --- | --- |
 | **1** | Enable list pagination + archive-aware page size | PERF-C-001 | Low | **Done (5.4.2A)** |
-| **2** | Remove list-row dependency COUNTs (server-side delete gate only) | PERF-C-002 | Low–Medium | **Done (5.4.2A)** — Delete on View only |
-| **3** | Deduplicate alert calculation on dashboard (+ optional request static cache) | PERF-C-004, PERF-H-004 | Low | **Done (5.4.2A)** for dashboard |
-| **4** | Dashboard visit enrich: JOIN referral columns / batch find by IDs | PERF-H-005 | Low | **Done (5.4.2A)** |
-| **5** | Combine dashboard status COUNTs; skip or slim alerts inside report summary when unused | PERF-M-001, PERF-H-004 | Low | Partial (alert reuse only) |
-| **6** | Referral View: limit/paginate visits; stop task generate-on-GET; metadata-only versions | PERF-C-003, PERF-H-002, PERF-H-003 | High | Next |
-| **7** | Chunked referral CSV export | PERF-H-001 | Medium | Later |
-| **8** | Migrator: add high-value indexes (`created_at`, visit/task composites, care-plan review) | PERF-H-007 | Medium | Later |
-| **9** | Schedule generation batching + care-plan prefetch + bulk tasks | PERF-C-005 | High | Later |
-| **10** | Report/query sargable date ranges; remove duplicate task-status query | PERF-M-002, PERF-M-003 | Medium | Later |
-| **11** | Plugin/Menu DI reuse | PERF-H-008 | Medium | Later |
-| **12** | Search strategy (prefix / FULLTEXT / external) — only if needed | PERF-H-006 | High | Later |
+| **2** | Remove list-row dependency COUNTs (View-only delete) | PERF-C-002 | Low–Medium | **Done (5.4.2A)** |
+| **3** | Deduplicate alert calculation on dashboard | PERF-C-004, PERF-H-004 | Low | **Done (5.4.2A)** for dashboard |
+| **4** | Dashboard visit enrich: JOIN / batch display names | PERF-H-005 | Low | **Done (5.4.2A)** |
+| **5** | Combine dashboard status COUNTs | PERF-M-001 | Low | Open |
+| **6** | Referral View visit pagination; no GET task gen; history limits; metadata versions | PERF-C-003, PERF-H-002, PERF-H-003 | High | **Done (5.4.2B)** |
+| **7** | Chunked referral CSV export | PERF-H-001 | Medium | **Done (5.4.2B)** |
+| **8** | Migrator composite indexes (`2.16.0`) | PERF-H-007 | Medium | **Done (5.4.2B)** |
+| **9** | Schedule generation batching + care-plan prefetch + bulk tasks | PERF-C-005 | High | **Done (5.4.2B)** |
+| **10** | Report/query sargable date ranges; remove duplicate task-status query | PERF-M-002, PERF-M-003 | Medium | Open |
+| **11** | Plugin/Menu DI reuse | PERF-H-008 | Medium | Open |
+| **12** | Search strategy (prefix / FULLTEXT / external) — only if needed | PERF-H-006 | High | Open |
+| **13** | Paginate View documents/schedules/meds if lists grow | PERF-H-003 remainder | Medium | Open |
+
+### Indexes intentionally not added (5.4.2B)
+
+- `referrals.referral_number` UNIQUE — numbers already uniqueness-checked in app; adding UNIQUE needs data audit first.
+- `referral_care_plans (referral_id, plan_status)` — `UNIQUE KEY referral_id` already covers referral lookups.
+- `care_plan_reviews (care_plan_id, review_date)` — single-column keys already exist; low gain vs storage.
+- `visit_tasks (visit_id, task_name)` — helpful for generation dedupe but not required after batch exists-map; defer until duplicate-task incidents.
+- Redundant single-column keys that are prefixes of new composites were left in place (dbDelta-safe; MySQL may use either).
 
 **Explicit non-goals for early 5.4.2:** rewriting business rules, cascading deletes, auto-repair orphans, Chart.js changes, timed retention purge.
 

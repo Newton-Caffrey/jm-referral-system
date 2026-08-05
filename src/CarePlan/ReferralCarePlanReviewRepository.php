@@ -54,7 +54,7 @@ class ReferralCarePlanReviewRepository
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function get_by_care_plan(int $care_plan_id): array
+    public function get_by_care_plan(int $care_plan_id, ?int $limit = null): array
     {
         global $wpdb;
 
@@ -62,20 +62,42 @@ class ReferralCarePlanReviewRepository
             return [];
         }
 
+        $table  = Tables::care_plan_reviews_table();
+        $sql    = "SELECT id, care_plan_id, reviewed_by, review_date, outcome, notes, next_review_date, created_at
+            FROM {$table}
+            WHERE care_plan_id = %d
+            ORDER BY review_date DESC, id DESC";
+        $params = [$care_plan_id];
+
+        if (null !== $limit && $limit > 0) {
+            $sql     .= ' LIMIT %d';
+            $params[] = $limit;
+        }
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- trusted fragments + prepared params.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    public function count_by_care_plan(int $care_plan_id): int
+    {
+        global $wpdb;
+
+        if ($care_plan_id <= 0) {
+            return 0;
+        }
+
         $table = Tables::care_plan_reviews_table();
 
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
-        $results = $wpdb->get_results(
+        $count = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT id, care_plan_id, reviewed_by, review_date, outcome, notes, next_review_date, created_at
-                FROM {$table}
-                WHERE care_plan_id = %d
-                ORDER BY review_date DESC, id DESC",
+                "SELECT COUNT(*) FROM {$table} WHERE care_plan_id = %d",
                 $care_plan_id
-            ),
-            ARRAY_A
+            )
         );
 
-        return is_array($results) ? $results : [];
+        return (int) $count;
     }
 }

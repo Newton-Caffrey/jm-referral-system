@@ -148,6 +148,150 @@ class VisitTaskRepository
         return is_array($results) ? $results : [];
     }
 
+    /**
+     * Tasks for many visits, grouped by visit_id.
+     *
+     * @param array<int, int> $visit_ids
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function get_by_visit_ids(array $visit_ids): array
+    {
+        global $wpdb;
+
+        $ids = [];
+        foreach ($visit_ids as $visit_id) {
+            $visit_id = absint($visit_id);
+            if ($visit_id > 0) {
+                $ids[$visit_id] = $visit_id;
+            }
+        }
+
+        if ([] === $ids) {
+            return [];
+        }
+
+        $table   = Tables::visit_tasks_table();
+        $columns = self::SELECT_COLUMNS;
+        $grouped = [];
+        foreach ($ids as $id) {
+            $grouped[$id] = [];
+        }
+
+        foreach (array_chunk(array_values($ids), 200) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '%d'));
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+            $results = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT {$columns}
+                    FROM {$table}
+                    WHERE visit_id IN ({$placeholders})
+                    ORDER BY visit_id ASC, display_order ASC, id ASC",
+                    ...$chunk
+                ),
+                ARRAY_A
+            );
+
+            if (! is_array($results)) {
+                continue;
+            }
+
+            foreach ($results as $row) {
+                $visit_id = absint($row['visit_id'] ?? 0);
+                if ($visit_id > 0) {
+                    $grouped[$visit_id][] = $row;
+                }
+            }
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * Existing task names keyed by visit_id (for batch generation dedupe).
+     *
+     * @param array<int, int> $visit_ids
+     * @return array<int, array<string, true>>
+     */
+    public function get_existing_task_names_by_visit_ids(array $visit_ids): array
+    {
+        $grouped = $this->get_by_visit_ids($visit_ids);
+        $names   = [];
+
+        foreach ($grouped as $visit_id => $tasks) {
+            $names[(int) $visit_id] = [];
+            foreach ($tasks as $task) {
+                $name = trim((string) ($task['task_name'] ?? ''));
+                if ('' !== $name) {
+                    $names[(int) $visit_id][$name] = true;
+                }
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * Inserts visit-task rows in chunks.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return int Number of rows inserted
+     */
+    public function insert_batch(array $rows): int
+    {
+        global $wpdb;
+
+        if ([] === $rows) {
+            return 0;
+        }
+
+        $table   = Tables::visit_tasks_table();
+        $created = 0;
+
+        foreach (array_chunk($rows, 200) as $chunk) {
+            $value_parts = [];
+
+            foreach ($chunk as $data) {
+                $visit_id  = absint($data['visit_id'] ?? 0);
+                $task_name = (string) ($data['task_name'] ?? '');
+                if ($visit_id <= 0 || '' === trim($task_name)) {
+                    continue;
+                }
+
+                $notes = $data['task_notes'] ?? null;
+                if (null !== $notes && '' === trim((string) $notes)) {
+                    $notes = null;
+                }
+
+                $value_parts[] = sprintf(
+                    '(%d,%s,%s,%s,%d,%s,%s)',
+                    $visit_id,
+                    $wpdb->prepare('%s', $task_name),
+                    $wpdb->prepare('%s', (string) ($data['task_status'] ?? 'pending')),
+                    null === $notes ? 'NULL' : $wpdb->prepare('%s', (string) $notes),
+                    absint($data['display_order'] ?? 0),
+                    $wpdb->prepare('%s', (string) ($data['created_at'] ?? current_time('mysql'))),
+                    $wpdb->prepare('%s', (string) ($data['updated_at'] ?? current_time('mysql')))
+                );
+            }
+
+            if ([] === $value_parts) {
+                continue;
+            }
+
+            $sql = "INSERT INTO {$table}
+                (visit_id, task_name, task_status, task_notes, display_order, created_at, updated_at)
+                VALUES " . implode(',', $value_parts);
+
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- values escaped via $wpdb->prepare fragments.
+            $result = $wpdb->query($sql);
+            if (false !== $result) {
+                $created += (int) $result;
+            }
+        }
+
+        return $created;
+    }
+
     public function exists_for_visit_with_name(int $visit_id, string $task_name): bool
     {
         global $wpdb;

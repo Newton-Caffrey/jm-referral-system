@@ -116,6 +116,57 @@ class ScheduleRepository
     }
 
     /**
+     * Schedule names keyed by id.
+     *
+     * @param array<int, int> $schedule_ids
+     * @return array<int, string>
+     */
+    public function get_names_by_ids(array $schedule_ids): array
+    {
+        global $wpdb;
+
+        $ids = [];
+        foreach ($schedule_ids as $schedule_id) {
+            $schedule_id = absint($schedule_id);
+            if ($schedule_id > 0) {
+                $ids[$schedule_id] = $schedule_id;
+            }
+        }
+
+        if ([] === $ids) {
+            return [];
+        }
+
+        $table = Tables::visit_schedules_table();
+        $names = [];
+
+        foreach (array_chunk(array_values($ids), 200) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '%d'));
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+            $results = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT id, schedule_name FROM {$table} WHERE id IN ({$placeholders})",
+                    ...$chunk
+                ),
+                ARRAY_A
+            );
+
+            if (! is_array($results)) {
+                continue;
+            }
+
+            foreach ($results as $row) {
+                $id = absint($row['id'] ?? 0);
+                if ($id > 0) {
+                    $names[$id] = (string) ($row['schedule_name'] ?? '');
+                }
+            }
+        }
+
+        return $names;
+    }
+
+    /**
      * Count care visits generated from a schedule.
      */
     public function count_generated_visits(int $schedule_id): int

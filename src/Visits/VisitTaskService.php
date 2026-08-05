@@ -88,39 +88,73 @@ class VisitTaskService
             return 0;
         }
 
-        $now     = current_time('mysql');
-        $created = 0;
-        $order   = 0;
+        return $this->generate_for_visit_ids_with_care_plan([$visit_id], $care_plan);
+    }
 
+    /**
+     * Batch-create visit tasks from a preloaded care plan (idempotent per visit/task name).
+     *
+     * @param array<int, int>          $visit_ids
+     * @param array<string, mixed>     $care_plan
+     * @return int Number of tasks created
+     */
+    public function generate_for_visit_ids_with_care_plan(array $visit_ids, array $care_plan): int
+    {
+        $ids = [];
+        foreach ($visit_ids as $visit_id) {
+            $visit_id = absint($visit_id);
+            if ($visit_id > 0) {
+                $ids[$visit_id] = $visit_id;
+            }
+        }
+
+        if ([] === $ids) {
+            return 0;
+        }
+
+        $task_defs = [];
+        $order     = 0;
         foreach (self::care_plan_task_map() as $column => $task_name) {
             ++$order;
             $section = trim((string) ($care_plan[$column] ?? ''));
             if ('' === $section) {
                 continue;
             }
+            $task_defs[] = [
+                'task_name'     => $task_name,
+                'display_order' => $order,
+            ];
+        }
 
-            if ($this->task_repository->exists_for_visit_with_name($visit_id, $task_name)) {
-                continue;
-            }
+        if ([] === $task_defs) {
+            return 0;
+        }
 
-            $id = $this->task_repository->create(
-                [
+        $existing = $this->task_repository->get_existing_task_names_by_visit_ids(array_values($ids));
+        $now      = current_time('mysql');
+        $rows     = [];
+
+        foreach ($ids as $visit_id) {
+            $known = $existing[$visit_id] ?? [];
+            foreach ($task_defs as $def) {
+                $name = $def['task_name'];
+                if (isset($known[$name])) {
+                    continue;
+                }
+                $rows[] = [
                     'visit_id'      => $visit_id,
-                    'task_name'     => $task_name,
+                    'task_name'     => $name,
                     'task_status'   => self::STATUS_PENDING,
                     'task_notes'    => null,
-                    'display_order' => $order,
+                    'display_order' => $def['display_order'],
                     'created_at'    => $now,
                     'updated_at'    => $now,
-                ]
-            );
-
-            if (false !== $id) {
-                ++$created;
+                ];
+                $known[$name] = true;
             }
         }
 
-        return $created;
+        return $this->task_repository->insert_batch($rows);
     }
 
     /**
@@ -129,6 +163,61 @@ class VisitTaskService
     public function get_tasks_for_visit(int $visit_id): array
     {
         return $this->task_repository->get_by_visit($visit_id);
+    }
+
+    /**
+     * Tasks for many visits, grouped by visit_id.
+     *
+     * @param array<int, int> $visit_ids
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function get_tasks_by_visit_ids(array $visit_ids): array
+    {
+        return $this->task_repository->get_by_visit_ids($visit_ids);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $tasks
+     * @return array{
+     *   completed: array<int, string>,
+     *   outstanding: array<int, string>,
+     *   refused: array<int, string>,
+     *   completed_text: string,
+     *   outstanding_text: string,
+     *   refused_text: string
+     * }
+     */
+    public function summarize_tasks(array $tasks): array
+    {
+        $completed   = [];
+        $outstanding = [];
+        $refused     = [];
+
+        foreach ($tasks as $task) {
+            $name   = (string) ($task['task_name'] ?? '');
+            $status = (string) ($task['task_status'] ?? '');
+
+            if ('' === $name) {
+                continue;
+            }
+
+            if (self::STATUS_COMPLETED === $status) {
+                $completed[] = $name;
+            } elseif (in_array($status, [self::STATUS_PENDING, self::STATUS_NOT_COMPLETED], true)) {
+                $outstanding[] = $name;
+            } elseif (self::STATUS_REFUSED === $status) {
+                $refused[] = $name;
+            }
+        }
+
+        return [
+            'completed'        => $completed,
+            'outstanding'      => $outstanding,
+            'refused'          => $refused,
+            'completed_text'   => implode("\n", $completed),
+            'outstanding_text' => implode("\n", $outstanding),
+            'refused_text'     => implode("\n", $refused),
+        ];
     }
 
     /**
@@ -201,35 +290,7 @@ class VisitTaskService
      */
     public function get_summaries(int $visit_id): array
     {
-        $completed   = [];
-        $outstanding = [];
-        $refused     = [];
-
-        foreach ($this->task_repository->get_by_visit($visit_id) as $task) {
-            $name   = (string) ($task['task_name'] ?? '');
-            $status = (string) ($task['task_status'] ?? '');
-
-            if ('' === $name) {
-                continue;
-            }
-
-            if (self::STATUS_COMPLETED === $status) {
-                $completed[] = $name;
-            } elseif (in_array($status, [self::STATUS_PENDING, self::STATUS_NOT_COMPLETED], true)) {
-                $outstanding[] = $name;
-            } elseif (self::STATUS_REFUSED === $status) {
-                $refused[] = $name;
-            }
-        }
-
-        return [
-            'completed'         => $completed,
-            'outstanding'       => $outstanding,
-            'refused'           => $refused,
-            'completed_text'    => implode("\n", $completed),
-            'outstanding_text'  => implode("\n", $outstanding),
-            'refused_text'      => implode("\n", $refused),
-        ];
+        return $this->summarize_tasks($this->task_repository->get_by_visit($visit_id));
     }
 
     /**

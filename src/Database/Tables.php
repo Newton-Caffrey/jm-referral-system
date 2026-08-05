@@ -232,7 +232,11 @@ class Tables
             KEY service_type_id (service_type_id),
             KEY workflow_stage_id (workflow_stage_id),
             KEY archived_at (archived_at),
-            KEY archived_by (archived_by)
+            KEY archived_by (archived_by),
+            KEY created_at (created_at),
+            KEY archived_at_status (archived_at, status),
+            KEY status_priority (status, priority),
+            KEY assigned_to_archived_at (assigned_to, archived_at)
         ) {$charset};";
 
         dbDelta($sql);
@@ -255,7 +259,8 @@ class Tables
             PRIMARY KEY  (id),
             KEY referral_id (referral_id),
             KEY user_id (user_id),
-            KEY action (action)
+            KEY action (action),
+            KEY referral_id_created_at (referral_id, created_at)
         ) {$charset};";
 
         dbDelta($sql);
@@ -276,7 +281,8 @@ class Tables
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY referral_id (referral_id),
-            KEY user_id (user_id)
+            KEY user_id (user_id),
+            KEY referral_id_created_at (referral_id, created_at)
         ) {$charset};";
 
         dbDelta($sql);
@@ -354,7 +360,8 @@ class Tables
             KEY referral_id (referral_id),
             KEY attachment_id (attachment_id),
             KEY uploaded_by (uploaded_by),
-            KEY storage_type (storage_type)
+            KEY storage_type (storage_type),
+            KEY referral_id_created_at (referral_id, created_at)
         ) {$charset};";
 
         dbDelta($sql);
@@ -438,7 +445,8 @@ class Tables
             KEY assessment_id (assessment_id),
             KEY created_by (created_by),
             KEY approved_by (approved_by),
-            KEY plan_status (plan_status)
+            KEY plan_status (plan_status),
+            KEY plan_status_review_date (plan_status, review_date)
         ) {$charset};";
 
         dbDelta($sql);
@@ -543,7 +551,12 @@ class Tables
             KEY visit_date (visit_date),
             KEY visit_status (visit_status),
             KEY visit_outcome (visit_outcome),
-            KEY reviewed_by (reviewed_by)
+            KEY reviewed_by (reviewed_by),
+            KEY referral_id_visit_date (referral_id, visit_date),
+            KEY assigned_user_visit_date_status (assigned_user_id, visit_date, visit_status),
+            KEY schedule_id_occurrence_date (schedule_id, schedule_occurrence_date),
+            KEY visit_status_visit_date (visit_status, visit_date),
+            KEY reviewed_at_visit_status (reviewed_at, visit_status)
         ) {$charset};";
 
         dbDelta($sql);
@@ -574,7 +587,9 @@ class Tables
             KEY referral_id (referral_id),
             KEY care_plan_id (care_plan_id),
             KEY user_id (user_id),
-            KEY assignment_status (assignment_status)
+            KEY assignment_status (assignment_status),
+            KEY referral_id_assignment_status (referral_id, assignment_status),
+            KEY user_id_assignment_status (user_id, assignment_status)
         ) {$charset};";
 
         dbDelta($sql);
@@ -610,7 +625,9 @@ class Tables
             KEY referral_id (referral_id),
             KEY care_plan_id (care_plan_id),
             KEY team_assignment_id (team_assignment_id),
-            KEY status (status)
+            KEY status (status),
+            KEY referral_id_status (referral_id, status),
+            KEY status_start_end (status, start_date, end_date)
         ) {$charset};";
 
         dbDelta($sql);
@@ -635,7 +652,8 @@ class Tables
             PRIMARY KEY  (id),
             KEY visit_id (visit_id),
             KEY task_status (task_status),
-            KEY display_order (display_order)
+            KEY display_order (display_order),
+            KEY visit_id_task_status (visit_id, task_status)
         ) {$charset};";
 
         dbDelta($sql);
@@ -668,7 +686,8 @@ class Tables
             KEY referral_id (referral_id),
             KEY medication_status (medication_status),
             KEY start_date (start_date),
-            KEY end_date (end_date)
+            KEY end_date (end_date),
+            KEY referral_id_medication_status (referral_id, medication_status)
         ) {$charset};";
 
         dbDelta($sql);
@@ -703,7 +722,10 @@ class Tables
             KEY visit_id (visit_id),
             KEY administered_by (administered_by),
             KEY administration_status (administration_status),
-            KEY administered_time (administered_time)
+            KEY administered_time (administered_time),
+            KEY visit_id_administration_status (visit_id, administration_status),
+            KEY referral_id_administered_time (referral_id, administered_time),
+            KEY administered_by_administered_time (administered_by, administered_time)
         ) {$charset};";
 
         dbDelta($sql);

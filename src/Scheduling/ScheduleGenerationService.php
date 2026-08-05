@@ -18,6 +18,7 @@ class ScheduleGenerationService
 {
     private const MAX_RANGE_MONTHS = 12;
     private const DEFAULT_WEEKS = 12;
+    private const MAX_OCCURRENCES_PER_REQUEST = 2000;
 
     public function __construct(
         private ScheduleRepository $schedule_repository,
@@ -82,7 +83,10 @@ class ScheduleGenerationService
      */
     public function generate(int $referral_id, int $schedule_id, string $start_date, string $end_date): array
     {
-        $errors = [];
+        global $wpdb;
+
+        $queries_before = defined('WP_DEBUG') && WP_DEBUG ? (int) $wpdb->num_queries : 0;
+        $errors         = [];
 
         if (! Capabilities::current_user_can(Capabilities::MANAGE_SCHEDULES)) {
             $errors['permission'] = __('You do not have permission to generate visits from schedules.', 'jm-referral-system');
@@ -139,6 +143,7 @@ class ScheduleGenerationService
         /** @var DateTimeImmutable $gen_end */
         $gen_end = $window['end'];
 
+        $care_plan    = null;
         $care_plan_id = absint($schedule['care_plan_id'] ?? 0);
         if ($care_plan_id > 0) {
             $care_plan = $this->care_plan_repository->find($care_plan_id);
@@ -191,16 +196,28 @@ class ScheduleGenerationService
             $gen_end
         );
 
-        $created                = 0;
-        $skipped_duplicates     = 0;
-        $skipped_outside_range  = (int) ($occurrences['skipped_outside_range'] ?? 0);
-        $now                    = current_time('mysql');
-        $created_by             = get_current_user_id();
-        $visit_type             = $this->nullable_text((string) ($schedule['visit_type'] ?? ''));
-        $notes                  = $this->nullable_text((string) ($schedule['notes'] ?? ''));
-        $user_key               = null !== $assigned_user_id ? $assigned_user_id : 0;
+        $occurrence_dates      = $occurrences['dates'];
+        $skipped_outside_range = (int) ($occurrences['skipped_outside_range'] ?? 0);
 
-        foreach ($occurrences['dates'] as $occurrence_date) {
+        if (count($occurrence_dates) > self::MAX_OCCURRENCES_PER_REQUEST) {
+            $errors['generation_window'] = sprintf(
+                /* translators: %d: maximum allowed occurrences */
+                __('Too many visits would be generated for this window. Please choose a shorter date range (maximum %d occurrences per request).', 'jm-referral-system'),
+                self::MAX_OCCURRENCES_PER_REQUEST
+            );
+            return ['errors' => $errors];
+        }
+
+        $now        = current_time('mysql');
+        $created_by = get_current_user_id();
+        $visit_type = $this->nullable_text((string) ($schedule['visit_type'] ?? ''));
+        $notes      = $this->nullable_text((string) ($schedule['notes'] ?? ''));
+        $user_key   = null !== $assigned_user_id ? $assigned_user_id : 0;
+
+        $pending_rows = [];
+        $pending_keys = [];
+
+        foreach ($occurrence_dates as $occurrence_date) {
             $generation_key = $this->build_generation_key(
                 $schedule_id,
                 $occurrence_date,
@@ -208,55 +225,83 @@ class ScheduleGenerationService
                 $user_key
             );
 
-            if (null !== $this->visit_repository->find_by_generation_key($generation_key)) {
+            $pending_keys[] = $generation_key;
+            $pending_rows[$generation_key] = [
+                'referral_id'              => $referral_id,
+                'care_plan_id'             => $care_plan_id > 0 ? $care_plan_id : null,
+                'assigned_user_id'         => $assigned_user_id,
+                'schedule_id'              => $schedule_id,
+                'schedule_occurrence_date' => $occurrence_date,
+                'generation_key'           => $generation_key,
+                'visit_date'               => $occurrence_date,
+                'start_time'               => $start_time,
+                'end_time'                 => $end_time,
+                'visit_status'             => CareVisitService::STATUS_SCHEDULED,
+                'visit_type'               => $visit_type,
+                'tasks'                    => null,
+                'notes'                    => $notes,
+                'completed_at'             => null,
+                'created_by'               => $created_by,
+                'created_at'               => $now,
+                'updated_at'               => $now,
+            ];
+        }
+
+        $existing = $this->visit_repository->find_existing_generation_keys($pending_keys);
+        $to_insert = [];
+        $skipped_duplicates = 0;
+
+        foreach ($pending_keys as $key) {
+            if (isset($existing[$key])) {
                 ++$skipped_duplicates;
                 continue;
             }
+            $to_insert[] = $pending_rows[$key];
+        }
 
-            $inserted = $this->visit_repository->create(
-                [
-                    'referral_id'              => $referral_id,
-                    'care_plan_id'             => $care_plan_id > 0 ? $care_plan_id : null,
-                    'assigned_user_id'         => $assigned_user_id,
-                    'schedule_id'              => $schedule_id,
-                    'schedule_occurrence_date' => $occurrence_date,
-                    'generation_key'           => $generation_key,
-                    'visit_date'               => $occurrence_date,
-                    'start_time'               => $start_time,
-                    'end_time'                 => $end_time,
-                    'visit_status'             => CareVisitService::STATUS_SCHEDULED,
-                    'visit_type'               => $visit_type,
-                    'tasks'                    => null,
-                    'notes'                    => $notes,
-                    'completed_at'             => null,
-                    'created_by'               => $created_by,
-                    'created_at'               => $now,
-                    'updated_at'               => $now,
-                ]
-            );
+        $created = 0;
+        if ([] !== $to_insert) {
+            $batch = $this->visit_repository->insert_generated_batch($to_insert);
+            $created            = (int) ($batch['created'] ?? 0);
+            $skipped_duplicates += (int) ($batch['skipped_duplicates'] ?? 0);
 
-            if (false === $inserted) {
-                // Unique key race or DB error: treat as duplicate skip when key already exists.
-                if (null !== $this->visit_repository->find_by_generation_key($generation_key)) {
-                    ++$skipped_duplicates;
-                    continue;
-                }
-
+            if ((int) ($batch['errors'] ?? 0) > 0 && $created <= 0 && [] === ($batch['inserted'] ?? [])) {
                 $errors['general'] = __('Unable to create one or more generated visits. Please try again.', 'jm-referral-system');
                 return [
-                    'errors'                 => $errors,
-                    'created'                => $created,
-                    'skipped_duplicates'     => $skipped_duplicates,
-                    'skipped_outside_range'  => $skipped_outside_range,
+                    'errors'                => $errors,
+                    'created'               => $created,
+                    'skipped_duplicates'    => $skipped_duplicates,
+                    'skipped_outside_range' => $skipped_outside_range,
                 ];
             }
 
-            $this->visit_task_service->generate_for_visit($inserted);
-            ++$created;
+            $inserted_ids = [];
+            foreach ($batch['inserted'] as $row) {
+                $id = absint($row['id'] ?? 0);
+                if ($id > 0) {
+                    $inserted_ids[] = $id;
+                }
+            }
+
+            if ([] !== $inserted_ids && null !== $care_plan) {
+                $this->visit_task_service->generate_for_visit_ids_with_care_plan($inserted_ids, $care_plan);
+            }
         }
 
         if ($created > 0) {
             $this->activity_service->log_schedule_visits_generated($referral_id, $created);
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $delta = (int) $wpdb->num_queries - $queries_before;
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated by WP_DEBUG.
+            error_log(
+                sprintf(
+                    '[JMRS] schedule generation query count: %d; rows generated: %d',
+                    max(0, $delta),
+                    $created
+                )
+            );
         }
 
         return [

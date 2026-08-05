@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 5.4.2B: Referral View visit pagination (20/50/100) with SQL LIMIT/OFFSET
+- Phase 5.4.2B: bulk visit task / MAR / schedule-name / staff-name loading on View
+- Phase 5.4.2B: schedule generation batch insert + batch visit tasks; hard max 2,000 occurrences/request
+- Phase 5.4.2B: chunked referral CSV export (500-row chunks)
+- Composite performance indexes (DB `2.16.0`)
 - Phase 5.4.2A: referral list pagination (20/50/100) with filter-preserving links
 - Phase 5.4.1 performance & scalability audit (`docs/PERFORMANCE_AUDIT.md`) — analysis only
 - Phase 5.3 data retention: archive / restore / safe permanent delete (`ReferralRetentionService`)
@@ -28,10 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Referral View GET no longer generates visit tasks (create/generate paths only)
+- Activity/notes limited to 50; care-plan reviews/versions to 25; version list omits snapshot payloads
+- Schedule generation validates once, prefetches care plan, bulk-skips existing `generation_key`s
 - Permanent Delete removed from referral list and dashboard (View-only when retention allows)
 - Dashboard calculates operational alerts once and reuses counts for the reports shortcut
 - Dashboard visit/task widgets JOIN client names and batch staff display names (no per-row referral finds)
-- WP_DEBUG logs generic list/dashboard query counts only (no SQL/PHI)
+- WP_DEBUG logs generic list/dashboard/view/generation/export metrics only (no SQL/PHI)
 - Permanent referral delete blocked when linked clinical/operational records exist (archive instead)
 - Archived referrals excluded by default from dashboard, alerts, scheduling counts, and current-state report metrics
 - Clinical mutation services reject changes on archived referrals (`AccessPolicy::can_mutate_referral`)
