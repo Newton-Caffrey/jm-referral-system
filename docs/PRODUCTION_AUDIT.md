@@ -63,14 +63,13 @@ Do **not** place live client health data into production until Critical findings
 
 | Field | Detail |
 | --- | --- |
-| **Severity** | Critical |
+| **Severity** | Critical → **Remediated (Phase 5.2.2)** |
+| **Status** | Canonical resolver uses `src/Notifications/Templates/` with an allowlist; missing templates fail gracefully with a generic `error_log` (no paths). |
 | **Category** | Compatibility / Reliability |
-| **Affected** | `src/Notifications/EmailNotificationService.php` (path `…/templates/`); actual directory `src/Notifications/Templates/` |
-| **Explanation** | Code looks for lowercase `templates/`; repository folder is `Templates/`. Works on case-insensitive Windows; **fails on one.com Linux**, returning empty email body. |
-| **Real-world risk** | Assignment/creation/status emails silently empty or useless in production. |
-| **Recommended fix** | Align path with actual folder (or rename folder to lowercase) and add a smoke test on Linux. |
-| **Hardening phase** | 5.2 |
-| **Break risk** | Low if path corrected carefully. |
+| **Affected** | `EmailTemplateResolver`, `EmailNotificationService` |
+| **Explanation** | Previously code looked for lowercase `templates/`; folder is `Templates/`. |
+| **Hardening phase** | 5.2.2 |
+| **Break risk** | Low. |
 
 ### AUDIT-C-003 — Referral delete does not cascade child PHI
 
@@ -106,14 +105,12 @@ Do **not** place live client health data into production until Critical findings
 
 | Field | Detail |
 | --- | --- |
-| **Severity** | High |
+| **Severity** | High → **Remediated (Phase 5.2.2)** |
+| **Status** | `CsvExportHelper` prefixes formula-triggering string cells; used by referral and report CSV exporters. Intentional numeric cells unchanged. |
 | **Category** | Security |
-| **Affected** | `src/Referral/ReferralExportController.php` |
-| **Explanation** | Client and free-text fields are written with `fputcsv` without neutralizing leading `=`, `+`, `-`, `@`. |
-| **Real-world risk** | Spreadsheet formula execution when staff open exports. |
-| **Recommended fix** | Prefix risky cells with `'` or tab; strip formula characters. |
-| **Hardening phase** | 5.2 |
-| **Break risk** | Low (export consumers may see leading apostrophe). |
+| **Affected** | `src/Support/CsvExportHelper.php`, `ReferralExportController`, `ReportExportController` |
+| **Hardening phase** | 5.2.2 |
+| **Break risk** | Low. |
 
 ### AUDIT-H-002 — Referral list and export load unlimited rows
 
@@ -236,13 +233,10 @@ Do **not** place live client health data into production until Critical findings
 
 | Field | Detail |
 | --- | --- |
-| **Severity** | High |
-| **Category** | Security / Integrity |
-| **Affected** | `ReferralController::sanitize_input`, `ReferralService::create` |
-| **Explanation** | `ALLOWED_STATUSES` exists but create path does not enforce it. |
-| **Real-world risk** | Invalid/unexpected statuses in DB and filters. |
-| **Recommended fix** | Allowlist on create/update. |
-| **Hardening phase** | 5.2 |
+| **Severity** | High → **Remediated (Phase 5.2.2)** |
+| **Status** | Create/edit sanitize paths enforce status, referral source, and preferred contact allowlists before services. |
+| **Affected** | `ReferralController`, `ReferralEditController` |
+| **Hardening phase** | 5.2.2 |
 | **Break risk** | Low. |
 
 ### AUDIT-H-012 — Care-plan version list loads full JSON snapshots
@@ -297,37 +291,31 @@ Do **not** place live client health data into production until Critical findings
 
 | Field | Detail |
 | --- | --- |
-| **Severity** | Medium |
-| **Category** | Security |
+| **Severity** | Medium → **Remediated (Phase 5.2.2)** |
+| **Status** | `handle_delete` now requires `can_edit_referral`. |
 | **Affected** | `ReferralListController::handle_delete` |
-| **Explanation** | Softened by Support Workers lacking DELETE; still inconsistent. |
-| **Recommended fix** | Require edit (or delete-specific) record check. |
-| **Hardening phase** | 5.2 |
+| **Hardening phase** | 5.2.2 |
 | **Break risk** | Low. |
 
 ### AUDIT-M-002 — Document upload uses view access, not edit
 
 | Field | Detail |
 | --- | --- |
-| **Severity** | Medium |
-| **Category** | Security |
-| **Affected** | `ReferralDocumentController::handle_upload` |
-| **Explanation** | Intentional for some roles, but elevates who can attach files. |
-| **Recommended fix** | Confirm product rule; prefer edit or dedicated upload policy. |
-| **Hardening phase** | 5.2 |
-| **Break risk** | Medium for SW if ever granted upload. |
+| **Severity** | Medium → **Remediated (Phase 5.2.2)** |
+| **Status** | Upload controller/service and View UI gate require `can_edit_referral` plus `jmrs_upload_documents`. |
+| **Affected** | `ReferralDocumentController`, `ReferralDocumentService`, `ReferralViewController` |
+| **Hardening phase** | 5.2.2 |
+| **Break risk** | Low for current roles (upload caps already paired with edit). |
 
 ### AUDIT-M-003 — MAR witness_user_id not validated as authorised staff
 
 | Field | Detail |
 | --- | --- |
-| **Severity** | Medium |
-| **Category** | Security / Clinical integrity |
-| **Affected** | `CareVisitController::sanitize_medications_input`, MAR save |
-| **Explanation** | Any positive user ID may be stored as witness. |
-| **Recommended fix** | Allowlist assignable/capability-bearing users. |
-| **Hardening phase** | 5.2 |
-| **Break risk** | Low. |
+| **Severity** | Medium → **Remediated (Phase 5.2.2)** |
+| **Status** | Witness IDs must exist and hold administer/manage medications, edit referrals, or `manage_options`. |
+| **Affected** | `CareVisitController::sanitize_witness_user_id` |
+| **Hardening phase** | 5.2.2 |
+| **Break risk** | Low — invalid witness IDs cleared to empty. |
 
 ### AUDIT-M-004 — Chart.js CDN fallback (supply chain / CSP)
 
@@ -484,7 +472,7 @@ Do **not** place live client health data into production until Critical findings
 
 | ID | Severity | Issue | Affected | Phase |
 | --- | --- | --- | --- | --- |
-| AUDIT-C-002 | Critical | Template path case | Email | 5.2 |
+| AUDIT-C-002 | Critical → Remediated 5.2.2 | Template path case | Email | — |
 | AUDIT-M-013 | Medium | `$assessment['…']` when `$assessment` is null | `ReferralViewController` ~158 | 5.2 |
 | AUDIT-M-014 | Medium | `map_to_form_data($assessment)` may receive null | Same | 5.2 |
 | AUDIT-L-005 | Low | `extract($vars, EXTR_SKIP)` in email renderer | EmailNotificationService | 5.5 |
@@ -590,7 +578,7 @@ Do **not** place live client health data into production until Critical findings
 | **Risk** | High (security) |
 | **Order** | **First** |
 | **Tests** | Upload/download ACL; Linux email smoke; export spreadsheet open; role matrix smoke |
-| **Progress** | **5.2.1 Private Referral Document Storage — implemented** (new private uploads + legacy batch copy; originals retained). Remaining 5.2 items still open. |
+| **Progress** | **5.2.1** private documents implemented. **5.2.2** email path, CSV formula escape, status/source allowlists, AccessPolicy delete/upload, MAR witness validation, secure download/error messaging implemented. Still open in 5.2+: Chart.js local pin, delete cascade / uninstall policy (C-003/C-004). |
 
 ## Phase 5.3: Pagination and Performance
 

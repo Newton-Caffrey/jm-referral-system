@@ -123,7 +123,8 @@ class ReferralViewController
         $note_value      = $note_form_state['note'];
         $note_errors     = $note_form_state['errors'];
 
-        $can_upload_documents   = Capabilities::current_user_can(Capabilities::UPLOAD_DOCUMENTS);
+        $can_upload_documents   = Capabilities::current_user_can(Capabilities::UPLOAD_DOCUMENTS)
+            && $this->access_policy->can_edit_referral($referral);
         $can_download_documents = Capabilities::current_user_can(Capabilities::DOWNLOAD_DOCUMENTS);
         $documents              = [];
 

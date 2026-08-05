@@ -381,7 +381,7 @@ class ReferralDocumentService
         if (null === $file_path) {
             return [
                 'errors' => [
-                    'file' => __('The document file could not be found.', 'jm-referral-system'),
+                    'file' => __('The requested action could not be completed.', 'jm-referral-system'),
                 ],
             ];
         }
@@ -394,7 +394,7 @@ class ReferralDocumentService
             if (! is_string($actual) || ! hash_equals($expected, $actual)) {
                 return [
                     'errors' => [
-                        'file' => __('The document file could not be verified.', 'jm-referral-system'),
+                        'file' => __('The requested action could not be completed.', 'jm-referral-system'),
                     ],
                 ];
             }
@@ -420,7 +420,7 @@ class ReferralDocumentService
         if (! is_string($file_path) || '' === $file_path || ! is_readable($file_path)) {
             return [
                 'errors' => [
-                    'file' => __('The document file could not be found.', 'jm-referral-system'),
+                    'file' => __('The requested action could not be completed.', 'jm-referral-system'),
                 ],
             ];
         }
@@ -428,7 +428,7 @@ class ReferralDocumentService
         if (! $this->is_path_within_uploads($file_path)) {
             return [
                 'errors' => [
-                    'file' => __('The document file path is invalid.', 'jm-referral-system'),
+                    'file' => __('The requested action could not be completed.', 'jm-referral-system'),
                 ],
             ];
         }
@@ -574,7 +574,7 @@ class ReferralDocumentService
             return $errors;
         }
 
-        if (! $this->access_policy->can_view_referral($referral)) {
+        if (! $this->access_policy->can_edit_referral($referral)) {
             $errors['permission'] = __('You do not have permission to upload documents for this referral.', 'jm-referral-system');
             return $errors;
         }

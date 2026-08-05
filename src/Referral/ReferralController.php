@@ -178,8 +178,22 @@ class ReferralController
             ? sanitize_text_field(wp_unslash($input['jmrs_status']))
             : 'new';
 
-        if ('' === $status) {
+        if (! in_array($status, self::ALLOWED_STATUSES, true)) {
             $status = 'new';
+        }
+
+        $referral_source = isset($input['jmrs_referral_source'])
+            ? sanitize_text_field(wp_unslash($input['jmrs_referral_source']))
+            : '';
+        if ('' !== $referral_source && ! ReferralSources::is_valid($referral_source)) {
+            $referral_source = '';
+        }
+
+        $preferred_contact_method = isset($input['jmrs_preferred_contact_method'])
+            ? sanitize_text_field(wp_unslash($input['jmrs_preferred_contact_method']))
+            : '';
+        if ('' !== $preferred_contact_method && ! PreferredContactMethods::is_valid($preferred_contact_method)) {
+            $preferred_contact_method = '';
         }
 
         return [
@@ -209,15 +223,11 @@ class ReferralController
             'assigned_to'      => isset($input['jmrs_assigned_to'])
                 ? (string) absint(wp_unslash($input['jmrs_assigned_to']))
                 : '0',
-            'referral_source'          => isset($input['jmrs_referral_source'])
-                ? sanitize_text_field(wp_unslash($input['jmrs_referral_source']))
-                : '',
+            'referral_source'          => $referral_source,
             'care_start_date'          => isset($input['jmrs_care_start_date'])
                 ? sanitize_text_field(wp_unslash($input['jmrs_care_start_date']))
                 : '',
-            'preferred_contact_method' => isset($input['jmrs_preferred_contact_method'])
-                ? sanitize_text_field(wp_unslash($input['jmrs_preferred_contact_method']))
-                : '',
+            'preferred_contact_method' => $preferred_contact_method,
             'care_requirements'        => isset($input['jmrs_care_requirements'])
                 ? sanitize_textarea_field(wp_unslash($input['jmrs_care_requirements']))
                 : '',

@@ -13,17 +13,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document table columns: `storage_type`, `relative_path`, `stored_name`, `checksum_sha256` (DB `2.14.0`)
 - Settings → Private Document Migration batch tool (copies legacy Media Library files; does not delete originals)
 - Apache `.htaccess` / `index.php` / `index.html` protection files for the private directory
+- `EmailTemplateResolver` for canonical email templates (Phase 5.2.2)
+- `CsvExportHelper` for CSV formula-injection protection (Phase 5.2.2)
+- `InputAllowlist` helper for reusable request allowlists (Phase 5.2.2)
 
 ### Changed
 
 - New uploads no longer create public Media Library attachments
 - Document downloads stream from private storage or legacy attachments with stricter cache headers
 - Settings page documents storage design, server access-control limits, and backup requirements
+- Email templates resolve from `src/Notifications/Templates/` on Linux and Windows
+- Referral create/edit sanitize status, referral source, and preferred contact against allowlists
+- Referral delete and document upload require `can_edit_referral`
+- MAR witness user IDs must be capability-bearing staff
+- Security-related download/export failures use generic user messages
 
 ### Security
 
 - New sensitive files are not exposed via public uploads URLs or the Media Library
 - Legacy documents remain potentially public until migrated and originals are cleaned up in a later phase
+- CSV exports neutralize leading `= + - @` / tab / CR in string cells
+- Email template load failures log a generic message only (no filesystem paths)
 
 ## [0.4.0] - 2026-08-04
 

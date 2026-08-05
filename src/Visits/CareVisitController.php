@@ -499,12 +499,41 @@ class CareVisitController
                     ? sanitize_textarea_field(wp_unslash($row['notes']))
                     : '',
                 'witness_user_id'       => isset($row['witness_user_id'])
-                    ? (string) absint(wp_unslash($row['witness_user_id']))
+                    ? (string) $this->sanitize_witness_user_id(wp_unslash($row['witness_user_id']))
                     : '',
             ];
         }
 
         return $rows;
+    }
+
+    /**
+     * Accepts only existing users who may act as MAR witnesses.
+     */
+    private function sanitize_witness_user_id(mixed $raw): int
+    {
+        $user_id = absint($raw);
+
+        if ($user_id <= 0) {
+            return 0;
+        }
+
+        $user = get_userdata($user_id);
+
+        if (! $user instanceof \WP_User) {
+            return 0;
+        }
+
+        if (
+            user_can($user, Capabilities::ADMINISTER_MEDICATIONS)
+            || user_can($user, Capabilities::MANAGE_MEDICATIONS)
+            || user_can($user, Capabilities::EDIT_REFERRALS)
+            || user_can($user, 'manage_options')
+        ) {
+            return $user_id;
+        }
+
+        return 0;
     }
 
     /**

@@ -7,6 +7,10 @@ use JMReferral\Users\UserProvider;
 
 class NotificationService
 {
+    private const TEMPLATE_CREATED  = 'referral-created';
+    private const TEMPLATE_ASSIGNED = 'referral-assigned';
+    private const TEMPLATE_STATUS   = 'status-changed';
+
     public function __construct(
         private EmailNotificationService $email_service,
         private UserProvider $user_provider
@@ -41,7 +45,7 @@ class NotificationService
             $context['referral_number']
         );
 
-        $this->email_service->send($email, $subject, 'referral-created', $context);
+        $this->email_service->send($email, $subject, self::TEMPLATE_CREATED, $context);
     }
 
     /**
@@ -72,7 +76,7 @@ class NotificationService
             $context['referral_number']
         );
 
-        $this->email_service->send($email, $subject, 'referral-assigned', $context);
+        $this->email_service->send($email, $subject, self::TEMPLATE_ASSIGNED, $context);
     }
 
     /**
@@ -94,9 +98,9 @@ class NotificationService
             return;
         }
 
-        $context                 = $this->build_context($referral);
-        $context['old_status']   = $this->format_label($old_status);
-        $context['new_status']   = $this->format_label($new_status);
+        $context               = $this->build_context($referral);
+        $context['old_status'] = $this->format_label($old_status);
+        $context['new_status'] = $this->format_label($new_status);
 
         $subject = sprintf(
             /* translators: %s: referral number */
@@ -105,7 +109,7 @@ class NotificationService
             $context['referral_number']
         );
 
-        $this->email_service->send($email, $subject, 'status-changed', $context);
+        $this->email_service->send($email, $subject, self::TEMPLATE_STATUS, $context);
     }
 
     /**

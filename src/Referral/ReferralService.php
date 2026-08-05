@@ -127,6 +127,7 @@ class ReferralService
         if (! Capabilities::current_user_can(Capabilities::ASSIGN_REFERRALS)) {
             $new_assigned_to = $old_assigned_to;
         }
+        $assignment_changed    = ($old_assigned_to !== $new_assigned_to);
         $old_workflow_stage_id = absint($existing['workflow_stage_id'] ?? 0);
         $new_workflow_stage_id = absint($input['workflow_stage_id'] ?? 0);
 
@@ -178,13 +179,15 @@ class ReferralService
             $this->activity_service->log_workflow_stage_changed($id, $old_stage_name, $new_stage_name);
         }
 
-        if ($old_assigned_to !== $new_assigned_to) {
+        if ($assignment_changed) {
             $this->log_assignment_change($id, $old_assigned_to, $new_assigned_to);
         }
 
         $referral = $this->repository->find($id);
         if (is_array($referral)) {
-            if ($old_assigned_to !== $new_assigned_to && $new_assigned_to > 0) {
+            if ($assignment_changed && $new_assigned_to > 0) {
+                // Ensure notify uses the intended assignee even if a stale read occurs.
+                $referral['assigned_to'] = $new_assigned_to;
                 $this->notification_service->notify_referral_assigned($referral);
             }
 

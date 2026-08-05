@@ -3,6 +3,7 @@
 namespace JMReferral\Reports;
 
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Support\CsvExportHelper;
 
 class ReportExportController
 {
@@ -23,12 +24,12 @@ class ReportExportController
         }
 
         if (! Capabilities::current_user_can(Capabilities::VIEW_REPORTS)) {
-            wp_die(esc_html__('You do not have permission to export reports.', 'jm-referral-system'));
+            wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
         $mode = sanitize_key((string) ($_GET['jmrs_report_export'] ?? ''));
         if (! in_array($mode, ['full', 'section'], true)) {
-            wp_die(esc_html__('Invalid report export request.', 'jm-referral-system'));
+            wp_die(esc_html__('The requested action could not be completed.', 'jm-referral-system'));
         }
 
         $section_id = sanitize_key((string) ($_GET['jmrs_report_section'] ?? ''));
@@ -61,7 +62,7 @@ class ReportExportController
         );
 
         if (! empty($result['errors'])) {
-            wp_die(esc_html__('Unable to export report for the selected date range.', 'jm-referral-system'));
+            wp_die(esc_html__('The requested action could not be completed.', 'jm-referral-system'));
         }
 
         $start = (string) ($result['start_date'] ?? '');
@@ -146,25 +147,25 @@ class ReportExportController
         $filename = sprintf('jmrs-report-%s-to-%s.csv', $start, $end);
         $output   = $this->open_csv($filename);
 
-        fputcsv($output, ['Section', 'Metric', 'Value']);
-        fputcsv($output, ['Report Period', 'Start Date', $start]);
-        fputcsv($output, ['Report Period', 'End Date', $end]);
-        fputcsv($output, ['Report Period', 'Preset', (string) ($result['range'] ?? '')]);
-        fputcsv($output, []);
+        CsvExportHelper::put_row($output, ['Section', 'Metric', 'Value']);
+        CsvExportHelper::put_row($output, ['Report Period', 'Start Date', $start]);
+        CsvExportHelper::put_row($output, ['Report Period', 'End Date', $end]);
+        CsvExportHelper::put_row($output, ['Report Period', 'Preset', (string) ($result['range'] ?? '')]);
+        CsvExportHelper::put_row($output, []);
 
-        fputcsv($output, ['KPI Summary', 'Metric', 'Value']);
+        CsvExportHelper::put_row($output, ['KPI Summary', 'Metric', 'Value']);
         $kpis = is_array($result['kpis'] ?? null) ? $result['kpis'] : [];
         foreach ($kpis as $metric => $value) {
-            fputcsv($output, ['KPI Summary', $this->humanize_key((string) $metric), $value]);
+            CsvExportHelper::put_row($output, ['KPI Summary', $this->humanize_key((string) $metric), $value]);
         }
-        fputcsv($output, []);
+        CsvExportHelper::put_row($output, []);
 
         $sections = is_array($result['sections'] ?? null) ? $result['sections'] : [];
         foreach ($sections as $section) {
             $section_title = (string) ($section['title'] ?? '');
             $datasets      = is_array($section['datasets'] ?? null) ? $section['datasets'] : [];
 
-            fputcsv($output, [$section_title, 'Metric', 'Value']);
+            CsvExportHelper::put_row($output, [$section_title, 'Metric', 'Value']);
             foreach ($datasets as $dataset) {
                 $dataset_title = (string) ($dataset['title'] ?? '');
                 $rows          = is_array($dataset['export']['rows'] ?? null)
@@ -172,14 +173,14 @@ class ReportExportController
                     : [];
 
                 if ([] === $rows) {
-                    fputcsv($output, [$section_title, $dataset_title, '']);
+                    CsvExportHelper::put_row($output, [$section_title, $dataset_title, '']);
                     continue;
                 }
 
                 foreach ($rows as $row) {
                     $label = (string) ($row[0] ?? '');
                     $value = $row[1] ?? '';
-                    fputcsv(
+                    CsvExportHelper::put_row(
                         $output,
                         [
                             $section_title,
@@ -189,7 +190,7 @@ class ReportExportController
                     );
                 }
             }
-            fputcsv($output, []);
+            CsvExportHelper::put_row($output, []);
         }
 
         fclose($output);
@@ -212,17 +213,17 @@ class ReportExportController
         }
 
         if (! is_array($section)) {
-            wp_die(esc_html__('Report section not found for export.', 'jm-referral-system'));
+            wp_die(esc_html__('The requested action could not be completed.', 'jm-referral-system'));
         }
 
         $slug     = str_replace('_', '-', $section_id);
         $filename = sprintf('jmrs-%s-%s-to-%s.csv', $slug, $start, $end);
         $output   = $this->open_csv($filename);
 
-        fputcsv($output, ['Section', 'Metric', 'Value']);
-        fputcsv($output, ['Report Period', 'Start Date', $start]);
-        fputcsv($output, ['Report Period', 'End Date', $end]);
-        fputcsv($output, []);
+        CsvExportHelper::put_row($output, ['Section', 'Metric', 'Value']);
+        CsvExportHelper::put_row($output, ['Report Period', 'Start Date', $start]);
+        CsvExportHelper::put_row($output, ['Report Period', 'End Date', $end]);
+        CsvExportHelper::put_row($output, []);
 
         $section_title = (string) ($section['title'] ?? $section_id);
         $datasets      = is_array($section['datasets'] ?? null) ? $section['datasets'] : [];
@@ -234,12 +235,12 @@ class ReportExportController
                 : [];
 
             if ([] === $rows) {
-                fputcsv($output, [$section_title, $dataset_title, '']);
+                CsvExportHelper::put_row($output, [$section_title, $dataset_title, '']);
                 continue;
             }
 
             foreach ($rows as $row) {
-                fputcsv(
+                CsvExportHelper::put_row(
                     $output,
                     [
                         $section_title,
@@ -248,7 +249,7 @@ class ReportExportController
                     ]
                 );
             }
-            fputcsv($output, []);
+            CsvExportHelper::put_row($output, []);
         }
 
         fclose($output);
@@ -262,13 +263,15 @@ class ReportExportController
     {
         nocache_headers();
         header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Disposition: attachment; filename="' . sanitize_file_name($filename) . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store, no-cache, must-revalidate');
         header('Pragma: no-cache');
         header('Expires: 0');
 
         $output = fopen('php://output', 'w');
         if (false === $output) {
-            wp_die(esc_html__('Unable to start CSV export.', 'jm-referral-system'));
+            wp_die(esc_html__('The requested action could not be completed.', 'jm-referral-system'));
         }
 
         fwrite($output, "\xEF\xBB\xBF");

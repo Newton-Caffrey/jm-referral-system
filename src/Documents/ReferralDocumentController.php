@@ -37,7 +37,7 @@ class ReferralDocumentController
         }
 
         if (! Capabilities::current_user_can(Capabilities::UPLOAD_DOCUMENTS)) {
-            wp_die(esc_html__('You do not have permission to upload documents.', 'jm-referral-system'));
+            wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
         $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
@@ -46,8 +46,8 @@ class ReferralDocumentController
 
         $referral = $this->referral_repository->find($referral_id);
 
-        if (null === $referral || ! $this->access_policy->can_view_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to upload documents for this referral.', 'jm-referral-system'));
+        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
+            wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
         $file = isset($_FILES['jmrs_document']) && is_array($_FILES['jmrs_document'])
@@ -86,20 +86,25 @@ class ReferralDocumentController
         $document_id = absint(wp_unslash($_GET['jmrs_download_document']));
 
         if ($document_id <= 0) {
-            wp_die(esc_html__('Document not found.', 'jm-referral-system'));
+            wp_die(esc_html__('The requested action could not be completed.', 'jm-referral-system'));
         }
 
         check_admin_referer('jmrs_download_document_' . $document_id);
 
         if (! Capabilities::current_user_can(Capabilities::DOWNLOAD_DOCUMENTS)) {
-            wp_die(esc_html__('You do not have permission to download documents.', 'jm-referral-system'));
+            wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
         $prepared = $this->document_service->prepare_download($document_id);
 
         if (isset($prepared['errors']) && is_array($prepared['errors'])) {
-            $message = (string) reset($prepared['errors']);
-            wp_die(esc_html('' !== $message ? $message : __('Unable to download the document.', 'jm-referral-system')));
+            $error_key = (string) array_key_first($prepared['errors']);
+
+            if ('permission' === $error_key) {
+                wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
+            }
+
+            wp_die(esc_html__('The requested action could not be completed.', 'jm-referral-system'));
         }
 
         $document  = $prepared['document'];

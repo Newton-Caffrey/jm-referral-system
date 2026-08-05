@@ -5,6 +5,7 @@ namespace JMReferral\Referral;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Services\ServiceTypeService;
+use JMReferral\Support\CsvExportHelper;
 use JMReferral\Users\UserProvider;
 use JMReferral\Workflow\WorkflowStageService;
 
@@ -38,7 +39,7 @@ class ReferralExportController
         }
 
         if (! Capabilities::current_user_can(Capabilities::EXPORT_REFERRALS)) {
-            wp_die(esc_html__('You do not have permission to export referrals.', 'jm-referral-system'));
+            wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
         check_admin_referer('jmrs_export_referrals');
@@ -66,20 +67,22 @@ class ReferralExportController
 
         nocache_headers();
         header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Disposition: attachment; filename="' . sanitize_file_name($filename) . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store, no-cache, must-revalidate');
         header('Pragma: no-cache');
         header('Expires: 0');
 
         $output = fopen('php://output', 'w');
 
         if (false === $output) {
-            wp_die(esc_html__('Unable to start CSV export.', 'jm-referral-system'));
+            wp_die(esc_html__('The requested action could not be completed.', 'jm-referral-system'));
         }
 
         // UTF-8 BOM helps Excel open the file correctly.
         fwrite($output, "\xEF\xBB\xBF");
 
-        fputcsv(
+        CsvExportHelper::put_row(
             $output,
             [
                 'Referral Number',
@@ -121,7 +124,7 @@ class ReferralExportController
                 ? $stage_names[$workflow_stage_id]
                 : '';
 
-            fputcsv(
+            CsvExportHelper::put_row(
                 $output,
                 [
                     (string) ($referral['referral_number'] ?? ''),

@@ -33,6 +33,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Capability-gated document access
 - [x] Private storage for new uploads (`uploads/jmrs-private/`, Phase 5.2.1)
 - [x] Legacy → private batch migration tool (Settings; originals retained)
+- [x] Code-level security hardening (Phase 5.2.2: email templates, CSV formula escape, allowlists, AccessPolicy consistency)
 - [ ] Legacy Media Library cleanup after migration (later hardening phase)
 
 ### Assessments ✅

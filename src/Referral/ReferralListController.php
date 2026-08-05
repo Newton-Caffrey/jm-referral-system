@@ -105,7 +105,7 @@ class ReferralListController
         }
 
         if (! Capabilities::current_user_can(Capabilities::DELETE_REFERRALS)) {
-            wp_die(esc_html__('You do not have permission to delete referrals.', 'jm-referral-system'));
+            wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
         $referral_id = isset($_GET['referral_id']) ? absint($_GET['referral_id']) : 0;
@@ -114,8 +114,8 @@ class ReferralListController
 
         $referral = $this->repository->find($referral_id);
 
-        if (null === $referral || ! $this->access_policy->can_view_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to delete this referral.', 'jm-referral-system'));
+        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
+            wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
         $deleted = $this->repository->delete($referral_id);
