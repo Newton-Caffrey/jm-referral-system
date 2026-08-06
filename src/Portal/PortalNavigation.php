@@ -16,7 +16,33 @@ class PortalNavigation
     }
 
     /**
-     * @return array<int, array{id: string, label: string, url: string, current: bool}>
+     * Route keys that should highlight the "Referrals" nav item because they
+     * are all reached from, and return to, a specific referral record.
+     *
+     * @var string[]
+     */
+    private const REFERRAL_RELATED_ROUTES = [
+        'referrals',
+        'referral',
+        'referral_edit',
+        'referral_assessment',
+        'referral_care_plan',
+        'care_plan_review',
+        'medication_new',
+        'medication_edit',
+        'care_team_new',
+        'care_team_edit',
+        'schedule_new',
+        'schedule_edit',
+        'schedule_generate',
+        'visit_new',
+        'visit_edit',
+        'visit_execute',
+        'visit_review',
+    ];
+
+    /**
+     * @return array<int, array{id: string, label: string, url: string, current: bool, icon: string, section: string}>
      */
     public function items(string $current_route = ''): array
     {
@@ -28,6 +54,8 @@ class PortalNavigation
                 'label'   => __('Dashboard', 'jm-referral-system'),
                 'url'     => PortalUrls::dashboard(),
                 'current' => in_array($current_route, ['dashboard', ''], true),
+                'icon'    => 'dashboard',
+                'section' => 'overview',
             ];
         }
 
@@ -39,11 +67,26 @@ class PortalNavigation
                     ? __('My Referrals', 'jm-referral-system')
                     : __('Referrals', 'jm-referral-system'),
                 'url'     => PortalUrls::referrals(),
-                'current' => in_array($current_route, ['referrals', 'referral'], true),
+                'current' => in_array($current_route, self::REFERRAL_RELATED_ROUTES, true),
+                'icon'    => 'referrals',
+                'section' => 'care',
             ];
         }
 
         return $items;
+    }
+
+    /**
+     * Human-readable labels for nav section keys, in display order.
+     *
+     * @return array<string, string>
+     */
+    public function section_labels(): array
+    {
+        return [
+            'overview' => __('Overview', 'jm-referral-system'),
+            'care'     => __('Care', 'jm-referral-system'),
+        ];
     }
 
     public function role_label(): string

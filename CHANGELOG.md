@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 1.1D: staff portal UX polish — reusable partials (`notice`, `empty-state`, `section-header`, `client-summary`, `kpi-card`), grouped sidebar navigation with icons and section labels, dashboard welcome header/KPI cards/renamed schedule sections, referral view client-summary header + quick actions + activity timeline, button loading states, and refined tablet/mobile breakpoints — presentation-only, no changes to routes, permissions, or business logic
 - Phase 1.1C: staff portal clinical operations — care-plan review, medications, care team, schedules (+ generate), visits (create/edit/execute/MAR), manager visit review
 - Focused portal clinical handlers under `JMReferral\Portal\Clinical` with `ClinicalDispatcher` (shared admin `attempt_*` pipelines)
 - Portal rewrite version `1.1.2` (clinical routes + `jmrs_portal_entity` query var)

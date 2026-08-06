@@ -92,45 +92,78 @@ $client_dob      = (string) ( $referral['client_date_of_birth'] ?? '' );
 $client_dob_display = '' !== $client_dob
 	? mysql2date( get_option( 'date_format' ), $client_dob )
 	: '—';
+$quick_actions   = is_array( $quick_actions ?? null ) ? $quick_actions : array();
+$jmrs_partials_path = JMRS_PLUGIN_PATH . 'templates/portal/partials/';
 ?>
+<?php include $jmrs_partials_path . 'client-summary.php'; ?>
+
 <?php if ( $updated_notice ) : ?>
-	<div class="jmrs-portal-notice jmrs-portal-notice--success" role="status">
-		<p><?php echo esc_html__( 'Referral updated successfully.', 'jm-referral-system' ); ?></p>
-	</div>
+	<?php
+	$notice_type    = 'success';
+	$notice_message = __( 'Referral updated successfully.', 'jm-referral-system' );
+	unset( $notice_actions );
+	include $jmrs_partials_path . 'notice.php';
+	?>
 <?php endif; ?>
 
 <?php if ( is_array( $retention_notice ) && ! empty( $retention_notice['message'] ) ) : ?>
 	<?php
-	$notice_type = (string) ( $retention_notice['type'] ?? 'success' );
-	$notice_role = 'error' === $notice_type ? 'alert' : 'status';
+	$notice_type    = (string) ( $retention_notice['type'] ?? 'success' );
+	$notice_message = (string) $retention_notice['message'];
+	$notice_actions = ( 'success' === $notice_type && isset( $_GET['jmrs_archived'] ) && '' !== $archived_list_url )
+		? array( array( __( 'View archived referrals', 'jm-referral-system' ), $archived_list_url ) )
+		: array();
+	include $jmrs_partials_path . 'notice.php';
 	?>
-	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( $notice_type ); ?>" role="<?php echo esc_attr( $notice_role ); ?>">
-		<p><?php echo esc_html( (string) $retention_notice['message'] ); ?></p>
-		<?php if ( 'success' === $notice_type && isset( $_GET['jmrs_archived'] ) && '' !== $archived_list_url ) : ?>
-			<p>
-				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $archived_list_url ); ?>">
-					<?php echo esc_html__( 'View archived referrals', 'jm-referral-system' ); ?>
-				</a>
-			</p>
-		<?php endif; ?>
-	</div>
 <?php endif; ?>
 
 <?php if ( is_array( $clinical_notice ) && ! empty( $clinical_notice['message'] ) ) : ?>
 	<?php
-	$clinical_type = (string) ( $clinical_notice['type'] ?? 'success' );
-	$clinical_role = 'error' === $clinical_type ? 'alert' : 'status';
+	$notice_type    = (string) ( $clinical_notice['type'] ?? 'success' );
+	$notice_message = (string) $clinical_notice['message'];
+	unset( $notice_actions );
+	include $jmrs_partials_path . 'notice.php';
 	?>
-	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( $clinical_type ); ?>" role="<?php echo esc_attr( $clinical_role ); ?>">
-		<p><?php echo esc_html( (string) $clinical_notice['message'] ); ?></p>
-	</div>
 <?php endif; ?>
 
-<p class="jmrs-portal-actions">
+<?php if ( $is_archived ) : ?>
+	<?php
+	$notice_type    = 'warning';
+	$archived_meta  = array();
+	if ( '' !== $archived_at ) {
+		$archived_meta[] = mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $archived_at );
+	}
+	if ( '' !== $archived_by_name ) {
+		$archived_meta[] = $archived_by_name;
+	}
+	$notice_message = __( 'This referral is archived.', 'jm-referral-system' );
+	if ( ! empty( $archived_meta ) ) {
+		$notice_message .= ' ' . implode( ' — ', $archived_meta );
+	}
+	if ( '' !== $archive_reason ) {
+		$notice_message .= ' ' . sprintf(
+			/* translators: %s: archive reason */
+			__( 'Reason: %s', 'jm-referral-system' ),
+			$archive_reason
+		);
+	}
+	unset( $notice_actions );
+	include $jmrs_partials_path . 'notice.php';
+	?>
+<?php endif; ?>
+
+<div class="jmrs-portal-quick-actions jmrs-portal-quick-actions--referral">
 	<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $list_url ); ?>"><?php echo esc_html__( 'Back to list', 'jm-referral-system' ); ?></a>
-	<?php if ( $can_edit_referral && '' !== $edit_url ) : ?>
-		<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( $edit_url ); ?>"><?php echo esc_html__( 'Edit Referral', 'jm-referral-system' ); ?></a>
-	<?php endif; ?>
+	<?php foreach ( $quick_actions as $quick_action ) : ?>
+		<?php
+		$qa_label = (string) ( $quick_action['label'] ?? '' );
+		$qa_url   = (string) ( $quick_action['url'] ?? '' );
+		$qa_class = (string) ( $quick_action['class'] ?? 'jmrs-button jmrs-button--secondary' );
+		?>
+		<?php if ( '' !== $qa_label && '' !== $qa_url ) : ?>
+			<a class="<?php echo esc_attr( $qa_class ); ?>" href="<?php echo esc_url( $qa_url ); ?>"><?php echo esc_html( $qa_label ); ?></a>
+		<?php endif; ?>
+	<?php endforeach; ?>
 	<?php if ( $can_archive_referral ) : ?>
 		<a class="jmrs-button jmrs-button--secondary" href="#jmrs-archive-referral"><?php echo esc_html__( 'Archive', 'jm-referral-system' ); ?></a>
 	<?php endif; ?>
@@ -143,29 +176,9 @@ $client_dob_display = '' !== $client_dob
 			</button>
 		</form>
 	<?php endif; ?>
-</p>
+</div>
 
-<?php if ( $is_archived ) : ?>
-	<div class="jmrs-portal-notice jmrs-portal-notice--warning" role="status">
-		<p>
-			<span class="jmrs-portal-badge jmrs-portal-badge--archive"><?php echo esc_html__( 'Archived', 'jm-referral-system' ); ?></span>
-			<?php if ( '' !== $archived_at ) : ?>
-				— <?php echo esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $archived_at ) ); ?>
-			<?php endif; ?>
-			<?php if ( '' !== $archived_by_name ) : ?>
-				(<?php echo esc_html( $archived_by_name ); ?>)
-			<?php endif; ?>
-		</p>
-		<?php if ( '' !== $archive_reason ) : ?>
-			<p>
-				<strong><?php echo esc_html__( 'Archive reason', 'jm-referral-system' ); ?>:</strong>
-				<?php echo esc_html( $archive_reason ); ?>
-			</p>
-		<?php endif; ?>
-	</div>
-<?php endif; ?>
-
-<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-summary">
+<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-summary">
 	<h2 id="jmrs-portal-ref-summary" class="jmrs-portal-section__title"><?php echo esc_html__( 'Summary', 'jm-referral-system' ); ?></h2>
 	<div class="jmrs-portal-dl-grid">
 		<div>
@@ -199,7 +212,7 @@ $client_dob_display = '' !== $client_dob
 	</div>
 </section>
 
-<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-client">
+<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-client">
 	<h2 id="jmrs-portal-ref-client" class="jmrs-portal-section__title"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></h2>
 	<div class="jmrs-portal-dl-grid">
 		<div>
@@ -225,7 +238,7 @@ $client_dob_display = '' !== $client_dob
 	</div>
 </section>
 
-<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-referrer">
+<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-referrer">
 	<h2 id="jmrs-portal-ref-referrer" class="jmrs-portal-section__title"><?php echo esc_html__( 'Referrer', 'jm-referral-system' ); ?></h2>
 	<div class="jmrs-portal-dl-grid">
 		<div>
@@ -258,18 +271,28 @@ $client_dob_display = '' !== $client_dob
 </section>
 
 <?php if ( '' !== trim( $care_needs ) ) : ?>
-	<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-care">
+	<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-care">
 		<h2 id="jmrs-portal-ref-care" class="jmrs-portal-section__title"><?php echo esc_html__( 'Care requirements', 'jm-referral-system' ); ?></h2>
 		<div class="jmrs-portal-prose"><?php echo nl2br( esc_html( $care_needs ) ); ?></div>
 	</section>
 <?php endif; ?>
 
-<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-docs">
+<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-docs">
 	<h2 id="jmrs-portal-ref-docs" class="jmrs-portal-section__title"><?php echo esc_html__( 'Documents', 'jm-referral-system' ); ?></h2>
 	<?php if ( ! $can_download_documents ) : ?>
-		<div class="jmrs-portal-empty"><p><?php echo esc_html__( 'You do not have permission to download documents.', 'jm-referral-system' ); ?></p></div>
+		<?php
+		$empty_title   = '';
+		$empty_message = __( 'You do not have permission to download documents.', 'jm-referral-system' );
+		unset( $empty_actions );
+		include $jmrs_partials_path . 'empty-state.php';
+		?>
 	<?php elseif ( empty( $documents ) ) : ?>
-		<div class="jmrs-portal-empty"><p><?php echo esc_html__( 'No documents uploaded yet.', 'jm-referral-system' ); ?></p></div>
+		<?php
+		$empty_title   = '';
+		$empty_message = __( 'No documents uploaded yet.', 'jm-referral-system' );
+		unset( $empty_actions );
+		include $jmrs_partials_path . 'empty-state.php';
+		?>
 	<?php else : ?>
 		<div class="jmrs-portal-table-wrap">
 			<table class="jmrs-portal-table">
@@ -357,28 +380,35 @@ $summary_fields = array(
 	'recommendations' => __( 'Recommendations', 'jm-referral-system' ),
 );
 ?>
-<section class="jmrs-portal-section jmrs-portal-clinical" aria-labelledby="jmrs-portal-ref-assessment">
-	<div class="jmrs-portal-section__header">
-		<div class="jmrs-portal-section__heading">
-			<h2 id="jmrs-portal-ref-assessment" class="jmrs-portal-section__title"><?php echo esc_html__( 'Assessment', 'jm-referral-system' ); ?></h2>
-			<?php if ( null !== $assessment ) : ?>
-				<?php
-				$outcome_key_badge = (string) ( $assessment_data['outcome'] ?? '' );
-				$outcome_badge     = $assessment_outcomes[ $outcome_key_badge ] ?? $outcome_key_badge;
-				?>
-				<?php if ( '' !== $outcome_badge ) : ?>
-					<span class="jmrs-portal-badge"><?php echo esc_html( (string) $outcome_badge ); ?></span>
-				<?php endif; ?>
-			<?php endif; ?>
-		</div>
-		<?php if ( $can_edit_assessment && '' !== $assessment_url ) : ?>
-			<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $assessment_url ); ?>">
-				<?php echo esc_html( null === $assessment ? __( 'Create Assessment', 'jm-referral-system' ) : __( 'Edit Assessment', 'jm-referral-system' ) ); ?>
-			</a>
-		<?php endif; ?>
-	</div>
+<section class="jmrs-portal-section jmrs-portal-clinical jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-assessment">
+	<?php
+	$section_title  = __( 'Assessment', 'jm-referral-system' );
+	$section_id     = 'jmrs-portal-ref-assessment';
+	$section_badge  = null;
+	if ( null !== $assessment ) {
+		$outcome_key_badge = (string) ( $assessment_data['outcome'] ?? '' );
+		$outcome_badge     = $assessment_outcomes[ $outcome_key_badge ] ?? $outcome_key_badge;
+		$section_badge     = '' !== $outcome_badge ? (string) $outcome_badge : null;
+	}
+	$section_actions = ( $can_edit_assessment && '' !== $assessment_url )
+		? array(
+			array(
+				null === $assessment ? __( 'Create Assessment', 'jm-referral-system' ) : __( 'Edit Assessment', 'jm-referral-system' ),
+				$assessment_url,
+			),
+		)
+		: array();
+	include $jmrs_partials_path . 'section-header.php';
+	?>
 	<?php if ( null === $assessment ) : ?>
-		<div class="jmrs-portal-empty"><p><?php echo esc_html__( 'No assessment recorded.', 'jm-referral-system' ); ?></p></div>
+		<?php
+		$empty_title   = '';
+		$empty_message = __( 'No assessment recorded.', 'jm-referral-system' );
+		$empty_actions = ( $can_edit_assessment && '' !== $assessment_url )
+			? array( array( __( 'Create Assessment', 'jm-referral-system' ), $assessment_url, 'jmrs-button jmrs-button--primary' ) )
+			: array();
+		include $jmrs_partials_path . 'empty-state.php';
+		?>
 	<?php else : ?>
 		<?php
 		$outcome_key            = $jmrs_assessment_value( 'outcome' );
@@ -539,50 +569,40 @@ $care_plan_content_fields = array(
 $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 ?>
 <?php if ( $can_view_care_plan ) : ?>
-	<section class="jmrs-portal-section jmrs-portal-clinical" aria-labelledby="jmrs-portal-ref-careplan">
-		<div class="jmrs-portal-section__header">
-			<div class="jmrs-portal-section__heading">
-				<h2 id="jmrs-portal-ref-careplan" class="jmrs-portal-section__title"><?php echo esc_html__( 'Care Plan', 'jm-referral-system' ); ?></h2>
-				<?php if ( null !== $care_plan ) : ?>
-					<?php
-					$plan_status_badge = (string) ( $care_plan_data['plan_status'] ?? '' );
-					$plan_badge_label  = $care_plan_statuses[ $plan_status_badge ] ?? $plan_status_badge;
-					?>
-					<?php if ( '' !== $plan_badge_label ) : ?>
-						<span class="jmrs-portal-badge"><?php echo esc_html( (string) $plan_badge_label ); ?></span>
-					<?php endif; ?>
-				<?php endif; ?>
-			</div>
-			<?php if ( $can_manage_care_plan && '' !== $care_plan_url ) : ?>
-				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $care_plan_url ); ?>">
-					<?php
-					echo esc_html(
-						null === $care_plan
-							? ( $has_assessment
-								? __( 'Create Care Plan', 'jm-referral-system' )
-								: __( 'Create Care Plan', 'jm-referral-system' ) )
-							: __( 'Edit Care Plan', 'jm-referral-system' )
-					);
-					?>
-				</a>
-			<?php endif; ?>
-			<?php if ( $can_review_care_plan && '' !== $care_plan_review_url ) : ?>
-				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $care_plan_review_url ); ?>">
-					<?php echo esc_html__( 'Review Care Plan', 'jm-referral-system' ); ?>
-				</a>
-			<?php endif; ?>
-		</div>
+	<section class="jmrs-portal-section jmrs-portal-clinical jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-careplan">
+		<?php
+		$section_title = __( 'Care Plan', 'jm-referral-system' );
+		$section_id    = 'jmrs-portal-ref-careplan';
+		$section_badge = null;
+		if ( null !== $care_plan ) {
+			$plan_status_badge = (string) ( $care_plan_data['plan_status'] ?? '' );
+			$plan_badge_label  = $care_plan_statuses[ $plan_status_badge ] ?? $plan_status_badge;
+			$section_badge     = '' !== $plan_badge_label ? (string) $plan_badge_label : null;
+		}
+		$section_actions = array();
+		if ( $can_manage_care_plan && '' !== $care_plan_url ) {
+			$section_actions[] = array(
+				null === $care_plan ? __( 'Create Care Plan', 'jm-referral-system' ) : __( 'Edit Care Plan', 'jm-referral-system' ),
+				$care_plan_url,
+			);
+		}
+		if ( $can_review_care_plan && '' !== $care_plan_review_url ) {
+			$section_actions[] = array( __( 'Review Care Plan', 'jm-referral-system' ), $care_plan_review_url );
+		}
+		include $jmrs_partials_path . 'section-header.php';
+		?>
 		<?php if ( null === $care_plan ) : ?>
-			<div class="jmrs-portal-empty">
-				<p><?php echo esc_html__( 'No care plan recorded.', 'jm-referral-system' ); ?></p>
-				<?php if ( $can_manage_care_plan && '' !== $care_plan_url && $has_assessment ) : ?>
-					<p class="jmrs-portal-actions">
-						<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $care_plan_url ); ?>">
-							<?php echo esc_html__( 'Generate from Assessment', 'jm-referral-system' ); ?>
-						</a>
-					</p>
-				<?php endif; ?>
-			</div>
+			<?php
+			$empty_title   = '';
+			$empty_message = __( 'No care plan recorded.', 'jm-referral-system' );
+			$empty_actions = array();
+			if ( $can_manage_care_plan && '' !== $care_plan_url && $has_assessment ) {
+				$empty_actions[] = array( __( 'Generate from Assessment', 'jm-referral-system' ), $care_plan_url );
+			} elseif ( $can_manage_care_plan && '' !== $care_plan_url ) {
+				$empty_actions[] = array( __( 'Create Care Plan', 'jm-referral-system' ), $care_plan_url, 'jmrs-button jmrs-button--primary' );
+			}
+			include $jmrs_partials_path . 'empty-state.php';
+			?>
 		<?php else : ?>
 			<?php
 			$plan_status       = $jmrs_care_plan_value( 'plan_status' );
@@ -714,19 +734,25 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 <?php endif; ?>
 
 <?php if ( $can_view_care_team ) : ?>
-	<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-team">
-		<div class="jmrs-portal-section__header">
-			<div class="jmrs-portal-section__heading">
-				<h2 id="jmrs-portal-ref-team" class="jmrs-portal-section__title"><?php echo esc_html__( 'Care team', 'jm-referral-system' ); ?></h2>
-			</div>
-			<?php if ( $can_manage_care_team && '' !== $care_team_new_url ) : ?>
-				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $care_team_new_url ); ?>">
-					<?php echo esc_html__( 'Add Team Member', 'jm-referral-system' ); ?>
-				</a>
-			<?php endif; ?>
-		</div>
+	<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-team">
+		<?php
+		$section_title  = __( 'Care team', 'jm-referral-system' );
+		$section_id     = 'jmrs-portal-ref-team';
+		$section_badge  = null;
+		$section_actions = ( $can_manage_care_team && '' !== $care_team_new_url )
+			? array( array( __( 'Add Team Member', 'jm-referral-system' ), $care_team_new_url ) )
+			: array();
+		include $jmrs_partials_path . 'section-header.php';
+		?>
 		<?php if ( empty( $care_team_members ) ) : ?>
-			<div class="jmrs-portal-empty"><p><?php echo esc_html__( 'No care team members assigned.', 'jm-referral-system' ); ?></p></div>
+			<?php
+			$empty_title   = '';
+			$empty_message = __( 'No care team members assigned.', 'jm-referral-system' );
+			$empty_actions = ( $can_manage_care_team && '' !== $care_team_new_url )
+				? array( array( __( 'Add Team Member', 'jm-referral-system' ), $care_team_new_url, 'jmrs-button jmrs-button--primary' ) )
+				: array();
+			include $jmrs_partials_path . 'empty-state.php';
+			?>
 		<?php else : ?>
 			<div class="jmrs-portal-table-wrap">
 				<table class="jmrs-portal-table">
@@ -786,19 +812,25 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 <?php endif; ?>
 
 <?php if ( $can_view_visits ) : ?>
-	<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-visits">
-		<div class="jmrs-portal-section__header">
-			<div class="jmrs-portal-section__heading">
-				<h2 id="jmrs-portal-ref-visits" class="jmrs-portal-section__title"><?php echo esc_html__( 'Recent visits', 'jm-referral-system' ); ?></h2>
-			</div>
-			<?php if ( $can_manage_visits && '' !== $visit_new_url ) : ?>
-				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $visit_new_url ); ?>">
-					<?php echo esc_html__( 'Schedule Visit', 'jm-referral-system' ); ?>
-				</a>
-			<?php endif; ?>
-		</div>
+	<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-visits">
+		<?php
+		$section_title  = __( 'Recent visits', 'jm-referral-system' );
+		$section_id     = 'jmrs-portal-ref-visits';
+		$section_badge  = null;
+		$section_actions = ( $can_manage_visits && '' !== $visit_new_url )
+			? array( array( __( 'Schedule Visit', 'jm-referral-system' ), $visit_new_url ) )
+			: array();
+		include $jmrs_partials_path . 'section-header.php';
+		?>
 		<?php if ( empty( $care_visits ) ) : ?>
-			<div class="jmrs-portal-empty"><p><?php echo esc_html__( 'No visits scheduled.', 'jm-referral-system' ); ?></p></div>
+			<?php
+			$empty_title   = '';
+			$empty_message = __( 'No visits scheduled.', 'jm-referral-system' );
+			$empty_actions = ( $can_manage_visits && '' !== $visit_new_url )
+				? array( array( __( 'Schedule Visit', 'jm-referral-system' ), $visit_new_url, 'jmrs-button jmrs-button--primary' ) )
+				: array();
+			include $jmrs_partials_path . 'empty-state.php';
+			?>
 		<?php else : ?>
 			<div class="jmrs-portal-table-wrap">
 				<table class="jmrs-portal-table">
@@ -875,19 +907,25 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 <?php endif; ?>
 
 <?php if ( $can_view_schedules ) : ?>
-	<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-schedules">
-		<div class="jmrs-portal-section__header">
-			<div class="jmrs-portal-section__heading">
-				<h2 id="jmrs-portal-ref-schedules" class="jmrs-portal-section__title"><?php echo esc_html__( 'Schedules', 'jm-referral-system' ); ?></h2>
-			</div>
-			<?php if ( $can_manage_schedules && '' !== $schedule_new_url ) : ?>
-				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $schedule_new_url ); ?>">
-					<?php echo esc_html__( 'Add Schedule', 'jm-referral-system' ); ?>
-				</a>
-			<?php endif; ?>
-		</div>
+	<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-schedules">
+		<?php
+		$section_title  = __( 'Schedules', 'jm-referral-system' );
+		$section_id     = 'jmrs-portal-ref-schedules';
+		$section_badge  = null;
+		$section_actions = ( $can_manage_schedules && '' !== $schedule_new_url )
+			? array( array( __( 'Add Schedule', 'jm-referral-system' ), $schedule_new_url ) )
+			: array();
+		include $jmrs_partials_path . 'section-header.php';
+		?>
 		<?php if ( empty( $schedules ) ) : ?>
-			<div class="jmrs-portal-empty"><p><?php echo esc_html__( 'No schedules configured.', 'jm-referral-system' ); ?></p></div>
+			<?php
+			$empty_title   = '';
+			$empty_message = __( 'No schedules configured.', 'jm-referral-system' );
+			$empty_actions = ( $can_manage_schedules && '' !== $schedule_new_url )
+				? array( array( __( 'Add Schedule', 'jm-referral-system' ), $schedule_new_url, 'jmrs-button jmrs-button--primary' ) )
+				: array();
+			include $jmrs_partials_path . 'empty-state.php';
+			?>
 		<?php else : ?>
 			<div class="jmrs-portal-table-wrap">
 				<table class="jmrs-portal-table">
@@ -951,19 +989,25 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 <?php endif; ?>
 
 <?php if ( $can_view_medications ) : ?>
-	<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-meds">
-		<div class="jmrs-portal-section__header">
-			<div class="jmrs-portal-section__heading">
-				<h2 id="jmrs-portal-ref-meds" class="jmrs-portal-section__title"><?php echo esc_html__( 'Medications', 'jm-referral-system' ); ?></h2>
-			</div>
-			<?php if ( $can_manage_medications && '' !== $medication_new_url ) : ?>
-				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $medication_new_url ); ?>">
-					<?php echo esc_html__( 'Add Medication', 'jm-referral-system' ); ?>
-				</a>
-			<?php endif; ?>
-		</div>
+	<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-meds">
+		<?php
+		$section_title  = __( 'Medications', 'jm-referral-system' );
+		$section_id     = 'jmrs-portal-ref-meds';
+		$section_badge  = null;
+		$section_actions = ( $can_manage_medications && '' !== $medication_new_url )
+			? array( array( __( 'Add Medication', 'jm-referral-system' ), $medication_new_url ) )
+			: array();
+		include $jmrs_partials_path . 'section-header.php';
+		?>
 		<?php if ( empty( $medications ) ) : ?>
-			<div class="jmrs-portal-empty"><p><?php echo esc_html__( 'No medications recorded.', 'jm-referral-system' ); ?></p></div>
+			<?php
+			$empty_title   = '';
+			$empty_message = __( 'No medications recorded.', 'jm-referral-system' );
+			$empty_actions = ( $can_manage_medications && '' !== $medication_new_url )
+				? array( array( __( 'Add Medication', 'jm-referral-system' ), $medication_new_url, 'jmrs-button jmrs-button--primary' ) )
+				: array();
+			include $jmrs_partials_path . 'empty-state.php';
+			?>
 		<?php else : ?>
 			<div class="jmrs-portal-table-wrap">
 				<table class="jmrs-portal-table">
@@ -1018,45 +1062,48 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 	</section>
 <?php endif; ?>
 
-<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-ref-activity">
+<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-activity">
 	<h2 id="jmrs-portal-ref-activity" class="jmrs-portal-section__title"><?php echo esc_html__( 'Activity Timeline', 'jm-referral-system' ); ?></h2>
 	<?php if ( empty( $activities ) ) : ?>
-		<div class="jmrs-portal-empty"><p><?php echo esc_html__( 'No activity recorded for this referral.', 'jm-referral-system' ); ?></p></div>
+		<?php
+		$empty_title   = '';
+		$empty_message = __( 'No activity recorded for this referral.', 'jm-referral-system' );
+		unset( $empty_actions );
+		include $jmrs_partials_path . 'empty-state.php';
+		?>
 	<?php else : ?>
-		<div class="jmrs-portal-table-wrap">
-			<table class="jmrs-portal-table">
-				<thead>
-					<tr>
-						<th scope="col"><?php echo esc_html__( 'Date/Time', 'jm-referral-system' ); ?></th>
-						<th scope="col"><?php echo esc_html__( 'Action', 'jm-referral-system' ); ?></th>
-						<th scope="col"><?php echo esc_html__( 'Description', 'jm-referral-system' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $activities as $activity ) : ?>
-						<?php
-						$activity_created = (string) ( $activity['created_at'] ?? '' );
-						$activity_display = '' !== $activity_created
-							? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $activity_created )
-							: '';
-						$action         = (string) ( $activity['action'] ?? '' );
-						$action_display = ucfirst( str_replace( '_', ' ', $action ) );
-						$description    = (string) ( $activity['description'] ?? '' );
-						?>
-						<tr>
-							<td data-label="<?php echo esc_attr__( 'Date/Time', 'jm-referral-system' ); ?>"><?php echo esc_html( $activity_display ); ?></td>
-							<td data-label="<?php echo esc_attr__( 'Action', 'jm-referral-system' ); ?>"><?php echo esc_html( $action_display ); ?></td>
-							<td data-label="<?php echo esc_attr__( 'Description', 'jm-referral-system' ); ?>"><?php echo esc_html( $description ); ?></td>
-						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
+		<ol class="jmrs-portal-timeline">
+			<?php foreach ( $activities as $activity ) : ?>
+				<?php
+				$activity_created = (string) ( $activity['created_at'] ?? '' );
+				$activity_display = '' !== $activity_created
+					? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $activity_created )
+					: '';
+				$action         = (string) ( $activity['action'] ?? '' );
+				$action_display = ucfirst( str_replace( '_', ' ', $action ) );
+				$description    = (string) ( $activity['description'] ?? '' );
+				?>
+				<li class="jmrs-portal-timeline__item">
+					<span class="jmrs-portal-timeline__marker" aria-hidden="true"></span>
+					<div class="jmrs-portal-timeline__content">
+						<div class="jmrs-portal-timeline__head">
+							<span class="jmrs-portal-timeline__action"><?php echo esc_html( $action_display ); ?></span>
+							<?php if ( '' !== $activity_display ) : ?>
+								<time class="jmrs-portal-timeline__time"><?php echo esc_html( $activity_display ); ?></time>
+							<?php endif; ?>
+						</div>
+						<?php if ( '' !== $description ) : ?>
+							<p class="jmrs-portal-timeline__description"><?php echo esc_html( $description ); ?></p>
+						<?php endif; ?>
+					</div>
+				</li>
+			<?php endforeach; ?>
+		</ol>
 	<?php endif; ?>
 </section>
 
 <?php if ( $can_archive_referral && $referral_id > 0 ) : ?>
-	<section class="jmrs-portal-section" aria-labelledby="jmrs-archive-referral-title" id="jmrs-archive-referral">
+	<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-archive-referral-title" id="jmrs-archive-referral">
 		<h2 id="jmrs-archive-referral-title" class="jmrs-portal-section__title"><?php echo esc_html__( 'Archive Referral', 'jm-referral-system' ); ?></h2>
 		<p class="jmrs-portal-muted">
 			<?php echo esc_html__( 'Archive this referral? The record will remain available under Archived Referrals.', 'jm-referral-system' ); ?>

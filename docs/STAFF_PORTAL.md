@@ -154,6 +154,19 @@ Skip link, landmarks, semantic nav with `aria-current`, labelled mobile menu, ke
 
 ---
 
+## Phase 1.1D — UX polish
+
+Presentation-only pass over the existing portal shell and pages. No new routes, permissions, or business data.
+
+- Reusable partials under `templates/portal/partials/` (`notice`, `empty-state`, `section-header`, `client-summary`, `kpi-card`)
+- Sidebar nav grouped by section ("Overview" / "Care") with decorative icons; expanded current-route matching so all referral-scoped clinical pages highlight **Referrals**
+- Dashboard: welcome header (staff name + role), KPI cards, "Today's Schedule" framing for upcoming visits, helpful empty states for awaiting-review/completed sections, "Recent Activity" framing for recent referrals
+- Referral view: client summary header, quick-actions bar built from existing permission-gated URLs, consistent section-card headers, activity table converted to a vertical timeline, empty states with calls-to-action where staff can act
+- Buttons show a loading spinner (`.is-loading` / `[aria-busy="true"]`) on submit and duplicate submit buttons are disabled while a request is in flight; the submitter itself keeps its `name`/`value` so server-side `attempt_*` dispatch is unaffected
+- Refined spacing scale, focus states (including `select`/`textarea`), and tablet (`~1024px`) / mobile (`~768px`) breakpoints
+
+---
+
 ## Manual test checklist
 
 - Portal disabled → routes unavailable / 404 after flush

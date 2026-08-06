@@ -104,6 +104,12 @@ MAR is part of visit execution (`MedicationAdministrationService` via `attempt_e
 templates/portal/
   layout.php
   dashboard.php
+  partials/
+    notice.php
+    empty-state.php
+    section-header.php
+    client-summary.php
+    kpi-card.php
   referrals/list.php
   referrals/view.php
   referrals/edit.php
@@ -120,6 +126,18 @@ templates/portal/
   errors/403.php
   errors/404.php
 ```
+
+`templates/portal/partials/` holds small, presentation-only includes shared across portal pages (Phase 1.1D). They read plain variables from the including template's scope (no object binding) and echo only escaped output:
+
+| Partial | Variables |
+| --- | --- |
+| `notice.php` | `$notice_type`, `$notice_message`, `$notice_actions` (optional `[label, url, class]` list) |
+| `empty-state.php` | `$empty_title`, `$empty_message`, `$empty_actions` (optional) |
+| `section-header.php` | `$section_title`, `$section_id`, `$section_badge` (optional), `$section_actions` (optional), `$section_heading_level` (optional) |
+| `client-summary.php` | Reads existing referral-view variables (`$referral`, `$client_name`, `$client_dob_display`, `$address_display`, `$is_archived`, `$workflow_stage_name`, `$service_name`) — no new data |
+| `kpi-card.php` | `$kpi_value`, `$kpi_label`, `$kpi_href` (optional), `$kpi_tone` (`default`\|`warning`\|`info`) |
+
+`PortalNavigation::items()` also returns `icon` and `section` keys per nav item (`overview` / `care`), and `PortalNavigation::section_labels()` supplies the section heading text consumed by `layout.php`.
 
 ---
 

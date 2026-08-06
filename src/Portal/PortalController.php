@@ -285,7 +285,15 @@ class PortalController implements PortalViewHost
             }
         }
 
+        $current_user  = wp_get_current_user();
+        $welcome_name  = ($current_user instanceof \WP_User && $current_user->ID > 0)
+            ? $current_user->display_name
+            : '';
+        $welcome_role  = $this->navigation->role_label();
+
         $view = [
+            'welcome_name'                   => $welcome_name,
+            'welcome_role'                   => $welcome_role,
             'stats'                          => $stats,
             'recent'                         => $recent,
             'scoped_to_assigned'             => $scoped_to_assigned,
@@ -845,6 +853,11 @@ class PortalController implements PortalViewHost
             'clinical_notice'            => $clinical_notice,
         ];
 
+        // Presentation-only grouping of already-gated action URLs for the
+        // referral view "quick actions" bar. Reuses the view model above;
+        // adds no new permission checks or routes.
+        $view['quick_actions'] = $this->build_referral_quick_actions($view);
+
         $this->render_page(
             'referrals/view',
             $page_title,
@@ -1332,6 +1345,47 @@ class PortalController implements PortalViewHost
     }
 
     /**
+     * Presentation-only quick-action links for the referral view header,
+     * built purely from URLs/flags already computed for the referral view
+     * model. Adds no new permission logic, routes, or business data.
+     *
+     * @param array<string, mixed> $view
+     * @return array<int, array{label: string, url: string, class: string}>
+     */
+    private function build_referral_quick_actions(array $view): array
+    {
+        $actions = [];
+
+        $candidates = [
+            ['can_edit_referral', 'edit_url', __('Edit Referral', 'jm-referral-system'), 'jmrs-button jmrs-button--primary'],
+            [
+                'can_edit_assessment',
+                'assessment_url',
+                null === ($view['assessment'] ?? null) ? __('Create Assessment', 'jm-referral-system') : __('Edit Assessment', 'jm-referral-system'),
+                'jmrs-button jmrs-button--secondary',
+            ],
+            [
+                'can_manage_care_plan',
+                'care_plan_url',
+                null === ($view['care_plan'] ?? null) ? __('Create Care Plan', 'jm-referral-system') : __('Edit Care Plan', 'jm-referral-system'),
+                'jmrs-button jmrs-button--secondary',
+            ],
+            ['can_manage_visits', 'visit_new_url', __('Schedule Visit', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
+            ['can_manage_medications', 'medication_new_url', __('Add Medication', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
+            ['can_manage_care_team', 'care_team_new_url', __('Add Team Member', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
+        ];
+
+        foreach ($candidates as [$flag_key, $url_key, $label, $class]) {
+            $url = (string) ($view[$url_key] ?? '');
+            if (! empty($view[$flag_key]) && '' !== $url) {
+                $actions[] = ['label' => $label, 'url' => $url, 'class' => $class];
+            }
+        }
+
+        return $actions;
+    }
+
+    /**
      * @return array{type: string, message: string}|null
      */
     private function portal_retention_notice(): ?array
@@ -1626,6 +1680,7 @@ class PortalController implements PortalViewHost
     ): void {
         $branding     = PortalSettings::branding();
         $nav_items    = $this->navigation->items($current_route);
+        $nav_section_labels = $this->navigation->section_labels();
         $user         = wp_get_current_user();
         $display_name = ($user instanceof \WP_User) ? $user->display_name : '';
         $role_label   = $this->navigation->role_label();
@@ -1655,6 +1710,7 @@ class PortalController implements PortalViewHost
         $nav_items  = PortalAccess::current_user_can_access_portal()
             ? $this->navigation->items('')
             : [];
+        $nav_section_labels = $this->navigation->section_labels();
         $user         = wp_get_current_user();
         $display_name = ($user instanceof \WP_User && $user->ID > 0) ? $user->display_name : '';
         $role_label   = $user instanceof \WP_User && $user->ID > 0 ? $this->navigation->role_label() : '';

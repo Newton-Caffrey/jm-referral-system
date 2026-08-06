@@ -3,7 +3,8 @@
  * Staff portal application shell.
  *
  * @var array<string, mixed> $branding
- * @var array<int, array{id: string, label: string, url: string, current: bool}> $nav_items
+ * @var array<int, array{id: string, label: string, url: string, current: bool, icon?: string, section?: string}> $nav_items
+ * @var array<string, string> $nav_section_labels
  * @var string $display_name
  * @var string $role_label
  * @var string $logout_url
@@ -22,6 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $branding              = is_array( $branding ?? null ) ? $branding : array();
 $nav_items             = is_array( $nav_items ?? null ) ? $nav_items : array();
+$nav_section_labels    = is_array( $nav_section_labels ?? null ) ? $nav_section_labels : array();
 $breadcrumbs           = is_array( $breadcrumbs ?? null ) ? $breadcrumbs : array();
 $view                  = is_array( $view ?? null ) ? $view : array();
 $portal_name           = (string) ( $branding['portal_name'] ?? 'Portal' );
@@ -78,21 +80,45 @@ $document_title        = $page_title !== '' ? $page_title . ' — ' . $portal_na
 			</div>
 
 			<nav class="jmrs-portal-nav" aria-label="<?php echo esc_attr__( 'Primary', 'jm-referral-system' ); ?>">
-				<ul class="jmrs-portal-nav__list">
-					<?php foreach ( $nav_items as $item ) : ?>
-						<?php
-						$is_current = ! empty( $item['current'] );
-						$item_url   = (string) ( $item['url'] ?? '#' );
-						$item_label = (string) ( $item['label'] ?? '' );
+				<?php $jmrs_nav_last_section = null; ?>
+				<?php foreach ( $nav_items as $item ) : ?>
+					<?php
+					$item_section = (string) ( $item['section'] ?? '' );
+					if ( $item_section !== $jmrs_nav_last_section ) :
+						if ( null !== $jmrs_nav_last_section ) :
+							?>
+							</ul>
+							<?php
+						endif;
+						$jmrs_nav_last_section = $item_section;
+						$section_label         = (string) ( $nav_section_labels[ $item_section ] ?? '' );
 						?>
-						<li class="jmrs-portal-nav__item<?php echo $is_current ? ' is-current' : ''; ?>">
-							<a
-								href="<?php echo esc_url( $item_url ); ?>"
-								<?php echo $is_current ? ' aria-current="page"' : ''; ?>
-							><?php echo esc_html( $item_label ); ?></a>
-						</li>
-					<?php endforeach; ?>
-				</ul>
+						<?php if ( '' !== $section_label ) : ?>
+							<span class="jmrs-portal-nav__section-label"><?php echo esc_html( $section_label ); ?></span>
+						<?php endif; ?>
+						<ul class="jmrs-portal-nav__list">
+					<?php endif; ?>
+					<?php
+					$is_current = ! empty( $item['current'] );
+					$item_url   = (string) ( $item['url'] ?? '#' );
+					$item_label = (string) ( $item['label'] ?? '' );
+					$item_icon  = (string) ( $item['icon'] ?? '' );
+					?>
+					<li class="jmrs-portal-nav__item<?php echo $is_current ? ' is-current' : ''; ?>">
+						<a
+							href="<?php echo esc_url( $item_url ); ?>"
+							<?php echo $is_current ? ' aria-current="page"' : ''; ?>
+						>
+							<?php if ( '' !== $item_icon ) : ?>
+								<span class="jmrs-portal-nav__icon" data-icon="<?php echo esc_attr( $item_icon ); ?>" aria-hidden="true"></span>
+							<?php endif; ?>
+							<span class="jmrs-portal-nav__label"><?php echo esc_html( $item_label ); ?></span>
+						</a>
+					</li>
+				<?php endforeach; ?>
+				<?php if ( null !== $jmrs_nav_last_section ) : ?>
+					</ul>
+				<?php endif; ?>
 			</nav>
 
 			<?php if ( '' !== $support_email || '' !== $support_phone ) : ?>

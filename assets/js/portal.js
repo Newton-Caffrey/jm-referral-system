@@ -66,6 +66,15 @@
 				first.focus();
 			}
 		});
+
+		// Closing the drawer after a nav link click avoids it staying open
+		// over the newly-loaded page on mobile.
+		sidebar.addEventListener('click', function (event) {
+			var link = event.target && event.target.closest ? event.target.closest('a') : null;
+			if (link && root.classList.contains('is-nav-open')) {
+				closeNav();
+			}
+		});
 	}
 
 	root.addEventListener('submit', function (event) {
@@ -74,11 +83,39 @@
 			return;
 		}
 		var message = form.getAttribute('data-jmrs-confirm');
-		if (!message) {
+		if (message && !window.confirm(message)) {
+			event.preventDefault();
 			return;
 		}
-		if (!window.confirm(message)) {
-			event.preventDefault();
-		}
+
+		setFormSubmitting(form, event.submitter);
 	});
+
+	/**
+	 * Marks the submitting button as busy so staff get visible feedback,
+	 * and disables any other submit buttons in the same form to prevent
+	 * duplicate submissions while the request is in flight.
+	 *
+	 * The submitter itself is intentionally never given the `disabled`
+	 * attribute: disabled form controls are excluded from the submitted
+	 * data, and several portal actions (e.g. archive/restore) are
+	 * identified server-side by the submit button's name/value pair.
+	 */
+	function setFormSubmitting(form, submitter) {
+		if (!submitter || !submitter.getAttribute) {
+			submitter = form.querySelector('button[type="submit"], input[type="submit"]');
+		}
+
+		var buttons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+		for (var i = 0; i < buttons.length; i++) {
+			if (buttons[i] !== submitter) {
+				buttons[i].disabled = true;
+			}
+		}
+
+		if (submitter) {
+			submitter.classList.add('is-loading');
+			submitter.setAttribute('aria-busy', 'true');
+		}
+	}
 })();
