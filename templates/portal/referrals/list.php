@@ -15,6 +15,10 @@ $assignable_users    = is_array( $assignable_users ?? null ) ? $assignable_users
 $scope_to_assigned   = ! empty( $scope_to_assigned );
 $can_filter_assignee = ! empty( $can_filter_assignee );
 $can_filter_archive  = ! empty( $can_filter_archive );
+$scope_urls          = is_array( $scope_urls ?? null ) ? $scope_urls : array();
+$empty_message       = (string) ( $empty_message ?? __( 'No referrals found.', 'jm-referral-system' ) );
+$list_notice         = is_array( $list_notice ?? null ) ? $list_notice : null;
+$archived_list_url   = (string) ( $archived_list_url ?? '' );
 $per_page            = isset( $per_page ) ? absint( $per_page ) : 20;
 $page                = isset( $page ) ? absint( $page ) : 1;
 $total               = isset( $total ) ? absint( $total ) : 0;
@@ -30,8 +34,74 @@ $search        = (string) ( $filters['search'] ?? '' );
 $status        = (string) ( $filters['status'] ?? '' );
 $priority      = (string) ( $filters['priority'] ?? '' );
 $assigned_to   = absint( $filters['assigned_to'] ?? 0 );
-$archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
+$archive_scope = (string) ( $filters['archive_scope'] ?? ( $archive_scope ?? 'active' ) );
+
+$scope_labels = array(
+	'active'   => __( 'Active', 'jm-referral-system' ),
+	'archived' => __( 'Archived', 'jm-referral-system' ),
+	'all'      => __( 'All', 'jm-referral-system' ),
+);
+$current_scope_label = $scope_labels[ $archive_scope ] ?? $scope_labels['active'];
 ?>
+<?php if ( is_array( $list_notice ) && ! empty( $list_notice['message'] ) ) : ?>
+	<?php
+	$notice_type = (string) ( $list_notice['type'] ?? 'success' );
+	$notice_role = 'error' === $notice_type ? 'alert' : 'status';
+	?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( $notice_type ); ?>" role="<?php echo esc_attr( $notice_role ); ?>">
+		<p><?php echo esc_html( (string) $list_notice['message'] ); ?></p>
+		<?php if ( 'success' === $notice_type && isset( $_GET['jmrs_archived'] ) && '' !== $archived_list_url ) : ?>
+			<p>
+				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $archived_list_url ); ?>">
+					<?php echo esc_html__( 'View archived referrals', 'jm-referral-system' ); ?>
+				</a>
+			</p>
+		<?php endif; ?>
+	</div>
+<?php endif; ?>
+
+<?php if ( $can_filter_archive ) : ?>
+	<section class="jmrs-portal-section jmrs-portal-scope-section" aria-labelledby="jmrs-portal-archive-scope-label">
+		<div class="jmrs-portal-scope" role="group" aria-labelledby="jmrs-portal-archive-scope-label">
+			<span id="jmrs-portal-archive-scope-label" class="jmrs-portal-scope__label">
+				<?php echo esc_html__( 'Show referrals', 'jm-referral-system' ); ?>
+			</span>
+			<div class="jmrs-portal-scope__options">
+				<?php foreach ( $scope_labels as $scope_key => $scope_label ) : ?>
+					<?php
+					$scope_url   = (string) ( $scope_urls[ $scope_key ] ?? '' );
+					$is_current  = $archive_scope === $scope_key;
+					$option_class = 'jmrs-portal-scope__option' . ( $is_current ? ' is-current' : '' );
+					?>
+					<?php if ( '' !== $scope_url ) : ?>
+						<a
+							class="<?php echo esc_attr( $option_class ); ?>"
+							href="<?php echo esc_url( $scope_url ); ?>"
+							<?php echo $is_current ? 'aria-current="page"' : ''; ?>
+						>
+							<?php echo esc_html( $scope_label ); ?>
+							<?php if ( $is_current ) : ?>
+								<span class="screen-reader-text">
+									<?php echo esc_html__( '(current filter)', 'jm-referral-system' ); ?>
+								</span>
+							<?php endif; ?>
+						</a>
+					<?php endif; ?>
+				<?php endforeach; ?>
+			</div>
+			<p class="jmrs-portal-scope__status" aria-live="polite">
+				<?php
+				printf(
+					/* translators: %s: Active, Archived, or All */
+					esc_html__( 'Currently showing: %s', 'jm-referral-system' ),
+					esc_html( $current_scope_label )
+				);
+				?>
+			</p>
+		</div>
+	</section>
+<?php endif; ?>
+
 <section class="jmrs-portal-section" aria-labelledby="jmrs-portal-list-filters">
 	<h2 id="jmrs-portal-list-filters" class="screen-reader-text"><?php echo esc_html__( 'Filters', 'jm-referral-system' ); ?></h2>
 
@@ -75,14 +145,7 @@ $archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
 				</p>
 			<?php endif; ?>
 			<?php if ( $can_filter_archive ) : ?>
-				<p>
-					<label for="jmrs_archive_scope"><?php echo esc_html__( 'Archive', 'jm-referral-system' ); ?></label>
-					<select name="jmrs_archive_scope" id="jmrs_archive_scope">
-						<option value="active" <?php selected( $archive_scope, 'active' ); ?>><?php echo esc_html__( 'Active', 'jm-referral-system' ); ?></option>
-						<option value="archived" <?php selected( $archive_scope, 'archived' ); ?>><?php echo esc_html__( 'Archived', 'jm-referral-system' ); ?></option>
-						<option value="all" <?php selected( $archive_scope, 'all' ); ?>><?php echo esc_html__( 'All', 'jm-referral-system' ); ?></option>
-					</select>
-				</p>
+				<input type="hidden" name="jmrs_archive_scope" value="<?php echo esc_attr( $archive_scope ); ?>" />
 			<?php endif; ?>
 			<p>
 				<label for="jmrs_per_page"><?php echo esc_html__( 'Page size', 'jm-referral-system' ); ?></label>
@@ -93,7 +156,7 @@ $archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
 				</select>
 			</p>
 			<p class="jmrs-portal-filters__submit">
-				<button type="submit" class="jmrs-portal-btn jmrs-portal-btn--primary"><?php echo esc_html__( 'Apply', 'jm-referral-system' ); ?></button>
+				<button type="submit" class="jmrs-button jmrs-button--primary"><?php echo esc_html__( 'Apply', 'jm-referral-system' ); ?></button>
 			</p>
 		</div>
 	</form>
@@ -117,7 +180,7 @@ $archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
 
 	<?php if ( empty( $referrals ) ) : ?>
 		<div class="jmrs-portal-empty">
-			<p><?php echo esc_html__( 'No referrals match these filters.', 'jm-referral-system' ); ?></p>
+			<p><?php echo esc_html( $empty_message ); ?></p>
 		</div>
 	<?php else : ?>
 		<div class="jmrs-portal-table-wrap">
@@ -139,12 +202,16 @@ $archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
 				<tbody>
 					<?php foreach ( $referrals as $row ) : ?>
 						<?php
-						$portal_url = (string) ( $row['portal_url'] ?? '' );
-						$client     = trim( (string) ( $row['client_first_name'] ?? '' ) . ' ' . (string) ( $row['client_last_name'] ?? '' ) );
+						$portal_url  = (string) ( $row['portal_url'] ?? '' );
+						$edit_url    = (string) ( $row['edit_url'] ?? '' );
+						$archive_url = (string) ( $row['archive_url'] ?? '' );
+						$can_restore = ! empty( $row['can_restore'] );
+						$client      = trim( (string) ( $row['client_first_name'] ?? '' ) . ' ' . (string) ( $row['client_last_name'] ?? '' ) );
 						if ( '' === $client ) {
 							$client = (string) ( $row['client_name'] ?? '' );
 						}
-						$is_arch    = ! empty( $row['is_archived'] );
+						$is_arch     = ! empty( $row['is_archived'] );
+						$row_id      = absint( $row['id'] ?? 0 );
 						?>
 						<tr>
 							<td data-label="<?php echo esc_attr__( 'Number', 'jm-referral-system' ); ?>">
@@ -162,9 +229,26 @@ $archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
 								<td data-label="<?php echo esc_attr__( 'Assigned', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $row['assigned_to_name'] ?? '' ) ); ?></td>
 							<?php endif; ?>
 							<td data-label="<?php echo esc_attr__( 'Actions', 'jm-referral-system' ); ?>">
-								<?php if ( '' !== $portal_url ) : ?>
-									<a class="jmrs-portal-link" href="<?php echo esc_url( $portal_url ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
-								<?php endif; ?>
+								<div class="jmrs-portal-row-actions">
+									<?php if ( '' !== $portal_url ) : ?>
+										<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $portal_url ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( '' !== $edit_url ) : ?>
+										<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( $edit_url ); ?>"><?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( '' !== $archive_url ) : ?>
+										<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $archive_url ); ?>"><?php echo esc_html__( 'Archive', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( $can_restore && $row_id > 0 ) : ?>
+										<form class="jmrs-portal-inline-form" method="post" action="<?php echo esc_url( $portal_url ); ?>" data-jmrs-confirm="<?php echo esc_attr__( 'Restore this archived referral?', 'jm-referral-system' ); ?>">
+											<?php wp_nonce_field( 'jmrs_restore_referral_' . $row_id, 'jmrs_restore_nonce' ); ?>
+											<input type="hidden" name="referral_id" value="<?php echo esc_attr( (string) $row_id ); ?>" />
+											<button type="submit" name="jmrs_restore_referral" value="1" class="jmrs-button jmrs-button--secondary">
+												<?php echo esc_html__( 'Restore', 'jm-referral-system' ); ?>
+											</button>
+										</form>
+									<?php endif; ?>
+								</div>
 							</td>
 						</tr>
 					<?php endforeach; ?>

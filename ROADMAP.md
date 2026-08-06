@@ -117,7 +117,10 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 ### Staff Frontend Portal
 
 - [x] Phase 6.2A: portal foundation — routing, shell, nav, dashboard, referral list/view, optional wp-admin redirect (`docs/STAFF_PORTAL.md`)
-- [ ] Phase 6.2B+ / **v1.1**: frontend workflows (edit, notes, documents, assessments, care plans, visits, MAR, reports)
+- [x] Phase 1.1A: portal referral editing (shared `ReferralService::update()` pipeline)
+- [x] Portal assessment & care plan editing
+- [x] Phase 1.1C: portal clinical operations (care-plan review, meds, care team, schedules, visits/execute/MAR, manager review)
+- [ ] Phase 6.2B+ / **v1.1**: remaining frontend workflows (notes, document uploads, reports, operational alerts page)
 
 ### Version 1.0.0 Production Package ✅
 
@@ -132,7 +135,9 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 
 Planned themes (not committed scope):
 
-- [ ] Staff portal editing and clinical workflow pages
+- [x] Phase 1.1A: Staff portal referral editing
+- [x] Phase 1.1C: Staff portal clinical operations (review, meds, care team, schedules, visits, MAR, manager review)
+- [ ] Remaining portal gaps: notes UI, document uploads, reports / operational-alerts pages
 - [ ] Remaining performance / Menu DI / search strategy
 - [ ] Chart.js local vendor pin
 - [ ] Legacy Media Library cleanup after private migration

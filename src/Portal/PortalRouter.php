@@ -7,11 +7,12 @@ namespace JMReferral\Portal;
  */
 class PortalRouter
 {
-    public const REWRITE_VERSION = '6.2.0';
+    public const REWRITE_VERSION = '1.1.2';
 
     public const QV_PORTAL = 'jmrs_portal';
     public const QV_ROUTE = 'jmrs_portal_route';
     public const QV_ID = 'jmrs_portal_id';
+    public const QV_ENTITY = 'jmrs_portal_entity';
 
     /** @var PortalController|null */
     private static $controller = null;
@@ -24,6 +25,7 @@ class PortalRouter
     public static function register(): void
     {
         add_action('init', [self::class, 'register_rewrites']);
+        add_action('init', [self::class, 'maybe_flush_on_version_change'], 99);
         add_filter('query_vars', [self::class, 'filter_query_vars']);
         add_action('template_redirect', [self::class, 'maybe_dispatch'], 0);
     }
@@ -36,23 +38,51 @@ class PortalRouter
 
         $base = preg_quote(PortalSettings::base_path(), '/');
 
-        add_rewrite_rule(
-            '^' . $base . '/?$',
-            'index.php?' . self::QV_PORTAL . '=1&' . self::QV_ROUTE . '=dashboard',
-            'top'
-        );
+        $rules = [
+            ['/?$', 'dashboard', null, null],
+            ['/referrals/?$', 'referrals', null, null],
+            ['/referrals/([0-9]+)/edit/?$', 'referral_edit', '$matches[1]', null],
+            ['/referrals/([0-9]+)/assessment/?$', 'referral_assessment', '$matches[1]', null],
+            ['/referrals/([0-9]+)/care-plan/review/?$', 'care_plan_review', '$matches[1]', null],
+            ['/referrals/([0-9]+)/care-plan/?$', 'referral_care_plan', '$matches[1]', null],
+            ['/referrals/([0-9]+)/medications/new/?$', 'medication_new', '$matches[1]', null],
+            ['/referrals/([0-9]+)/medications/([0-9]+)/edit/?$', 'medication_edit', '$matches[1]', '$matches[2]'],
+            ['/referrals/([0-9]+)/care-team/new/?$', 'care_team_new', '$matches[1]', null],
+            ['/referrals/([0-9]+)/care-team/([0-9]+)/edit/?$', 'care_team_edit', '$matches[1]', '$matches[2]'],
+            ['/referrals/([0-9]+)/schedules/new/?$', 'schedule_new', '$matches[1]', null],
+            ['/referrals/([0-9]+)/schedules/([0-9]+)/edit/?$', 'schedule_edit', '$matches[1]', '$matches[2]'],
+            ['/referrals/([0-9]+)/schedules/([0-9]+)/generate/?$', 'schedule_generate', '$matches[1]', '$matches[2]'],
+            ['/referrals/([0-9]+)/visits/new/?$', 'visit_new', '$matches[1]', null],
+            ['/referrals/([0-9]+)/visits/([0-9]+)/edit/?$', 'visit_edit', '$matches[1]', '$matches[2]'],
+            ['/referrals/([0-9]+)/visits/([0-9]+)/execute/?$', 'visit_execute', '$matches[1]', '$matches[2]'],
+            ['/referrals/([0-9]+)/visits/([0-9]+)/review/?$', 'visit_review', '$matches[1]', '$matches[2]'],
+            ['/referrals/([0-9]+)/?$', 'referral', '$matches[1]', null],
+        ];
 
-        add_rewrite_rule(
-            '^' . $base . '/referrals/?$',
-            'index.php?' . self::QV_PORTAL . '=1&' . self::QV_ROUTE . '=referrals',
-            'top'
-        );
+        foreach ($rules as [$pattern, $route, $id, $entity]) {
+            $query = self::QV_PORTAL . '=1&' . self::QV_ROUTE . '=' . $route;
+            if (null !== $id) {
+                $query .= '&' . self::QV_ID . '=' . $id;
+            }
+            if (null !== $entity) {
+                $query .= '&' . self::QV_ENTITY . '=' . $entity;
+            }
 
-        add_rewrite_rule(
-            '^' . $base . '/referrals/([0-9]+)/?$',
-            'index.php?' . self::QV_PORTAL . '=1&' . self::QV_ROUTE . '=referral&' . self::QV_ID . '=$matches[1]',
-            'top'
-        );
+            add_rewrite_rule('^' . $base . $pattern, 'index.php?' . $query, 'top');
+        }
+    }
+
+    public static function maybe_flush_on_version_change(): void
+    {
+        if (! PortalSettings::is_enabled()) {
+            return;
+        }
+
+        if (! PortalSettings::needs_rewrite_flush()) {
+            return;
+        }
+
+        self::flush_rules();
     }
 
     /**
@@ -64,6 +94,7 @@ class PortalRouter
         $vars[] = self::QV_PORTAL;
         $vars[] = self::QV_ROUTE;
         $vars[] = self::QV_ID;
+        $vars[] = self::QV_ENTITY;
 
         return $vars;
     }

@@ -46,7 +46,7 @@ Genuine remaining limitations after Phase 5.6 readiness review. Do not treat thi
 | No automatic/cron visit generation | Generation is on-demand from the UI |
 | No calendar UI | List/schedule forms only |
 | No client or family portal | Staff admin + optional staff portal only |
-| Staff portal is read-only (6.2A) | Dashboard/list/view only; clinical mutations remain in wp-admin |
+| Staff portal clinical ops in portal (1.1C) | Day-to-day clinical workflows available; notes uploads / reports / alerts pages still wp-admin |
 | Staff portal disabled by default | Enable in Settings → Staff Portal; test before enabling wp-admin redirect |
 | Public intake wizard has no save-and-resume | Values live in the DOM for the session; refresh clears unsaved input |
 | Public intake: no CAPTCHA / tracking portal | Honeypot + rate limit + timing only; see `docs/PUBLIC_REFERRAL_INTAKE.md` |

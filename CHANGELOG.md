@@ -9,8 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 1.1C: staff portal clinical operations — care-plan review, medications, care team, schedules (+ generate), visits (create/edit/execute/MAR), manager visit review
+- Focused portal clinical handlers under `JMReferral\Portal\Clinical` with `ClinicalDispatcher` (shared admin `attempt_*` pipelines)
+- Portal rewrite version `1.1.2` (clinical routes + `jmrs_portal_entity` query var)
+- Phase 1.1A: staff portal referral editing via shared `ReferralEditController::attempt_update()` → `ReferralService::update()` (`/staff-portal/referrals/{id}/edit/`)
 - Phase 7.2: developer documentation under `docs/developer/` (architecture, schema, permissions, workflows, portal/public, services, DI, history)
-- (product features — next line targets **1.1.0**; see `ROADMAP.md`)
+- Portal archive scope control (Active / Archived / All), portal archive/restore actions via `ReferralRetentionService`, and dashboard row actions
+- Portal Assessment and Care Plan editing routes (`/assessment/`, `/care-plan/`) reusing existing assessment/care-plan services
+
+### Changed
+
+- Portal rewrite version `1.1.2` (clinical operations routes; auto-flush when version mismatches)
+- Portal referral view section headers with capability-aware clinical actions; Schedules section; dashboard visit Execute/Review links stay on portal
+- Portal action button styles (`.jmrs-button`) with explicit link/visited/hover/focus colours to fix primary Edit contrast
+- Portal clinical sections rendered as readable summary cards with contextual Edit Assessment / Edit Care Plan actions
+- Admin clinical controllers expose reusable `attempt_*` / channel-namespaced form state for portal + admin
 
 ## [1.0.0] - 2026-08-05
 

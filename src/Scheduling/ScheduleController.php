@@ -44,28 +44,14 @@ class ScheduleController
 
         check_admin_referer('jmrs_save_schedule_' . $referral_id, 'jmrs_schedule_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to manage schedules for this referral.', 'jm-referral-system'));
-        }
+        $result = $this->attempt_save($referral_id, $_POST, $schedule_id);
 
-        $data   = $this->sanitize_input($_POST);
-        $result = $this->schedule_service->save($referral_id, $data, $schedule_id);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to manage schedules for this referral.', 'jm-referral-system'));
+            }
 
-        if (false === $result) {
-            $this->store_form_state(
-                $referral_id,
-                $data,
-                [
-                    'general' => __('Unable to save the schedule. Please try again.', 'jm-referral-system'),
-                ],
-                $schedule_id
-            );
-            $this->redirect_after_save($referral_id, $schedule_id, false);
-        }
-
-        if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_form_state($referral_id, $data, $result['errors'], $schedule_id);
+            $this->persist_form_state($referral_id, $result['data'], $result['errors'], $schedule_id);
             $this->redirect_after_save($referral_id, $schedule_id, false);
         }
 
@@ -87,11 +73,6 @@ class ScheduleController
 
         check_admin_referer('jmrs_generate_schedule_visits_' . $schedule_id, 'jmrs_generate_schedule_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to generate visits for this referral.', 'jm-referral-system'));
-        }
-
         $start_date = isset($_POST['generation_start_date'])
             ? sanitize_text_field(wp_unslash($_POST['generation_start_date']))
             : '';
@@ -99,26 +80,199 @@ class ScheduleController
             ? sanitize_text_field(wp_unslash($_POST['generation_end_date']))
             : '';
 
-        $result = $this->generation_service->generate($referral_id, $schedule_id, $start_date, $end_date);
+        $result = $this->attempt_generate($referral_id, $schedule_id, $start_date, $end_date);
 
-        if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_form_state($referral_id, [
-                'generation_start_date' => $start_date,
-                'generation_end_date'   => $end_date,
-            ], $result['errors'], $schedule_id);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to generate visits for this referral.', 'jm-referral-system'));
+            }
+
+            $this->persist_form_state($referral_id, $result['data'], $result['errors'], $schedule_id);
             $this->redirect_to_view($referral_id, false);
         }
 
         $args = [
             'page'                         => 'jm-referrals-view',
             'referral_id'                  => $referral_id,
-            'jmrs_schedule_visits_created' => (string) absint($result['created'] ?? 0),
-            'jmrs_schedule_visits_skipped' => (string) absint($result['skipped_duplicates'] ?? 0),
-            'jmrs_schedule_visits_outside' => (string) absint($result['skipped_outside_range'] ?? 0),
+            'jmrs_schedule_visits_created' => (string) absint($result['created']),
+            'jmrs_schedule_visits_skipped' => (string) absint($result['skipped_duplicates']),
+            'jmrs_schedule_visits_outside' => (string) absint($result['skipped_outside_range']),
         ];
 
         wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
         exit;
+    }
+
+    /**
+     * Shared sanitize → ScheduleService::save() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @param array<string, mixed> $raw_input
+     * @return array{
+     *     success: bool,
+     *     data: array<string, mixed>,
+     *     errors: array<string, string>,
+     *     created: bool,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_save(int $referral_id, array $raw_input, int $schedule_id): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => true,
+                'forbidden' => false,
+            ];
+        }
+
+        if (! $this->access_policy->can_edit_referral($referral)) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => true,
+            ];
+        }
+
+        $data   = $this->sanitize_input($raw_input);
+        $result = $this->schedule_service->save($referral_id, $data, $schedule_id);
+
+        if (false === $result) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => [
+                    'general' => __('Unable to save the schedule. Please try again.', 'jm-referral-system'),
+                ],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => $result['errors'],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => $data,
+            'errors'    => [],
+            'created'   => ! empty($result['created']),
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * Shared date range → ScheduleGenerationService::generate() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @return array{
+     *     success: bool,
+     *     errors: array<string, string>,
+     *     created: int,
+     *     skipped_duplicates: int,
+     *     skipped_outside_range: int,
+     *     not_found: bool,
+     *     forbidden: bool,
+     *     data: array<string, string>
+     * }
+     */
+    public function attempt_generate(int $referral_id, int $schedule_id, string $start_date, string $end_date): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'success'               => false,
+                'errors'                => [],
+                'created'               => 0,
+                'skipped_duplicates'    => 0,
+                'skipped_outside_range' => 0,
+                'not_found'             => true,
+                'forbidden'             => false,
+                'data'                  => [
+                    'generation_start_date' => $start_date,
+                    'generation_end_date'   => $end_date,
+                ],
+            ];
+        }
+
+        if (! $this->access_policy->can_edit_referral($referral)) {
+            return [
+                'success'               => false,
+                'errors'                => [],
+                'created'               => 0,
+                'skipped_duplicates'    => 0,
+                'skipped_outside_range' => 0,
+                'not_found'             => false,
+                'forbidden'             => true,
+                'data'                  => [
+                    'generation_start_date' => $start_date,
+                    'generation_end_date'   => $end_date,
+                ],
+            ];
+        }
+
+        $data   = [
+            'generation_start_date' => $start_date,
+            'generation_end_date'   => $end_date,
+        ];
+        $result = $this->generation_service->generate($referral_id, $schedule_id, $start_date, $end_date);
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'               => false,
+                'errors'                => $result['errors'],
+                'created'               => 0,
+                'skipped_duplicates'    => 0,
+                'skipped_outside_range' => 0,
+                'not_found'             => false,
+                'forbidden'             => false,
+                'data'                  => $data,
+            ];
+        }
+
+        return [
+            'success'               => true,
+            'errors'                => [],
+            'created'               => absint($result['created'] ?? 0),
+            'skipped_duplicates'    => absint($result['skipped_duplicates'] ?? 0),
+            'skipped_outside_range' => absint($result['skipped_outside_range'] ?? 0),
+            'not_found'             => false,
+            'forbidden'             => false,
+            'data'                  => $data,
+        ];
+    }
+
+    /**
+     * Persist validation errors for PRG redisplay (admin and portal).
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $errors
+     */
+    public function persist_form_state(int $referral_id, array $data, array $errors, int $schedule_id = 0, string $channel = 'admin'): void
+    {
+        $this->store_form_state($referral_id, $data, $errors, $schedule_id, $channel);
     }
 
     public function render_edit(): void
@@ -239,9 +393,9 @@ class ScheduleController
     /**
      * @return array{data: array<string, mixed>, errors: array<string, string>, schedule_id: int}
      */
-    public static function get_form_state(int $referral_id, bool $consume = true): array
+    public static function get_form_state(int $referral_id, bool $consume = true, string $channel = 'admin'): array
     {
-        $key   = self::FORM_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id;
+        $key   = self::FORM_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id;
         $state = get_transient($key);
 
         if (! is_array($state)) {
@@ -383,10 +537,10 @@ class ScheduleController
      * @param array<string, mixed>  $data
      * @param array<string, string> $errors
      */
-    private function store_form_state(int $referral_id, array $data, array $errors, int $schedule_id = 0): void
+    private function store_form_state(int $referral_id, array $data, array $errors, int $schedule_id = 0, string $channel = 'admin'): void
     {
         set_transient(
-            self::FORM_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id,
+            self::FORM_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id,
             [
                 'data'        => $data,
                 'errors'      => $errors,

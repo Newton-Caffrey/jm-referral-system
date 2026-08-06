@@ -27,6 +27,81 @@ class PortalUrls
         return home_url('/' . PortalSettings::base_path() . '/referrals/' . max(0, $referral_id) . '/');
     }
 
+    public static function referral_edit(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'edit');
+    }
+
+    public static function referral_assessment(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'assessment');
+    }
+
+    public static function referral_care_plan(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'care-plan');
+    }
+
+    public static function care_plan_review(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'care-plan/review');
+    }
+
+    public static function medication_new(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'medications/new');
+    }
+
+    public static function medication_edit(int $referral_id, int $medication_id): string
+    {
+        return self::referral_path($referral_id, 'medications/' . max(0, $medication_id) . '/edit');
+    }
+
+    public static function care_team_new(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'care-team/new');
+    }
+
+    public static function care_team_edit(int $referral_id, int $assignment_id): string
+    {
+        return self::referral_path($referral_id, 'care-team/' . max(0, $assignment_id) . '/edit');
+    }
+
+    public static function schedule_new(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'schedules/new');
+    }
+
+    public static function schedule_edit(int $referral_id, int $schedule_id): string
+    {
+        return self::referral_path($referral_id, 'schedules/' . max(0, $schedule_id) . '/edit');
+    }
+
+    public static function schedule_generate(int $referral_id, int $schedule_id): string
+    {
+        return self::referral_path($referral_id, 'schedules/' . max(0, $schedule_id) . '/generate');
+    }
+
+    public static function visit_new(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'visits/new');
+    }
+
+    public static function visit_edit(int $referral_id, int $visit_id): string
+    {
+        return self::referral_path($referral_id, 'visits/' . max(0, $visit_id) . '/edit');
+    }
+
+    public static function visit_execute(int $referral_id, int $visit_id): string
+    {
+        return self::referral_path($referral_id, 'visits/' . max(0, $visit_id) . '/execute');
+    }
+
+    public static function visit_review(int $referral_id, int $visit_id): string
+    {
+        return self::referral_path($referral_id, 'visits/' . max(0, $visit_id) . '/review');
+    }
+
     /**
      * @param array<string, scalar> $args
      */
@@ -46,5 +121,16 @@ class PortalUrls
 
         return str_starts_with(trailingslashit($path), $base)
             || rtrim($path, '/') === rtrim($base, '/');
+    }
+
+    private static function referral_path(int $referral_id, string $suffix): string
+    {
+        $suffix = trim($suffix, '/');
+
+        return home_url(
+            '/' . PortalSettings::base_path()
+            . '/referrals/' . max(0, $referral_id)
+            . '/' . $suffix . '/'
+        );
     }
 }

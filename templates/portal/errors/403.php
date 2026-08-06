@@ -17,10 +17,10 @@ $logout_url    = (string) ( $logout_url ?? '' );
 	<p><?php echo esc_html__( 'You do not have permission to use this area of the staff portal.', 'jm-referral-system' ); ?></p>
 	<p class="jmrs-portal-actions">
 		<?php if ( '' !== $dashboard_url ) : ?>
-			<a class="jmrs-portal-btn jmrs-portal-btn--primary" href="<?php echo esc_url( $dashboard_url ); ?>"><?php echo esc_html__( 'Return to Dashboard', 'jm-referral-system' ); ?></a>
+			<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( $dashboard_url ); ?>"><?php echo esc_html__( 'Return to Dashboard', 'jm-referral-system' ); ?></a>
 		<?php endif; ?>
 		<?php if ( '' !== $logout_url ) : ?>
-			<a class="jmrs-portal-btn" href="<?php echo esc_url( $logout_url ); ?>"><?php echo esc_html__( 'Log out', 'jm-referral-system' ); ?></a>
+			<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $logout_url ); ?>"><?php echo esc_html__( 'Log out', 'jm-referral-system' ); ?></a>
 		<?php endif; ?>
 	</p>
 </section>

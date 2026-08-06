@@ -43,33 +43,107 @@ class ReferralAssessmentController
 
         check_admin_referer('jmrs_save_assessment_' . $referral_id, 'jmrs_save_assessment_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
+        $result = $this->attempt_save($referral_id, $_POST);
 
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to save an assessment for this referral.', 'jm-referral-system'));
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to save an assessment for this referral.', 'jm-referral-system'));
+            }
+
+            $this->store_form_state($referral_id, $result['data'], $result['errors']);
+            $this->redirect_to_view($referral_id);
         }
 
-        $data   = $this->sanitize_input($_POST);
+        $this->redirect_to_view($referral_id, ! empty($result['created']) ? 'created' : 'updated');
+    }
+
+    /**
+     * Shared sanitize → ReferralAssessmentService::save() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @param array<string, mixed> $raw_input
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     created: bool,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_save(int $referral_id, array $raw_input): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => true,
+                'forbidden' => false,
+            ];
+        }
+
+        if (! $this->access_policy->can_edit_referral($referral)) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => true,
+            ];
+        }
+
+        $data   = $this->sanitize_input($raw_input);
         $result = $this->assessment_service->save($referral_id, $data);
 
         if (false === $result) {
-            $this->store_form_state(
-                $referral_id,
-                $data,
-                [
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => [
                     'general' => __('Unable to save the assessment. Please try again.', 'jm-referral-system'),
-                ]
-            );
-            $this->redirect_to_view($referral_id);
+                ],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
         }
 
         if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_form_state($referral_id, $data, $result['errors']);
-            $this->redirect_to_view($referral_id);
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => $result['errors'],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
         }
 
-        $created = ! empty($result['created']);
-        $this->redirect_to_view($referral_id, $created ? 'created' : 'updated');
+        return [
+            'success'   => true,
+            'data'      => $data,
+            'errors'    => [],
+            'created'   => ! empty($result['created']),
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * Persist validation errors for PRG redisplay (admin and portal).
+     *
+     * @param array<string, string> $data
+     * @param array<string, string> $errors
+     */
+    public function persist_form_state(int $referral_id, array $data, array $errors): void
+    {
+        $this->store_form_state($referral_id, $data, $errors);
     }
 
     /**

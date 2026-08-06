@@ -67,4 +67,18 @@
 			}
 		});
 	}
+
+	root.addEventListener('submit', function (event) {
+		var form = event.target;
+		if (!form || !form.getAttribute) {
+			return;
+		}
+		var message = form.getAttribute('data-jmrs-confirm');
+		if (!message) {
+			return;
+		}
+		if (!window.confirm(message)) {
+			event.preventDefault();
+		}
+	});
 })();

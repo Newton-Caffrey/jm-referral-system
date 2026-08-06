@@ -28,9 +28,24 @@ Configurable base path (default `staff-portal`):
 | --- | --- |
 | `/staff-portal/` | Dashboard |
 | `/staff-portal/referrals/` | Referral list |
-| `/staff-portal/referrals/{id}/` | Referral view (read-only) |
+| `/staff-portal/referrals/{id}/` | Referral view |
+| `/staff-portal/referrals/{id}/edit/` | Referral edit |
+| `/staff-portal/referrals/{id}/assessment/` | Assessment create/edit |
+| `/staff-portal/referrals/{id}/care-plan/` | Care plan create/edit |
+| `/staff-portal/referrals/{id}/care-plan/review/` | Care plan review |
+| `/staff-portal/referrals/{id}/medications/new/` | Add medication |
+| `/staff-portal/referrals/{id}/medications/{medication_id}/edit/` | Edit medication |
+| `/staff-portal/referrals/{id}/care-team/new/` | Add care-team member |
+| `/staff-portal/referrals/{id}/care-team/{assignment_id}/edit/` | Edit care-team member |
+| `/staff-portal/referrals/{id}/schedules/new/` | Create schedule |
+| `/staff-portal/referrals/{id}/schedules/{schedule_id}/edit/` | Edit schedule |
+| `/staff-portal/referrals/{id}/schedules/{schedule_id}/generate/` | Generate visits |
+| `/staff-portal/referrals/{id}/visits/new/` | Schedule visit |
+| `/staff-portal/referrals/{id}/visits/{visit_id}/edit/` | Edit visit |
+| `/staff-portal/referrals/{id}/visits/{visit_id}/execute/` | Execute visit (+ MAR) |
+| `/staff-portal/referrals/{id}/visits/{visit_id}/review/` | Manager visit review |
 
-Rewrite flush occurs on plugin activation/deactivation and when portal enable/base path changes via settings — **not** on every request.
+Rewrite flush occurs on plugin activation/deactivation and when portal enable/base path/rewrite version changes — **not** on every request.
 
 ---
 
@@ -85,13 +100,21 @@ Optional setting: **Redirect JMRS Staff Away From wp-admin**.
 
 ---
 
-## Current read-only scope
+## Current scope
 
 | Area | Portal behaviour |
 | --- | --- |
-| Dashboard | Scoped widgets via existing services |
-| Referral list | Search/filters/pagination; View only; no archive/delete |
-| Referral view | Summaries + secure document downloads; no edit/notes/upload/stage/MAR/visit execution |
+| Dashboard | Scoped widgets; upcoming/awaiting/completed visits link to portal execute/review; Recent Referrals show View / Edit / Archive / Restore when permitted |
+| Referral list | Search/filters/pagination; Active / Archived / All scope; Edit / Archive / Restore when permitted |
+| Referral view | Summaries + secure downloads; contextual clinical actions (review care plan, meds, care team, schedules, visits); archived remains read-only |
+| Referral edit | Core referral/client/referrer fields |
+| Assessment / Care Plan | Shared `attempt_*` pipelines; PRG to referral view |
+| Care plan reviews | `jmrs_review_care_plans` + AccessPolicy; history on referral view |
+| Medications | Add/edit via status field (pause/discontinue); Support Workers read-only |
+| Care team | Add/edit; primary-carer rules unchanged |
+| Schedules | List + create/edit + generate visits |
+| Visits | Schedule/edit; execute with task checklist + MAR; manager review |
+| Shared services | Portal handlers call the same admin controller `attempt_*` methods (no forked validation) |
 
 WordPress Admin UI remains fully available for administrators and when redirect is off.
 
@@ -147,25 +170,30 @@ Skip link, landmarks, semantic nav with `aria-current`, labelled mobile menu, ke
 - Cache / privacy headers present
 - Base path change flushes rewrites once
 - No theme header/footer; no admin/Chart.js/wizard assets on portal
+- Care-plan review: add review, status/next-review effects, Support Worker read-only
+- Medications: add/edit/pause/discontinue via status; permission gates; inactive display
+- Care team: add/edit; primary enforcement; inactive members
+- Schedules: create/edit; weekday persistence; generate; duplicates; paused/completed rules
+- Visits: create/edit; staff filtering; execute (owner-only for Support Worker); tasks; MAR validation; duplicate execute blocked
+- Manager review: eligible manager only; Support Worker denied; dashboard awaiting-review updates
+- Archived referral: summaries visible; all portal mutation actions hidden; forged POSTs rejected
+- Equivalent wp-admin workflows still work (regression)
 
 ---
 
-## Known limitations (6.2A)
+## Known limitations
 
+- No portal reports or operational-alerts page (indicator only when permitted)
 - No custom login design
-- No frontend edit, notes, uploads, assessments, care-plan editing, scheduling, visit execution, MAR, or reports
+- No portal notes UI or document upload UI (downloads work)
 - No referrer/family portal, REST API, or mobile app
-- Operational Alerts / Reports not yet portal routes (indicator only when permitted)
-- Edit remains wp-admin-only (Edit hidden in portal)
+- No AJAX-only / modal editing for clinical forms
 
 ---
 
 ## Future portal phases
 
-- Frontend referral edit / notes / documents
-- Assessments & care plans
-- Scheduling & visit execution
-- Medication administration (MAR)
+- Portal notes & document uploads
 - Reports & operational alerts pages
 - Optional branded login
 - Referrer / family portals (separate products)

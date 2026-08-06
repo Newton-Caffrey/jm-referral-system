@@ -47,28 +47,14 @@ class CareVisitController
 
         check_admin_referer('jmrs_save_care_visit_' . $referral_id, 'jmrs_care_visit_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to manage visits for this referral.', 'jm-referral-system'));
-        }
+        $result = $this->attempt_save($referral_id, $_POST, $visit_id);
 
-        $data   = $this->sanitize_input($_POST);
-        $result = $this->visit_service->save($referral_id, $data, $visit_id);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to manage visits for this referral.', 'jm-referral-system'));
+            }
 
-        if (false === $result) {
-            $this->store_form_state(
-                $referral_id,
-                $data,
-                [
-                    'general' => __('Unable to save the care visit. Please try again.', 'jm-referral-system'),
-                ],
-                $visit_id
-            );
-            $this->redirect_after_save($referral_id, $visit_id, false);
-        }
-
-        if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_form_state($referral_id, $data, $result['errors'], $visit_id);
+            $this->persist_form_state($referral_id, $result['data'], $result['errors'], $visit_id);
             $this->redirect_after_save($referral_id, $visit_id, false);
         }
 
@@ -90,28 +76,14 @@ class CareVisitController
 
         check_admin_referer('jmrs_execute_care_visit_' . $visit_id, 'jmrs_execute_visit_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_view_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to execute visits for this referral.', 'jm-referral-system'));
-        }
+        $result = $this->attempt_execute($referral_id, $visit_id, $_POST);
 
-        $data   = $this->sanitize_execution_input($_POST);
-        $result = $this->execution_service->execute($referral_id, $visit_id, $data);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to execute visits for this referral.', 'jm-referral-system'));
+            }
 
-        if (false === $result) {
-            $this->store_execution_form_state(
-                $referral_id,
-                $data,
-                [
-                    'general' => __('Unable to complete the visit. Please try again.', 'jm-referral-system'),
-                ],
-                $visit_id
-            );
-            $this->redirect_to_view($referral_id, false);
-        }
-
-        if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_execution_form_state($referral_id, $data, $result['errors'], $visit_id);
+            $this->persist_execution_form_state($referral_id, $result['data'], $result['errors'], $visit_id);
             $this->redirect_to_view($referral_id, false);
         }
 
@@ -143,28 +115,14 @@ class CareVisitController
 
         check_admin_referer('jmrs_review_care_visit_' . $visit_id, 'jmrs_review_visit_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to review visits for this referral.', 'jm-referral-system'));
-        }
+        $result = $this->attempt_review($referral_id, $visit_id, $_POST);
 
-        $data   = $this->sanitize_review_input($_POST);
-        $result = $this->execution_service->review($referral_id, $visit_id, $data);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to review visits for this referral.', 'jm-referral-system'));
+            }
 
-        if (false === $result) {
-            $this->store_execution_form_state(
-                $referral_id,
-                $data,
-                [
-                    'general' => __('Unable to save the visit review. Please try again.', 'jm-referral-system'),
-                ],
-                $visit_id
-            );
-            $this->redirect_to_view($referral_id, false);
-        }
-
-        if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_execution_form_state($referral_id, $data, $result['errors'], $visit_id);
+            $this->persist_execution_form_state($referral_id, $result['data'], $result['errors'], $visit_id);
             $this->redirect_to_view($referral_id, false);
         }
 
@@ -179,6 +137,256 @@ class CareVisitController
             )
         );
         exit;
+    }
+
+    /**
+     * Shared sanitize → CareVisitService::save() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @param array<string, mixed> $raw_input
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     created: bool,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_save(int $referral_id, array $raw_input, int $visit_id): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => true,
+                'forbidden' => false,
+            ];
+        }
+
+        if (! $this->access_policy->can_edit_referral($referral)) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => true,
+            ];
+        }
+
+        $data   = $this->sanitize_input($raw_input);
+        $result = $this->visit_service->save($referral_id, $data, $visit_id);
+
+        if (false === $result) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => [
+                    'general' => __('Unable to save the care visit. Please try again.', 'jm-referral-system'),
+                ],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => $result['errors'],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => $data,
+            'errors'    => [],
+            'created'   => ! empty($result['created']),
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * Shared sanitize → VisitExecutionService::execute() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @param array<string, mixed> $raw_input
+     * @return array{
+     *     success: bool,
+     *     data: array<string, mixed>,
+     *     errors: array<string, string>,
+     *     medication_warning: bool,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_execute(int $referral_id, int $visit_id, array $raw_input): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'success'            => false,
+                'data'               => [],
+                'errors'             => [],
+                'medication_warning' => false,
+                'not_found'          => true,
+                'forbidden'          => false,
+            ];
+        }
+
+        if (! $this->access_policy->can_view_referral($referral)) {
+            return [
+                'success'            => false,
+                'data'               => [],
+                'errors'             => [],
+                'medication_warning' => false,
+                'not_found'          => false,
+                'forbidden'          => true,
+            ];
+        }
+
+        $data   = $this->sanitize_execution_input($raw_input);
+        $result = $this->execution_service->execute($referral_id, $visit_id, $data);
+
+        if (false === $result) {
+            return [
+                'success'            => false,
+                'data'               => $data,
+                'errors'             => [
+                    'general' => __('Unable to complete the visit. Please try again.', 'jm-referral-system'),
+                ],
+                'medication_warning' => false,
+                'not_found'          => false,
+                'forbidden'          => false,
+            ];
+        }
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'            => false,
+                'data'               => $data,
+                'errors'             => $result['errors'],
+                'medication_warning' => false,
+                'not_found'          => false,
+                'forbidden'          => false,
+            ];
+        }
+
+        return [
+            'success'            => true,
+            'data'               => $data,
+            'errors'             => [],
+            'medication_warning' => ! empty($result['medication_warning']),
+            'not_found'          => false,
+            'forbidden'          => false,
+        ];
+    }
+
+    /**
+     * Shared sanitize → VisitExecutionService::review() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @param array<string, mixed> $raw_input
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_review(int $referral_id, int $visit_id, array $raw_input): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'not_found' => true,
+                'forbidden' => false,
+            ];
+        }
+
+        if (! $this->access_policy->can_edit_referral($referral)) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'not_found' => false,
+                'forbidden' => true,
+            ];
+        }
+
+        $data   = $this->sanitize_review_input($raw_input);
+        $result = $this->execution_service->review($referral_id, $visit_id, $data);
+
+        if (false === $result) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => [
+                    'general' => __('Unable to save the visit review. Please try again.', 'jm-referral-system'),
+                ],
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => $result['errors'],
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => $data,
+            'errors'    => [],
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * Persist validation errors for PRG redisplay (admin and portal).
+     *
+     * @param array<string, string> $data
+     * @param array<string, string> $errors
+     */
+    public function persist_form_state(int $referral_id, array $data, array $errors, int $visit_id = 0, string $channel = 'admin'): void
+    {
+        $this->store_form_state($referral_id, $data, $errors, $visit_id, $channel);
+    }
+
+    /**
+     * Persist execution/review validation errors for PRG redisplay (admin and portal).
+     *
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $errors
+     */
+    public function persist_execution_form_state(int $referral_id, array $data, array $errors, int $visit_id = 0, string $channel = 'admin'): void
+    {
+        $this->store_execution_form_state($referral_id, $data, $errors, $visit_id, $channel);
     }
 
     /**
@@ -310,9 +518,9 @@ class CareVisitController
     /**
      * @return array{data: array<string, string>, errors: array<string, string>, visit_id: int}
      */
-    public static function get_form_state(int $referral_id, bool $consume = true): array
+    public static function get_form_state(int $referral_id, bool $consume = true, string $channel = 'admin'): array
     {
-        $key   = self::FORM_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id;
+        $key   = self::FORM_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id;
         $state = get_transient($key);
 
         if (! is_array($state)) {
@@ -337,9 +545,9 @@ class CareVisitController
     /**
      * @return array{data: array<string, string>, errors: array<string, string>, visit_id: int}
      */
-    public static function get_execution_form_state(int $referral_id, bool $consume = true): array
+    public static function get_execution_form_state(int $referral_id, bool $consume = true, string $channel = 'admin'): array
     {
-        $key   = self::EXECUTION_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id;
+        $key   = self::EXECUTION_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id;
         $state = get_transient($key);
 
         if (! is_array($state)) {
@@ -590,10 +798,10 @@ class CareVisitController
      * @param array<string, string> $data
      * @param array<string, string> $errors
      */
-    private function store_form_state(int $referral_id, array $data, array $errors, int $visit_id = 0): void
+    private function store_form_state(int $referral_id, array $data, array $errors, int $visit_id = 0, string $channel = 'admin'): void
     {
         set_transient(
-            self::FORM_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id,
+            self::FORM_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id,
             [
                 'data'     => $data,
                 'errors'   => $errors,
@@ -607,10 +815,10 @@ class CareVisitController
      * @param array<string, string> $data
      * @param array<string, string> $errors
      */
-    private function store_execution_form_state(int $referral_id, array $data, array $errors, int $visit_id = 0): void
+    private function store_execution_form_state(int $referral_id, array $data, array $errors, int $visit_id = 0, string $channel = 'admin'): void
     {
         set_transient(
-            self::EXECUTION_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id,
+            self::EXECUTION_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id,
             [
                 'data'     => $data,
                 'errors'   => $errors,

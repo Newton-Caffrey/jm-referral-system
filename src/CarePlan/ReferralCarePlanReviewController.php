@@ -38,31 +38,101 @@ class ReferralCarePlanReviewController
         $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
         check_admin_referer('jmrs_care_plan_review_' . $referral_id, 'jmrs_care_plan_review_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to review this care plan.', 'jm-referral-system'));
-        }
+        $result = $this->attempt_review($referral_id, $_POST);
 
-        $data   = $this->sanitize_input($_POST);
-        $result = $this->review_service->add_review($referral_id, $data);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to review this care plan.', 'jm-referral-system'));
+            }
 
-        if (false === $result) {
-            $this->store_form_state(
-                $referral_id,
-                $data,
-                [
-                    'general' => __('Unable to save the care plan review. Please try again.', 'jm-referral-system'),
-                ]
-            );
-            $this->redirect_to_view($referral_id);
-        }
-
-        if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_form_state($referral_id, $data, $result['errors']);
+            $this->persist_form_state($referral_id, $result['data'], $result['errors']);
             $this->redirect_to_view($referral_id);
         }
 
         $this->redirect_to_view($referral_id, true);
+    }
+
+    /**
+     * Shared sanitize → ReferralCarePlanReviewService::add_review() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @param array<string, mixed> $raw_input
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_review(int $referral_id, array $raw_input): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'not_found' => true,
+                'forbidden' => false,
+            ];
+        }
+
+        if (! $this->access_policy->can_edit_referral($referral)) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'not_found' => false,
+                'forbidden' => true,
+            ];
+        }
+
+        $data   = $this->sanitize_input($raw_input);
+        $result = $this->review_service->add_review($referral_id, $data);
+
+        if (false === $result) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => [
+                    'general' => __('Unable to save the care plan review. Please try again.', 'jm-referral-system'),
+                ],
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => $result['errors'],
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => $data,
+            'errors'    => [],
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * Persist validation errors for PRG redisplay (admin and portal).
+     *
+     * @param array<string, string> $data
+     * @param array<string, string> $errors
+     */
+    public function persist_form_state(int $referral_id, array $data, array $errors, string $channel = 'admin'): void
+    {
+        $this->store_form_state($referral_id, $data, $errors, $channel);
     }
 
     /**
@@ -136,9 +206,9 @@ class ReferralCarePlanReviewController
     /**
      * @return array{data: array<string, string>, errors: array<string, string>}
      */
-    public static function get_form_state(int $referral_id, bool $consume = true): array
+    public static function get_form_state(int $referral_id, bool $consume = true, string $channel = 'admin'): array
     {
-        $key   = self::FORM_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id;
+        $key   = self::FORM_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id;
         $state = get_transient($key);
 
         if (! is_array($state)) {
@@ -201,10 +271,10 @@ class ReferralCarePlanReviewController
      * @param array<string, string> $data
      * @param array<string, string> $errors
      */
-    private function store_form_state(int $referral_id, array $data, array $errors): void
+    private function store_form_state(int $referral_id, array $data, array $errors, string $channel = 'admin'): void
     {
         set_transient(
-            self::FORM_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id,
+            self::FORM_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id,
             [
                 'data'   => $data,
                 'errors' => $errors,

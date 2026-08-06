@@ -39,32 +39,107 @@ class MedicationController
 
         check_admin_referer('jmrs_save_medication_' . $referral_id, 'jmrs_medication_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to manage medications for this referral.', 'jm-referral-system'));
-        }
+        $result = $this->attempt_save($referral_id, $_POST, $medication_id);
 
-        $data   = $this->sanitize_input($_POST);
-        $result = $this->medication_service->save($referral_id, $data, $medication_id);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to manage medications for this referral.', 'jm-referral-system'));
+            }
 
-        if (false === $result) {
-            $this->store_form_state(
-                $referral_id,
-                $data,
-                [
-                    'general' => __('Unable to save the medication. Please try again.', 'jm-referral-system'),
-                ],
-                $medication_id
-            );
-            $this->redirect_after_save($referral_id, $medication_id, false);
-        }
-
-        if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_form_state($referral_id, $data, $result['errors'], $medication_id);
+            $this->persist_form_state($referral_id, $result['data'], $result['errors'], $medication_id);
             $this->redirect_after_save($referral_id, $medication_id, false);
         }
 
         $this->redirect_to_view($referral_id, true, ! empty($result['created']));
+    }
+
+    /**
+     * Shared sanitize → MedicationService::save() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @param array<string, mixed> $raw_input
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     created: bool,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_save(int $referral_id, array $raw_input, int $medication_id): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => true,
+                'forbidden' => false,
+            ];
+        }
+
+        if (! $this->access_policy->can_edit_referral($referral)) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => true,
+            ];
+        }
+
+        $data   = $this->sanitize_input($raw_input);
+        $result = $this->medication_service->save($referral_id, $data, $medication_id);
+
+        if (false === $result) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => [
+                    'general' => __('Unable to save the medication. Please try again.', 'jm-referral-system'),
+                ],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => $result['errors'],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => $data,
+            'errors'    => [],
+            'created'   => ! empty($result['created']),
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * Persist validation errors for PRG redisplay (admin and portal).
+     *
+     * @param array<string, string> $data
+     * @param array<string, string> $errors
+     */
+    public function persist_form_state(int $referral_id, array $data, array $errors, int $medication_id = 0, string $channel = 'admin'): void
+    {
+        $this->store_form_state($referral_id, $data, $errors, $medication_id, $channel);
     }
 
     public function render_edit(): void
@@ -140,7 +215,7 @@ class MedicationController
     /**
      * @return array{data: array<string, string>, errors: array<string, string>, medication_id: int}
      */
-    public static function get_form_state(int $referral_id, bool $consume = true): array
+    public static function get_form_state(int $referral_id, bool $consume = true, string $channel = 'admin'): array
     {
         $empty = [
             'data'          => [],
@@ -152,7 +227,7 @@ class MedicationController
             return $empty;
         }
 
-        $key  = self::FORM_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id;
+        $key  = self::FORM_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id;
         $raw  = get_transient($key);
 
         if (! is_array($raw)) {
@@ -235,10 +310,10 @@ class MedicationController
      * @param array<string, string> $data
      * @param array<string, string> $errors
      */
-    private function store_form_state(int $referral_id, array $data, array $errors, int $medication_id): void
+    private function store_form_state(int $referral_id, array $data, array $errors, int $medication_id, string $channel = 'admin'): void
     {
         set_transient(
-            self::FORM_TRANSIENT_PREFIX . get_current_user_id() . '_' . $referral_id,
+            self::FORM_TRANSIENT_PREFIX . $channel . '_' . get_current_user_id() . '_' . $referral_id,
             [
                 'data'          => $data,
                 'errors'        => $errors,

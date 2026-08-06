@@ -38,19 +38,18 @@ class ReferralCarePlanController
         $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
         check_admin_referer('jmrs_generate_care_plan_' . $referral_id, 'jmrs_generate_care_plan_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to manage a care plan for this referral.', 'jm-referral-system'));
-        }
+        $result = $this->attempt_generate($referral_id);
 
-        $result = $this->care_plan_service->generate_from_assessment($referral_id);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to manage a care plan for this referral.', 'jm-referral-system'));
+            }
 
-        if (isset($result['errors']) && is_array($result['errors'])) {
             $this->store_form_state($referral_id, [], $result['errors'], false);
             $this->redirect_to_view($referral_id);
         }
 
-        $this->store_form_state($referral_id, $result['data'] ?? [], [], true);
+        $this->store_form_state($referral_id, $result['data'], [], true);
         $this->redirect_to_view($referral_id, '', true);
     }
 
@@ -67,19 +66,18 @@ class ReferralCarePlanController
         $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
         check_admin_referer('jmrs_blank_care_plan_' . $referral_id, 'jmrs_blank_care_plan_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to manage a care plan for this referral.', 'jm-referral-system'));
-        }
+        $result = $this->attempt_blank($referral_id);
 
-        $result = $this->care_plan_service->prepare_blank($referral_id);
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to manage a care plan for this referral.', 'jm-referral-system'));
+            }
 
-        if (isset($result['errors']) && is_array($result['errors'])) {
             $this->store_form_state($referral_id, [], $result['errors'], false);
             $this->redirect_to_view($referral_id);
         }
 
-        $this->store_form_state($referral_id, $result['data'] ?? [], [], true);
+        $this->store_form_state($referral_id, $result['data'], [], true);
         $this->redirect_to_view($referral_id, '', true);
     }
 
@@ -96,32 +94,195 @@ class ReferralCarePlanController
         $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
         check_admin_referer('jmrs_save_care_plan_' . $referral_id, 'jmrs_save_care_plan_nonce');
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (null === $referral || ! $this->access_policy->can_edit_referral($referral)) {
-            wp_die(esc_html__('You do not have permission to manage a care plan for this referral.', 'jm-referral-system'));
+        $result = $this->attempt_save($referral_id, $_POST);
+
+        if (! $result['success']) {
+            if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
+                wp_die(esc_html__('You do not have permission to manage a care plan for this referral.', 'jm-referral-system'));
+            }
+
+            $this->store_form_state($referral_id, $result['data'], $result['errors'], true);
+            $this->redirect_to_view($referral_id, '', true);
         }
 
-        $data   = $this->sanitize_input($_POST);
+        $this->redirect_to_view($referral_id, ! empty($result['created']) ? 'created' : 'updated');
+    }
+
+    /**
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_generate(int $referral_id): array
+    {
+        $gate = $this->authorize_referral($referral_id);
+        if (! $gate['ok']) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'not_found' => ! empty($gate['not_found']),
+                'forbidden' => ! empty($gate['forbidden']),
+            ];
+        }
+
+        $result = $this->care_plan_service->generate_from_assessment($referral_id);
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => $result['errors'],
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => is_array($result['data'] ?? null) ? $result['data'] : [],
+            'errors'    => [],
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_blank(int $referral_id): array
+    {
+        $gate = $this->authorize_referral($referral_id);
+        if (! $gate['ok']) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'not_found' => ! empty($gate['not_found']),
+                'forbidden' => ! empty($gate['forbidden']),
+            ];
+        }
+
+        $result = $this->care_plan_service->prepare_blank($referral_id);
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => $result['errors'],
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => is_array($result['data'] ?? null) ? $result['data'] : [],
+            'errors'    => [],
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * Shared sanitize → ReferralCarePlanService::save() pipeline for admin and portal.
+     *
+     * @param array<string, mixed> $raw_input
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     created: bool,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_save(int $referral_id, array $raw_input): array
+    {
+        $gate = $this->authorize_referral($referral_id);
+        if (! $gate['ok']) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'created'   => false,
+                'not_found' => ! empty($gate['not_found']),
+                'forbidden' => ! empty($gate['forbidden']),
+            ];
+        }
+
+        $data   = $this->sanitize_input($raw_input);
         $result = $this->care_plan_service->save($referral_id, $data);
 
         if (false === $result) {
-            $this->store_form_state(
-                $referral_id,
-                $data,
-                [
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => [
                     'general' => __('Unable to save the care plan. Please try again.', 'jm-referral-system'),
-                ]
-            );
-            $this->redirect_to_view($referral_id, '', true);
+                ],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
         }
 
         if (isset($result['errors']) && is_array($result['errors'])) {
-            $this->store_form_state($referral_id, $data, $result['errors']);
-            $this->redirect_to_view($referral_id, '', true);
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => $result['errors'],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
         }
 
-        $created = ! empty($result['created']);
-        $this->redirect_to_view($referral_id, $created ? 'created' : 'updated');
+        return [
+            'success'   => true,
+            'data'      => $data,
+            'errors'    => [],
+            'created'   => ! empty($result['created']),
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * @param array<string, string> $data
+     * @param array<string, string> $errors
+     */
+    public function persist_form_state(int $referral_id, array $data, array $errors, bool $drafting = true): void
+    {
+        $this->store_form_state($referral_id, $data, $errors, $drafting);
+    }
+
+    /**
+     * @return array{ok: bool, not_found?: bool, forbidden?: bool, errors?: array<string, string>}
+     */
+    private function authorize_referral(int $referral_id): array
+    {
+        $referral = $this->referral_repository->find($referral_id);
+
+        if (null === $referral) {
+            return ['ok' => false, 'not_found' => true, 'forbidden' => false];
+        }
+
+        if (! $this->access_policy->can_edit_referral($referral)) {
+            return ['ok' => false, 'not_found' => false, 'forbidden' => true];
+        }
+
+        return ['ok' => true];
     }
 
     public function render_notices(): void

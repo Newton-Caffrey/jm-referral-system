@@ -312,9 +312,31 @@
 	flex-wrap: wrap;
 	gap: 0.5rem;
 	margin: 1rem 0 0;
+	align-items: center;
 }
 
-.jmrs-portal-btn {
+.jmrs-portal-row-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	align-items: center;
+}
+
+.jmrs-portal-inline-form {
+	display: inline;
+	margin: 0;
+}
+
+/*
+ * Explicit button colours beat theme / .jmrs-portal a link styles.
+ * Keep .jmrs-portal-btn as a compatibility alias for .jmrs-button.
+ */
+.jmrs-portal a.jmrs-button,
+.jmrs-portal button.jmrs-button,
+.jmrs-portal a.jmrs-portal-btn,
+.jmrs-portal button.jmrs-portal-btn,
+.jmrs-portal .jmrs-button,
+.jmrs-portal .jmrs-portal-btn {
 	display: inline-block;
 	text-decoration: none;
 	border: 1px solid var(--jmrs-portal-border);
@@ -324,22 +346,186 @@
 	border-radius: 0.35rem;
 	cursor: pointer;
 	font: inherit;
+	line-height: 1.25;
+	box-shadow: none;
 }
 
-.jmrs-portal-btn--primary {
+.jmrs-portal a.jmrs-button:link,
+.jmrs-portal a.jmrs-button:visited,
+.jmrs-portal a.jmrs-portal-btn:link,
+.jmrs-portal a.jmrs-portal-btn:visited {
+	color: var(--jmrs-portal-text);
+	background: #fff;
+	border-color: var(--jmrs-portal-border);
+}
+
+.jmrs-portal a.jmrs-button:hover,
+.jmrs-portal button.jmrs-button:hover,
+.jmrs-portal a.jmrs-portal-btn:hover,
+.jmrs-portal button.jmrs-portal-btn:hover {
+	background: #f3f7f5;
+	color: var(--jmrs-portal-text);
+	border-color: #b7c4be;
+}
+
+.jmrs-portal a.jmrs-button:focus-visible,
+.jmrs-portal button.jmrs-button:focus-visible,
+.jmrs-portal a.jmrs-portal-btn:focus-visible,
+.jmrs-portal button.jmrs-portal-btn:focus-visible {
+	outline: 2px solid var(--jmrs-portal-focus);
+	outline-offset: 2px;
+}
+
+.jmrs-portal a.jmrs-button--primary,
+.jmrs-portal button.jmrs-button--primary,
+.jmrs-portal a.jmrs-portal-btn--primary,
+.jmrs-portal button.jmrs-portal-btn--primary,
+.jmrs-portal .jmrs-button--primary,
+.jmrs-portal .jmrs-portal-btn--primary {
 	background: var(--jmrs-portal-primary);
 	border-color: var(--jmrs-portal-primary);
 	color: #fff;
 }
 
-.jmrs-portal-btn--primary:hover {
-	filter: brightness(0.95);
+.jmrs-portal a.jmrs-button--primary:link,
+.jmrs-portal a.jmrs-button--primary:visited,
+.jmrs-portal a.jmrs-portal-btn--primary:link,
+.jmrs-portal a.jmrs-portal-btn--primary:visited {
+	background: var(--jmrs-portal-primary);
+	border-color: var(--jmrs-portal-primary);
 	color: #fff;
+}
+
+.jmrs-portal a.jmrs-button--primary:hover,
+.jmrs-portal button.jmrs-button--primary:hover,
+.jmrs-portal a.jmrs-portal-btn--primary:hover,
+.jmrs-portal button.jmrs-portal-btn--primary:hover {
+	background: #094d3d;
+	border-color: #094d3d;
+	color: #fff;
+	filter: none;
+}
+
+.jmrs-portal a.jmrs-button--secondary,
+.jmrs-portal button.jmrs-button--secondary,
+.jmrs-portal .jmrs-button--secondary {
+	background: #fff;
+	border-color: var(--jmrs-portal-border);
+	color: var(--jmrs-portal-text);
+}
+
+.jmrs-portal a.jmrs-button--secondary:link,
+.jmrs-portal a.jmrs-button--secondary:visited {
+	background: #fff;
+	border-color: var(--jmrs-portal-border);
+	color: var(--jmrs-portal-text);
+}
+
+.jmrs-portal a.jmrs-button--secondary:hover,
+.jmrs-portal button.jmrs-button--secondary:hover {
+	background: #f3f7f5;
+	color: var(--jmrs-portal-text);
+	border-color: #b7c4be;
+}
+
+.jmrs-portal a.jmrs-button--danger,
+.jmrs-portal button.jmrs-button--danger,
+.jmrs-portal .jmrs-button--danger {
+	background: #8a1f1f;
+	border-color: #8a1f1f;
+	color: #fff;
+}
+
+.jmrs-portal a.jmrs-button--danger:link,
+.jmrs-portal a.jmrs-button--danger:visited {
+	background: #8a1f1f;
+	border-color: #8a1f1f;
+	color: #fff;
+}
+
+.jmrs-portal a.jmrs-button--danger:hover,
+.jmrs-portal button.jmrs-button--danger:hover {
+	background: #6e1818;
+	border-color: #6e1818;
+	color: #fff;
+}
+
+.jmrs-portal .jmrs-button:disabled,
+.jmrs-portal .jmrs-portal-btn:disabled,
+.jmrs-portal button.jmrs-button:disabled,
+.jmrs-portal button.jmrs-portal-btn:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
 }
 
 .jmrs-portal-link {
 	font-weight: 600;
 	text-decoration: none;
+}
+
+.jmrs-portal-scope-section {
+	padding-bottom: 0.25rem;
+}
+
+.jmrs-portal-scope {
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+}
+
+.jmrs-portal-scope__label {
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: var(--jmrs-portal-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.jmrs-portal-scope__options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.jmrs-portal a.jmrs-portal-scope__option {
+	display: inline-block;
+	padding: 0.45rem 0.9rem;
+	border: 1px solid var(--jmrs-portal-border);
+	border-radius: 0.35rem;
+	background: #fff;
+	color: var(--jmrs-portal-text);
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.jmrs-portal a.jmrs-portal-scope__option:link,
+.jmrs-portal a.jmrs-portal-scope__option:visited {
+	color: var(--jmrs-portal-text);
+	background: #fff;
+}
+
+.jmrs-portal a.jmrs-portal-scope__option:hover {
+	background: #f3f7f5;
+	color: var(--jmrs-portal-text);
+}
+
+.jmrs-portal a.jmrs-portal-scope__option.is-current,
+.jmrs-portal a.jmrs-portal-scope__option.is-current:link,
+.jmrs-portal a.jmrs-portal-scope__option.is-current:visited {
+	background: var(--jmrs-portal-secondary);
+	border-color: var(--jmrs-portal-secondary);
+	color: #fff;
+}
+
+.jmrs-portal a.jmrs-portal-scope__option:focus-visible {
+	outline: 2px solid var(--jmrs-portal-focus);
+	outline-offset: 2px;
+}
+
+.jmrs-portal-scope__status {
+	margin: 0;
+	font-size: 0.9rem;
+	color: var(--jmrs-portal-muted);
 }
 
 .jmrs-portal-table-wrap {
@@ -463,21 +649,118 @@
 
 .jmrs-portal-dl-grid dt {
 	font-size: 0.8rem;
-	font-weight: 600;
-	color: var(--jmrs-portal-muted);
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--jmrs-portal-secondary);
 	margin: 0 0 0.15rem;
 }
 
 .jmrs-portal-dl-grid dd {
 	margin: 0;
+	color: var(--jmrs-portal-text);
+	font-size: 0.98rem;
+	line-height: 1.45;
 }
 
 .jmrs-portal-dl-grid__wide {
 	grid-column: 1 / -1;
 }
 
+.jmrs-portal-section__header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-bottom: 1rem;
+}
+
+.jmrs-portal-section__heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.jmrs-portal-section__header .jmrs-portal-section__title {
+	margin: 0;
+}
+
+.jmrs-portal-form-note {
+	margin: 0 0 1rem;
+	padding: 0.75rem 0.9rem;
+	border-left: 3px solid var(--jmrs-portal-primary);
+	background: #f4f8f6;
+	color: var(--jmrs-portal-text);
+	font-size: 0.95rem;
+}
+
+.jmrs-portal-clinical .jmrs-portal-summary-card {
+	background: #fff;
+	border: 1px solid var(--jmrs-portal-border);
+	border-radius: 0.45rem;
+	padding: 1rem 1.1rem;
+	margin-bottom: 0.9rem;
+}
+
+.jmrs-portal-clinical .jmrs-portal-subsection__title {
+	margin: 0 0 0.75rem;
+	color: var(--jmrs-portal-secondary);
+	font-size: 1rem;
+}
+
+.jmrs-portal-summary {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+	gap: 0.85rem 1.25rem;
+	margin: 0;
+}
+
+.jmrs-portal-summary > div {
+	min-width: 0;
+}
+
+.jmrs-portal-summary__wide {
+	grid-column: 1 / -1;
+}
+
+.jmrs-portal-summary dt {
+	margin: 0 0 0.2rem;
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--jmrs-portal-secondary);
+}
+
+.jmrs-portal-summary dd {
+	margin: 0;
+	color: var(--jmrs-portal-text);
+	font-size: 0.98rem;
+	line-height: 1.45;
+}
+
+.jmrs-portal-summary-block {
+	margin: 0 0 0.9rem;
+}
+
+.jmrs-portal-summary-block:last-child {
+	margin-bottom: 0;
+}
+
+.jmrs-portal-summary-block__title {
+	margin: 0 0 0.35rem;
+	font-size: 0.92rem;
+	font-weight: 700;
+	color: var(--jmrs-portal-secondary);
+}
+
 .jmrs-portal-prose {
-	white-space: normal;
+	margin: 0;
+	color: var(--jmrs-portal-text);
+	white-space: pre-wrap;
+	line-height: 1.55;
 }
 
 .jmrs-portal-doc-list,
@@ -511,6 +794,136 @@
 
 .jmrs-portal-notice p {
 	margin: 0.25rem 0;
+}
+
+.jmrs-portal-notice--success {
+	background: #e8f5ef;
+	border-color: #9ecfba;
+}
+
+.jmrs-portal-notice--error {
+	background: #fdeeee;
+	border-color: #e8b4b4;
+}
+
+.jmrs-portal-notice--error ul {
+	margin: 0.4rem 0 0;
+	padding-left: 1.2rem;
+}
+
+.jmrs-portal-form .jmrs-portal-section {
+	margin-bottom: 1.25rem;
+}
+
+.jmrs-portal-form-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	gap: 1rem 1.25rem;
+}
+
+.jmrs-portal-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.jmrs-portal-field--full {
+	grid-column: 1 / -1;
+}
+
+.jmrs-portal-field label,
+.jmrs-portal-field__label {
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--jmrs-portal-muted);
+}
+
+.jmrs-portal-field input[type="text"],
+.jmrs-portal-field input[type="email"],
+.jmrs-portal-field input[type="date"],
+.jmrs-portal-field input[type="time"],
+.jmrs-portal-field input[type="datetime-local"],
+.jmrs-portal-field input[type="number"],
+.jmrs-portal-field select,
+.jmrs-portal-field textarea {
+	width: 100%;
+	max-width: 100%;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid var(--jmrs-portal-border);
+	border-radius: 0.35rem;
+	font: inherit;
+	background: #fff;
+	color: var(--jmrs-portal-text);
+}
+
+.jmrs-portal-field textarea {
+	resize: vertical;
+	min-height: 6rem;
+}
+
+.jmrs-portal-field--checkbox {
+	flex-direction: row;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.jmrs-portal-checkbox-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+}
+
+.jmrs-portal-checkbox-group label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-size: 0.9rem;
+	font-weight: 400;
+	color: var(--jmrs-portal-text);
+}
+
+.jmrs-portal-clinical-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 0.5rem 0 1rem;
+	font-size: 0.92rem;
+}
+
+.jmrs-portal-clinical-table th,
+.jmrs-portal-clinical-table td {
+	text-align: left;
+	padding: 0.5rem 0.5rem;
+	border-bottom: 1px solid var(--jmrs-portal-border);
+	vertical-align: top;
+}
+
+.jmrs-portal-clinical-table th {
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--jmrs-portal-muted);
+}
+
+.jmrs-portal-clinical-table input,
+.jmrs-portal-clinical-table select,
+.jmrs-portal-clinical-table textarea {
+	width: 100%;
+	padding: 0.4rem 0.5rem;
+	border: 1px solid var(--jmrs-portal-border);
+	border-radius: 0.3rem;
+	font: inherit;
+}
+
+.jmrs-portal-field__hint {
+	margin: 0;
+	font-size: 0.8rem;
+	color: var(--jmrs-portal-muted);
+}
+
+.jmrs-portal-field-error {
+	margin: 0;
+	font-size: 0.85rem;
+	color: #8a1f1f;
 }
 
 .jmrs-portal-nav-toggle {

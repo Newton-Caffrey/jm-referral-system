@@ -3,9 +3,12 @@
 namespace JMReferral\Portal;
 
 use JMReferral\Alerts\OperationalAlertService;
+use JMReferral\Assessment\ReferralAssessmentController;
 use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\Assessment\ReferralAssessmentService;
+use JMReferral\CarePlan\ReferralCarePlanController;
 use JMReferral\CarePlan\ReferralCarePlanRepository;
+use JMReferral\CarePlan\ReferralCarePlanReviewService;
 use JMReferral\CarePlan\ReferralCarePlanService;
 use JMReferral\CareTeam\CareTeamService;
 use JMReferral\Documents\ReferralDocumentController;
@@ -16,7 +19,10 @@ use JMReferral\Medication\MedicationAdministrationService;
 use JMReferral\Medication\MedicationService;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Portal\Clinical\ClinicalDispatcher;
+use JMReferral\Portal\Clinical\PortalViewHost;
 use JMReferral\Referral\ReferralActivityRepository;
+use JMReferral\Referral\ReferralEditController;
 use JMReferral\Referral\ReferralFilters;
 use JMReferral\Referral\ReferralRepository;
 use JMReferral\Referral\ReferralRetentionService;
@@ -31,10 +37,17 @@ use JMReferral\Workflow\WorkflowStageService;
 /**
  * Staff portal request dispatcher and view-model builder.
  */
-class PortalController
+class PortalController implements PortalViewHost
 {
     private const VIEW_VISITS_LIMIT = 10;
     private const VIEW_ACTIVITY_LIMIT = 25;
+
+    /**
+     * Set after construction via set_clinical_dispatcher() to break the
+     * circular dependency (ClinicalDispatcher depends on this class's
+     * PortalViewHost interface).
+     */
+    private ?ClinicalDispatcher $clinical_dispatcher = null;
 
     public function __construct(
         private PortalNavigation $navigation,
@@ -56,8 +69,37 @@ class PortalController
         private ReferralDocumentRepository $document_repository,
         private ReferralAssessmentRepository $assessment_repository,
         private ReferralCarePlanRepository $care_plan_repository,
-        private ReferralActivityRepository $activity_repository
+        private ReferralActivityRepository $activity_repository,
+        private ReferralEditController $edit_controller,
+        private PortalRetentionHandler $retention_handler,
+        private ReferralAssessmentController $assessment_controller,
+        private ReferralCarePlanController $care_plan_controller,
+        private ReferralCarePlanReviewService $care_plan_review_service
     ) {
+    }
+
+    /**
+     * Breaks the PortalController <-> ClinicalDispatcher circular dependency.
+     * Must be called once during plugin bootstrap before dispatch().
+     */
+    public function set_clinical_dispatcher(ClinicalDispatcher $clinical_dispatcher): void
+    {
+        $this->clinical_dispatcher = $clinical_dispatcher;
+    }
+
+    public function render_portal_page(
+        string $template,
+        string $page_title,
+        string $current_route,
+        array $breadcrumbs,
+        array $view
+    ): void {
+        $this->render_page($template, $page_title, $current_route, $breadcrumbs, $view);
+    }
+
+    public function render_portal_error(string $template, string $title, int $status): void
+    {
+        $this->render_error($template, $title, $status);
     }
 
     public function dispatch(): void
@@ -84,16 +126,48 @@ class PortalController
             return;
         }
 
+        $this->retention_handler->maybe_handle();
+
         $route = sanitize_key((string) get_query_var(PortalRouter::QV_ROUTE));
         if ('' === $route) {
             $route = 'dashboard';
         }
 
+        $clinical_routes = [
+            'care_plan_review',
+            'medication_new',
+            'medication_edit',
+            'care_team_new',
+            'care_team_edit',
+            'schedule_new',
+            'schedule_edit',
+            'schedule_generate',
+            'visit_new',
+            'visit_edit',
+            'visit_execute',
+            'visit_review',
+        ];
+
+        if (in_array($route, $clinical_routes, true)) {
+            if (null === $this->clinical_dispatcher) {
+                $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+                return;
+            }
+
+            $this->clinical_dispatcher->dispatch($route);
+
+            return;
+        }
+
         match ($route) {
-            'dashboard' => $this->render_dashboard(),
-            'referrals' => $this->render_referral_list(),
-            'referral'  => $this->render_referral_view(),
-            default     => $this->render_error('404', __('Not Found', 'jm-referral-system'), 404),
+            'dashboard'            => $this->render_dashboard(),
+            'referrals'            => $this->render_referral_list(),
+            'referral'             => $this->render_referral_view(),
+            'referral_edit'        => $this->render_referral_edit(),
+            'referral_assessment'  => $this->render_referral_assessment(),
+            'referral_care_plan'   => $this->render_referral_care_plan(),
+            default                => $this->render_error('404', __('Not Found', 'jm-referral-system'), 404),
         };
     }
 
@@ -123,8 +197,7 @@ class PortalController
         $scoped_to_assigned = ! empty($dashboard['scoped_to_assigned']);
 
         foreach ($recent as $index => $row) {
-            $id = absint($row['id'] ?? 0);
-            $recent[$index]['portal_url'] = $id > 0 ? PortalUrls::referral($id) : '';
+            $recent[$index] = array_merge($row, $this->build_referral_portal_actions($row));
         }
 
         $can_view_visits     = Capabilities::current_user_can(Capabilities::VIEW_VISITS);
@@ -262,12 +335,7 @@ class PortalController
         $access_assigned_to = $this->access_policy->get_assigned_user_constraint();
         $scope_to_assigned  = null !== $access_assigned_to;
         $assignable_users   = $scope_to_assigned ? [] : $this->user_provider->get_assignable_users();
-        $can_filter_archive = ! $scope_to_assigned
-            && (
-                Capabilities::current_user_can(Capabilities::ARCHIVE_REFERRALS)
-                || Capabilities::current_user_can(Capabilities::RESTORE_REFERRALS)
-                || current_user_can('manage_options')
-            );
+        $can_filter_archive = ! $scope_to_assigned;
 
         if (! $can_filter_archive) {
             $filters['archive_scope'] = 'active';
@@ -321,9 +389,8 @@ class PortalController
                 : '';
 
             $referral['is_archived'] = $this->retention_service->is_archived($referral);
-            $id = absint($referral['id'] ?? 0);
-            $referral['portal_url'] = $id > 0 ? PortalUrls::referral($id) : '';
-            $referrals[] = $referral;
+            $referral                = array_merge($referral, $this->build_referral_portal_actions($referral));
+            $referrals[]             = $referral;
         }
 
         $list_args = $this->portal_list_query_args($filters, $per_page);
@@ -343,6 +410,24 @@ class PortalController
             );
         }
 
+        $archive_scope = (string) ($filters['archive_scope'] ?? 'active');
+        $scope_urls    = [];
+        if ($can_filter_archive) {
+            foreach (['active', 'archived', 'all'] as $scope_key) {
+                $scope_filters                 = $filters;
+                $scope_filters['archive_scope'] = $scope_key;
+                $scope_urls[$scope_key]        = PortalUrls::referrals_with_args(
+                    $this->portal_list_query_args($scope_filters, $per_page)
+                );
+            }
+        }
+
+        $empty_message = match ($archive_scope) {
+            'archived' => __('No archived referrals found.', 'jm-referral-system'),
+            'all'      => __('No referrals found.', 'jm-referral-system'),
+            default    => __('No active referrals found.', 'jm-referral-system'),
+        };
+
         $page_title = $scope_to_assigned
             ? __('My Referrals', 'jm-referral-system')
             : __('Referrals', 'jm-referral-system');
@@ -354,6 +439,12 @@ class PortalController
             'scope_to_assigned'   => $scope_to_assigned,
             'can_filter_assignee' => ! $scope_to_assigned,
             'can_filter_archive'  => $can_filter_archive,
+            'archive_scope'       => $archive_scope,
+            'scope_urls'          => $scope_urls,
+            'empty_message'       => $empty_message,
+            'archived_list_url'   => $can_filter_archive
+                ? PortalUrls::referrals_with_args(['jmrs_archive_scope' => 'archived'])
+                : '',
             'per_page'            => $per_page,
             'page'                => $page,
             'total'               => $total,
@@ -375,6 +466,7 @@ class PortalController
                 'high'   => __('High', 'jm-referral-system'),
                 'urgent' => __('Urgent', 'jm-referral-system'),
             ],
+            'list_notice'         => $this->portal_retention_notice(),
         ];
 
         $this->render_page(
@@ -482,7 +574,26 @@ class PortalController
                 : '';
         }
 
+        $care_plan_reviews = [];
+        if ($can_view_care_plan) {
+            foreach ($this->care_plan_review_service->get_reviews_for_referral($referral_id) as $review_row) {
+                $reviewer_id = absint($review_row['reviewed_by'] ?? 0);
+                $review_row['reviewer_name'] = $reviewer_id > 0
+                    ? $this->user_provider->get_display_name($reviewer_id)
+                    : '';
+                $care_plan_reviews[] = $review_row;
+            }
+        }
+        $care_plan_review_outcome_labels = ReferralCarePlanReviewService::outcome_labels();
+
+        $can_review_care_plan = ! $is_archived
+            && null !== $care_plan
+            && Capabilities::current_user_can(Capabilities::REVIEW_CARE_PLANS)
+            && $this->access_policy->can_edit_referral($referral)
+            && $this->access_policy->can_mutate_referral($referral);
+
         $can_view_care_team = Capabilities::current_user_can(Capabilities::VIEW_CARE_TEAM);
+        $can_manage_care_team = $this->care_team_service->can_manage_care_team($referral);
         $care_team_roles    = CareTeamService::role_labels();
         $care_team_statuses = CareTeamService::status_labels();
         $care_team_members  = [];
@@ -492,11 +603,15 @@ class PortalController
                 $member_row['staff_name'] = $member_user_id > 0
                     ? $this->user_provider->get_display_name($member_user_id)
                     : '';
+                $member_row['edit_url'] = $can_manage_care_team
+                    ? PortalUrls::care_team_edit($referral_id, absint($member_row['id'] ?? 0))
+                    : '';
                 $care_team_members[] = $member_row;
             }
         }
 
         $can_view_visits = Capabilities::current_user_can(Capabilities::VIEW_VISITS);
+        $can_manage_visits = $this->visit_service->can_manage_visits_for_referral($referral);
         $care_visits     = [];
         $visit_status_labels  = CareVisitService::status_labels();
         $visit_outcome_labels = VisitExecutionService::outcome_labels();
@@ -540,16 +655,61 @@ class PortalController
                 $visit_row['outcome_label'] = isset($visit_outcome_labels[$outcome_key])
                     ? $visit_outcome_labels[$outcome_key]
                     : $outcome_key;
+
+                $visit_id_row  = absint($visit_row['id'] ?? 0);
+                $is_executed   = $this->visit_execution_service->is_executed($visit_row);
+                $is_reviewed   = $this->visit_execution_service->is_reviewed($visit_row);
+                $can_edit_visit = $can_manage_visits && ! $is_archived;
+                $can_execute_visit = ! $is_archived
+                    && ! $is_executed
+                    && $this->visit_execution_service->can_execute_visit($referral, $visit_row);
+                $can_review_visit = $is_executed
+                    && ! $is_reviewed
+                    && $this->visit_execution_service->can_review_visit($referral);
+
+                $visit_row['can_edit']    = $can_edit_visit;
+                $visit_row['can_execute'] = $can_execute_visit;
+                $visit_row['can_review']  = $can_review_visit;
+                $visit_row['edit_url']    = $can_edit_visit ? PortalUrls::visit_edit($referral_id, $visit_id_row) : '';
+                $visit_row['execute_url'] = $can_execute_visit ? PortalUrls::visit_execute($referral_id, $visit_id_row) : '';
+                $visit_row['review_url']  = $can_review_visit ? PortalUrls::visit_review($referral_id, $visit_id_row) : '';
+
                 $care_visits[] = $visit_row;
             }
         }
 
         $can_view_medications = $this->medication_service->can_view_medications($referral);
+        $can_manage_medications = $this->medication_service->can_manage_medications($referral);
         $medications          = [];
         $medication_status_labels = MedicationService::status_labels();
         $medication_route_labels  = MedicationService::route_labels();
         if ($can_view_medications) {
-            $medications = $this->medication_service->get_medications_for_referral($referral_id, false);
+            foreach ($this->medication_service->get_medications_for_referral($referral_id, false) as $medication_row) {
+                $medication_row['edit_url'] = $can_manage_medications
+                    ? PortalUrls::medication_edit($referral_id, absint($medication_row['id'] ?? 0))
+                    : '';
+                $medications[] = $medication_row;
+            }
+        }
+
+        $can_view_schedules   = $this->schedule_service->can_view_schedules($referral);
+        $can_manage_schedules = $this->schedule_service->can_manage_schedules($referral);
+        $schedules            = [];
+        $schedule_repeat_labels = ScheduleService::repeat_type_labels();
+        $schedule_status_labels = ScheduleService::status_labels();
+        if ($can_view_schedules) {
+            foreach ($this->schedule_service->get_schedules_for_referral($referral_id) as $schedule_row) {
+                $schedule_id_row = absint($schedule_row['id'] ?? 0);
+                $schedule_row['generated_visit_count'] = $this->schedule_service->count_generated_visits($schedule_id_row);
+                $schedule_row['edit_url'] = $can_manage_schedules
+                    ? PortalUrls::schedule_edit($referral_id, $schedule_id_row)
+                    : '';
+                $schedule_row['generate_url'] = $can_manage_schedules
+                    && ScheduleService::STATUS_ACTIVE === (string) ($schedule_row['status'] ?? '')
+                    ? PortalUrls::schedule_generate($referral_id, $schedule_id_row)
+                    : '';
+                $schedules[] = $schedule_row;
+            }
         }
 
         $can_view_activity = Capabilities::current_user_can(Capabilities::VIEW_REFERRALS);
@@ -573,6 +733,34 @@ class PortalController
             ? $referral_number
             : __('Referral', 'jm-referral-system');
 
+        $can_edit_referral = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral)
+            && $this->access_policy->can_mutate_referral($referral);
+
+        $can_archive_referral = ! $is_archived
+            && Capabilities::current_user_can(Capabilities::ARCHIVE_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral)
+            && $this->access_policy->can_mutate_referral($referral);
+
+        $can_restore_referral = $is_archived
+            && Capabilities::current_user_can(Capabilities::RESTORE_REFERRALS)
+            && $this->access_policy->can_view_referral($referral);
+
+        $can_edit_assessment = ! $is_archived
+            && Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral)
+            && $this->access_policy->can_mutate_referral($referral);
+
+        $can_manage_care_plan = ! $is_archived
+            && Capabilities::current_user_can(Capabilities::MANAGE_CARE_PLANS)
+            && $this->access_policy->can_edit_referral($referral)
+            && $this->access_policy->can_mutate_referral($referral);
+
+        $can_filter_archive = ! $this->access_policy->should_scope_to_assigned();
+
+        $updated_notice = isset($_GET['jmrs_updated']) && '1' === (string) wp_unslash($_GET['jmrs_updated']);
+        $clinical_notice = $this->portal_clinical_notice();
+
         $view = [
             'referral'                   => $referral,
             'assigned_to_name'           => $assigned_to_name,
@@ -588,20 +776,55 @@ class PortalController
             'assessment_data'            => $assessment_data,
             'assessor_name'              => $assessor_name,
             'assessment_outcomes'        => ReferralAssessmentService::outcome_labels(),
+            'can_edit_assessment'        => $can_edit_assessment,
+            'assessment_url'             => $can_edit_assessment
+                ? PortalUrls::referral_assessment($referral_id)
+                : '',
             'can_view_care_plan'         => $can_view_care_plan,
             'care_plan'                  => $care_plan,
             'care_plan_data'             => $care_plan_data,
             'care_plan_statuses'         => $care_plan_statuses,
             'care_plan_created_by_name'  => $care_plan_created_by_name,
             'care_plan_approved_by_name' => $care_plan_approved_by_name,
+            'can_manage_care_plan'       => $can_manage_care_plan,
+            'care_plan_url'              => $can_manage_care_plan
+                ? PortalUrls::referral_care_plan($referral_id)
+                : '',
+            'has_assessment'             => null !== $assessment,
+            'care_plan_reviews'          => $care_plan_reviews,
+            'care_plan_review_outcome_labels' => $care_plan_review_outcome_labels,
+            'can_review_care_plan'       => $can_review_care_plan,
+            'care_plan_review_url'       => $can_review_care_plan
+                ? PortalUrls::care_plan_review($referral_id)
+                : '',
             'can_view_care_team'         => $can_view_care_team,
+            'can_manage_care_team'       => $can_manage_care_team,
+            'care_team_new_url'          => $can_manage_care_team
+                ? PortalUrls::care_team_new($referral_id)
+                : '',
             'care_team_members'          => $care_team_members,
             'care_team_roles'            => $care_team_roles,
             'care_team_statuses'         => $care_team_statuses,
             'can_view_visits'            => $can_view_visits,
+            'can_manage_visits'          => $can_manage_visits,
+            'visit_new_url'              => ($can_manage_visits && ! $is_archived)
+                ? PortalUrls::visit_new($referral_id)
+                : '',
             'care_visits'                => $care_visits,
             'visit_status_labels'        => $visit_status_labels,
+            'can_view_schedules'         => $can_view_schedules,
+            'can_manage_schedules'       => $can_manage_schedules,
+            'schedule_new_url'           => $can_manage_schedules
+                ? PortalUrls::schedule_new($referral_id)
+                : '',
+            'schedules'                  => $schedules,
+            'schedule_repeat_labels'     => $schedule_repeat_labels,
+            'schedule_status_labels'     => $schedule_status_labels,
             'can_view_medications'       => $can_view_medications,
+            'can_manage_medications'     => $can_manage_medications,
+            'medication_new_url'         => $can_manage_medications
+                ? PortalUrls::medication_new($referral_id)
+                : '',
             'medications'                => $medications,
             'medication_status_labels'   => $medication_status_labels,
             'medication_route_labels'    => $medication_route_labels,
@@ -610,6 +833,16 @@ class PortalController
             'is_public_referral'         => $is_public_referral,
             'referrer_type_label'        => '' !== $referrer_type ? ReferrerTypes::label($referrer_type) : '',
             'list_url'                   => PortalUrls::referrals(),
+            'archived_list_url'          => $can_filter_archive
+                ? PortalUrls::referrals_with_args(['jmrs_archive_scope' => 'archived'])
+                : '',
+            'can_edit_referral'          => $can_edit_referral,
+            'edit_url'                   => $can_edit_referral ? PortalUrls::referral_edit($referral_id) : '',
+            'can_archive_referral'       => $can_archive_referral,
+            'can_restore_referral'       => $can_restore_referral,
+            'updated_notice'             => $updated_notice,
+            'retention_notice'           => $this->portal_retention_notice(),
+            'clinical_notice'            => $clinical_notice,
         ];
 
         $this->render_page(
@@ -623,6 +856,648 @@ class PortalController
             ],
             $view
         );
+    }
+
+    private function render_referral_edit(): void
+    {
+        if (! Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $referral_id = absint(get_query_var(PortalRouter::QV_ID));
+        $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
+
+        // Generic 404 for missing or inaccessible referrals (no existence leak).
+        if (
+            null === $referral
+            || ! $this->access_policy->can_view_referral($referral)
+            || ! $this->access_policy->can_edit_referral($referral)
+            || ! $this->access_policy->can_mutate_referral($referral)
+        ) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (isset($_POST['jmrs_update_referral'])) {
+            $this->handle_referral_edit_post($referral_id);
+
+            return;
+        }
+
+        $form_state = ReferralEditController::get_form_state($referral_id);
+        $errors     = $form_state['errors'];
+        $data       = ! empty($form_state['data'])
+            ? $form_state['data']
+            : $this->edit_controller->map_referral_to_form_data($referral);
+        $options    = $this->edit_controller->get_form_options($data);
+
+        $list_title = $this->access_policy->should_scope_to_assigned()
+            ? __('My Referrals', 'jm-referral-system')
+            : __('Referrals', 'jm-referral-system');
+
+        $referral_number = (string) ($referral['referral_number'] ?? '');
+        $view_label      = '' !== $referral_number
+            ? $referral_number
+            : __('Referral', 'jm-referral-system');
+        $page_title = sprintf(
+            /* translators: %s: referral number or label */
+            __('Edit %s', 'jm-referral-system'),
+            $view_label
+        );
+
+        $view = [
+            'referral'          => $referral,
+            'data'              => $data,
+            'errors'            => $errors,
+            'assignable_users'  => $options['assignable_users'],
+            'service_types'     => $options['service_types'],
+            'workflow_stages'   => $options['workflow_stages'],
+            'form_action'       => PortalUrls::referral_edit($referral_id),
+            'cancel_url'        => PortalUrls::referral($referral_id),
+            'can_assign'        => Capabilities::current_user_can(Capabilities::ASSIGN_REFERRALS),
+            'assigned_to_name'  => absint($data['assigned_to'] ?? 0) > 0
+                ? $this->user_provider->get_display_name(absint($data['assigned_to']))
+                : '',
+        ];
+
+        $this->render_page(
+            'referrals/edit',
+            $page_title,
+            'referral',
+            [
+                ['label' => __('Dashboard', 'jm-referral-system'), 'url' => PortalUrls::dashboard()],
+                ['label' => $list_title, 'url' => PortalUrls::referrals()],
+                ['label' => $view_label, 'url' => PortalUrls::referral($referral_id)],
+                ['label' => __('Edit', 'jm-referral-system'), 'url' => ''],
+            ],
+            $view
+        );
+    }
+
+    private function handle_referral_edit_post(int $referral_id): void
+    {
+        $nonce = isset($_POST['jmrs_edit_referral_nonce'])
+            ? sanitize_text_field(wp_unslash($_POST['jmrs_edit_referral_nonce']))
+            : '';
+
+        if (
+            ! wp_verify_nonce($nonce, 'jmrs_edit_referral_' . $referral_id)
+            || absint($_POST['jmrs_referral_id'] ?? 0) !== $referral_id
+        ) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $result = $this->edit_controller->attempt_update($referral_id, $_POST);
+
+        if (! empty($result['not_found']) || ! empty($result['forbidden'])) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (! $result['success']) {
+            $this->edit_controller->persist_form_state($referral_id, $result['data'], $result['errors']);
+            wp_safe_redirect(PortalUrls::referral_edit($referral_id));
+            exit;
+        }
+
+        wp_safe_redirect(
+            add_query_arg('jmrs_updated', '1', PortalUrls::referral($referral_id))
+        );
+        exit;
+    }
+
+    private function render_referral_assessment(): void
+    {
+        if (! Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $referral_id = absint(get_query_var(PortalRouter::QV_ID));
+        $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
+
+        if (
+            null === $referral
+            || ! $this->access_policy->can_view_referral($referral)
+            || ! $this->access_policy->can_edit_referral($referral)
+            || ! $this->access_policy->can_mutate_referral($referral)
+        ) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (isset($_POST['jmrs_save_assessment'])) {
+            $this->handle_assessment_post($referral_id);
+
+            return;
+        }
+
+        $assessment = $this->assessment_repository->find_by_referral($referral_id);
+        $form_state = ReferralAssessmentController::get_form_state($referral_id);
+        $errors     = $form_state['errors'];
+        $data       = ! empty($form_state['data'])
+            ? $form_state['data']
+            : ReferralAssessmentService::map_to_form_data($assessment);
+
+        $list_title = $this->access_policy->should_scope_to_assigned()
+            ? __('My Referrals', 'jm-referral-system')
+            : __('Referrals', 'jm-referral-system');
+        $referral_number = (string) ($referral['referral_number'] ?? '');
+        $view_label      = '' !== $referral_number
+            ? $referral_number
+            : __('Referral', 'jm-referral-system');
+        $page_title = null === $assessment
+            ? __('Create Assessment', 'jm-referral-system')
+            : __('Edit Assessment', 'jm-referral-system');
+
+        $view = [
+            'referral'             => $referral,
+            'assessment'           => $assessment,
+            'data'                 => $data,
+            'errors'               => $errors,
+            'outcome_options'      => ReferralAssessmentService::outcome_labels(),
+            'form_action'          => PortalUrls::referral_assessment($referral_id),
+            'cancel_url'           => PortalUrls::referral($referral_id),
+            'is_create'            => null === $assessment,
+        ];
+
+        $this->render_page(
+            'referrals/assessment',
+            $page_title,
+            'referral',
+            [
+                ['label' => __('Dashboard', 'jm-referral-system'), 'url' => PortalUrls::dashboard()],
+                ['label' => $list_title, 'url' => PortalUrls::referrals()],
+                ['label' => $view_label, 'url' => PortalUrls::referral($referral_id)],
+                ['label' => $page_title, 'url' => ''],
+            ],
+            $view
+        );
+    }
+
+    private function handle_assessment_post(int $referral_id): void
+    {
+        $nonce = isset($_POST['jmrs_save_assessment_nonce'])
+            ? sanitize_text_field(wp_unslash($_POST['jmrs_save_assessment_nonce']))
+            : '';
+
+        if (
+            ! wp_verify_nonce($nonce, 'jmrs_save_assessment_' . $referral_id)
+            || absint($_POST['jmrs_referral_id'] ?? 0) !== $referral_id
+        ) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $result = $this->assessment_controller->attempt_save($referral_id, $_POST);
+
+        if (! empty($result['not_found']) || ! empty($result['forbidden'])) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (! $result['success']) {
+            $this->assessment_controller->persist_form_state($referral_id, $result['data'], $result['errors']);
+            wp_safe_redirect(PortalUrls::referral_assessment($referral_id));
+            exit;
+        }
+
+        wp_safe_redirect(
+            add_query_arg(
+                'jmrs_assessment_saved',
+                ! empty($result['created']) ? 'created' : 'updated',
+                PortalUrls::referral($referral_id)
+            )
+        );
+        exit;
+    }
+
+    private function render_referral_care_plan(): void
+    {
+        if (! Capabilities::current_user_can(Capabilities::MANAGE_CARE_PLANS)) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $referral_id = absint(get_query_var(PortalRouter::QV_ID));
+        $referral    = $referral_id > 0 ? $this->referral_repository->find($referral_id) : null;
+
+        if (
+            null === $referral
+            || ! $this->access_policy->can_view_referral($referral)
+            || ! $this->access_policy->can_edit_referral($referral)
+            || ! $this->access_policy->can_mutate_referral($referral)
+        ) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (isset($_POST['jmrs_generate_care_plan'])) {
+            $this->handle_care_plan_generate_post($referral_id);
+
+            return;
+        }
+
+        if (isset($_POST['jmrs_blank_care_plan'])) {
+            $this->handle_care_plan_blank_post($referral_id);
+
+            return;
+        }
+
+        if (isset($_POST['jmrs_save_care_plan'])) {
+            $this->handle_care_plan_save_post($referral_id);
+
+            return;
+        }
+
+        $care_plan  = $this->care_plan_repository->find_by_referral($referral_id);
+        $assessment = $this->assessment_repository->find_by_referral($referral_id);
+        $form_state = ReferralCarePlanController::get_form_state($referral_id);
+        $errors     = $form_state['errors'];
+        $drafting   = ! empty($form_state['drafting']);
+        $data       = ! empty($form_state['data'])
+            ? $form_state['data']
+            : ReferralCarePlanService::map_to_form_data($care_plan);
+
+        $show_start = null === $care_plan && ! $drafting && empty($errors);
+
+        $list_title = $this->access_policy->should_scope_to_assigned()
+            ? __('My Referrals', 'jm-referral-system')
+            : __('Referrals', 'jm-referral-system');
+        $referral_number = (string) ($referral['referral_number'] ?? '');
+        $view_label      = '' !== $referral_number
+            ? $referral_number
+            : __('Referral', 'jm-referral-system');
+        $page_title = $show_start
+            ? __('Create Care Plan', 'jm-referral-system')
+            : (null === $care_plan
+                ? __('Create Care Plan', 'jm-referral-system')
+                : __('Edit Care Plan', 'jm-referral-system'));
+
+        $view = [
+            'referral'            => $referral,
+            'care_plan'           => $care_plan,
+            'assessment'          => $assessment,
+            'data'                => $data,
+            'errors'              => $errors,
+            'status_options'      => ReferralCarePlanService::status_labels(),
+            'form_action'         => PortalUrls::referral_care_plan($referral_id),
+            'cancel_url'          => PortalUrls::referral($referral_id),
+            'show_start'          => $show_start,
+            'has_assessment'      => null !== $assessment,
+            'is_create'           => null === $care_plan,
+        ];
+
+        $this->render_page(
+            'referrals/care-plan',
+            $page_title,
+            'referral',
+            [
+                ['label' => __('Dashboard', 'jm-referral-system'), 'url' => PortalUrls::dashboard()],
+                ['label' => $list_title, 'url' => PortalUrls::referrals()],
+                ['label' => $view_label, 'url' => PortalUrls::referral($referral_id)],
+                ['label' => $page_title, 'url' => ''],
+            ],
+            $view
+        );
+    }
+
+    private function handle_care_plan_generate_post(int $referral_id): void
+    {
+        $nonce = isset($_POST['jmrs_generate_care_plan_nonce'])
+            ? sanitize_text_field(wp_unslash($_POST['jmrs_generate_care_plan_nonce']))
+            : '';
+
+        if (
+            ! wp_verify_nonce($nonce, 'jmrs_generate_care_plan_' . $referral_id)
+            || absint($_POST['jmrs_referral_id'] ?? 0) !== $referral_id
+        ) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $result = $this->care_plan_controller->attempt_generate($referral_id);
+
+        if (! empty($result['not_found']) || ! empty($result['forbidden'])) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (! $result['success']) {
+            $this->care_plan_controller->persist_form_state($referral_id, [], $result['errors'], false);
+            wp_safe_redirect(PortalUrls::referral_care_plan($referral_id));
+            exit;
+        }
+
+        $this->care_plan_controller->persist_form_state($referral_id, $result['data'], [], true);
+        wp_safe_redirect(PortalUrls::referral_care_plan($referral_id));
+        exit;
+    }
+
+    private function handle_care_plan_blank_post(int $referral_id): void
+    {
+        $nonce = isset($_POST['jmrs_blank_care_plan_nonce'])
+            ? sanitize_text_field(wp_unslash($_POST['jmrs_blank_care_plan_nonce']))
+            : '';
+
+        if (
+            ! wp_verify_nonce($nonce, 'jmrs_blank_care_plan_' . $referral_id)
+            || absint($_POST['jmrs_referral_id'] ?? 0) !== $referral_id
+        ) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $result = $this->care_plan_controller->attempt_blank($referral_id);
+
+        if (! empty($result['not_found']) || ! empty($result['forbidden'])) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (! $result['success']) {
+            $this->care_plan_controller->persist_form_state($referral_id, [], $result['errors'], false);
+            wp_safe_redirect(PortalUrls::referral_care_plan($referral_id));
+            exit;
+        }
+
+        $this->care_plan_controller->persist_form_state($referral_id, $result['data'], [], true);
+        wp_safe_redirect(PortalUrls::referral_care_plan($referral_id));
+        exit;
+    }
+
+    private function handle_care_plan_save_post(int $referral_id): void
+    {
+        $nonce = isset($_POST['jmrs_save_care_plan_nonce'])
+            ? sanitize_text_field(wp_unslash($_POST['jmrs_save_care_plan_nonce']))
+            : '';
+
+        if (
+            ! wp_verify_nonce($nonce, 'jmrs_save_care_plan_' . $referral_id)
+            || absint($_POST['jmrs_referral_id'] ?? 0) !== $referral_id
+        ) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $result = $this->care_plan_controller->attempt_save($referral_id, $_POST);
+
+        if (! empty($result['not_found']) || ! empty($result['forbidden'])) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (! $result['success']) {
+            $this->care_plan_controller->persist_form_state($referral_id, $result['data'], $result['errors'], true);
+            wp_safe_redirect(PortalUrls::referral_care_plan($referral_id));
+            exit;
+        }
+
+        wp_safe_redirect(
+            add_query_arg(
+                'jmrs_care_plan_saved',
+                ! empty($result['created']) ? 'created' : 'updated',
+                PortalUrls::referral($referral_id)
+            )
+        );
+        exit;
+    }
+
+    /**
+     * Action URLs/flags for portal list, dashboard, and related tables.
+     *
+     * @param array<string, mixed> $referral
+     * @return array{
+     *     portal_url: string,
+     *     edit_url: string,
+     *     archive_url: string,
+     *     can_edit: bool,
+     *     can_archive: bool,
+     *     can_restore: bool,
+     *     is_archived: bool
+     * }
+     */
+    private function build_referral_portal_actions(array $referral): array
+    {
+        $id          = absint($referral['id'] ?? 0);
+        $is_archived = $this->retention_service->is_archived($referral);
+        $portal_url  = $id > 0 ? PortalUrls::referral($id) : '';
+
+        $can_edit = $id > 0
+            && ! $is_archived
+            && Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral)
+            && $this->access_policy->can_mutate_referral($referral);
+
+        $can_archive = $id > 0
+            && ! $is_archived
+            && Capabilities::current_user_can(Capabilities::ARCHIVE_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral)
+            && $this->access_policy->can_mutate_referral($referral);
+
+        $can_restore = $id > 0
+            && $is_archived
+            && Capabilities::current_user_can(Capabilities::RESTORE_REFERRALS)
+            && $this->access_policy->can_view_referral($referral);
+
+        return [
+            'portal_url'  => $portal_url,
+            'edit_url'    => $can_edit ? PortalUrls::referral_edit($id) : '',
+            'archive_url' => $can_archive && '' !== $portal_url
+                ? $portal_url . '#jmrs-archive-referral'
+                : '',
+            'can_edit'    => $can_edit,
+            'can_archive' => $can_archive,
+            'can_restore' => $can_restore,
+            'is_archived' => $is_archived,
+        ];
+    }
+
+    /**
+     * @return array{type: string, message: string}|null
+     */
+    private function portal_retention_notice(): ?array
+    {
+        if (isset($_GET['jmrs_archived']) && '1' === (string) wp_unslash($_GET['jmrs_archived'])) {
+            return [
+                'type'    => 'success',
+                'message' => __('Referral archived successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_archive_error']) && '1' === (string) wp_unslash($_GET['jmrs_archive_error'])) {
+            return [
+                'type'    => 'error',
+                'message' => __('Unable to archive the referral. An archive reason is required.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_restored']) && '1' === (string) wp_unslash($_GET['jmrs_restored'])) {
+            return [
+                'type'    => 'success',
+                'message' => __('Referral restored successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_restore_error']) && '1' === (string) wp_unslash($_GET['jmrs_restore_error'])) {
+            return [
+                'type'    => 'error',
+                'message' => __('Unable to restore the referral.', 'jm-referral-system'),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{type: string, message: string}|null
+     */
+    private function portal_clinical_notice(): ?array
+    {
+        if (isset($_GET['jmrs_assessment_saved'])) {
+            $status = sanitize_key((string) wp_unslash($_GET['jmrs_assessment_saved']));
+            if ('created' === $status) {
+                return [
+                    'type'    => 'success',
+                    'message' => __('Assessment created successfully.', 'jm-referral-system'),
+                ];
+            }
+            if ('updated' === $status) {
+                return [
+                    'type'    => 'success',
+                    'message' => __('Assessment updated successfully.', 'jm-referral-system'),
+                ];
+            }
+        }
+
+        if (isset($_GET['jmrs_care_plan_saved'])) {
+            $status = sanitize_key((string) wp_unslash($_GET['jmrs_care_plan_saved']));
+            if ('created' === $status) {
+                return [
+                    'type'    => 'success',
+                    'message' => __('Care plan created successfully.', 'jm-referral-system'),
+                ];
+            }
+            if ('updated' === $status) {
+                return [
+                    'type'    => 'success',
+                    'message' => __('Care plan updated successfully.', 'jm-referral-system'),
+                ];
+            }
+        }
+
+        if (isset($_GET['jmrs_care_plan_reviewed']) && '1' === (string) wp_unslash($_GET['jmrs_care_plan_reviewed'])) {
+            return [
+                'type'    => 'success',
+                'message' => __('Care plan review recorded successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_medication_saved']) && '1' === (string) wp_unslash($_GET['jmrs_medication_saved'])) {
+            return [
+                'type'    => 'success',
+                'message' => __('Medication saved successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_care_team_saved']) && '1' === (string) wp_unslash($_GET['jmrs_care_team_saved'])) {
+            return [
+                'type'    => 'success',
+                'message' => __('Care team assignment saved successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_schedule_saved']) && '1' === (string) wp_unslash($_GET['jmrs_schedule_saved'])) {
+            return [
+                'type'    => 'success',
+                'message' => __('Schedule saved successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_schedule_visits_created'])) {
+            $created = absint($_GET['jmrs_schedule_visits_created']);
+            $skipped = isset($_GET['jmrs_schedule_visits_skipped']) ? absint($_GET['jmrs_schedule_visits_skipped']) : 0;
+            $outside = isset($_GET['jmrs_schedule_visits_outside']) ? absint($_GET['jmrs_schedule_visits_outside']) : 0;
+
+            $parts   = [];
+            $parts[] = sprintf(
+                /* translators: %d: number of visits created */
+                _n('%d visit generated.', '%d visits generated.', $created, 'jm-referral-system'),
+                $created
+            );
+
+            if ($skipped > 0) {
+                $parts[] = sprintf(
+                    /* translators: %d: number of duplicate visits skipped */
+                    _n('%d existing visit skipped.', '%d existing visits skipped.', $skipped, 'jm-referral-system'),
+                    $skipped
+                );
+            }
+
+            if ($outside > 0) {
+                $parts[] = sprintf(
+                    /* translators: %d: number of occurrences outside schedule range */
+                    _n('%d occurrence outside the schedule range skipped.', '%d occurrences outside the schedule range skipped.', $outside, 'jm-referral-system'),
+                    $outside
+                );
+            }
+
+            return [
+                'type'    => 'success',
+                'message' => implode(' ', $parts),
+            ];
+        }
+
+        if (isset($_GET['jmrs_visit_saved']) && '1' === (string) wp_unslash($_GET['jmrs_visit_saved'])) {
+            return [
+                'type'    => 'success',
+                'message' => __('Care visit saved successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_visit_executed']) && '1' === (string) wp_unslash($_GET['jmrs_visit_executed'])) {
+            if (isset($_GET['jmrs_medication_warning']) && '1' === (string) wp_unslash($_GET['jmrs_medication_warning'])) {
+                return [
+                    'type'    => 'warning',
+                    'message' => __(
+                        'Visit completed successfully, but active medications exist for this client and no medication administrations were recorded for this visit.',
+                        'jm-referral-system'
+                    ),
+                ];
+            }
+
+            return [
+                'type'    => 'success',
+                'message' => __('Visit completed successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        if (isset($_GET['jmrs_visit_reviewed']) && '1' === (string) wp_unslash($_GET['jmrs_visit_reviewed'])) {
+            return [
+                'type'    => 'success',
+                'message' => __('Visit reviewed successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        return null;
     }
 
     /**
@@ -687,6 +1562,8 @@ class PortalController
 
         $names    = $this->user_provider->get_display_names_by_ids($user_ids);
         $enriched = [];
+        /** @var array<int, array<string, mixed>|null> $referral_cache */
+        $referral_cache = [];
 
         foreach ($visits as $visit_row) {
             $assigned_id = absint($visit_row['assigned_user_id'] ?? 0);
@@ -695,6 +1572,7 @@ class PortalController
                 : '';
 
             $referral_id = absint($visit_row['referral_id'] ?? 0);
+            $visit_id    = absint($visit_row['id'] ?? 0);
             $visit_row['client_name'] = (string) ($visit_row['client_name'] ?? '');
             $visit_row['referral_url'] = $referral_id > 0
                 ? PortalUrls::referral($referral_id)
@@ -706,6 +1584,28 @@ class PortalController
                     ? $outcome_labels[$outcome_key]
                     : $outcome_key;
             }
+
+            $can_execute = false;
+            $can_review  = false;
+            if ($referral_id > 0) {
+                if (! array_key_exists($referral_id, $referral_cache)) {
+                    $referral_cache[$referral_id] = $this->referral_repository->find($referral_id);
+                }
+                $referral = $referral_cache[$referral_id];
+                if (null !== $referral) {
+                    $is_executed = $this->visit_execution_service->is_executed($visit_row);
+                    $is_reviewed = $this->visit_execution_service->is_reviewed($visit_row);
+                    $can_execute = ! $is_executed
+                        && $this->visit_execution_service->can_execute_visit($referral, $visit_row);
+                    $can_review = $is_executed
+                        && ! $is_reviewed
+                        && $this->visit_execution_service->can_review_visit($referral);
+                }
+            }
+            $visit_row['can_execute'] = $can_execute;
+            $visit_row['can_review']  = $can_review;
+            $visit_row['execute_url'] = $can_execute ? PortalUrls::visit_execute($referral_id, $visit_id) : '';
+            $visit_row['review_url']  = $can_review ? PortalUrls::visit_review($referral_id, $visit_id) : '';
 
             $enriched[] = $visit_row;
         }

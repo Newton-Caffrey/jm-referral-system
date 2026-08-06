@@ -100,7 +100,7 @@ $referrals_url                 = (string) ( $referrals_url ?? '' );
 	</div>
 
 	<p class="jmrs-portal-actions">
-		<a class="jmrs-portal-btn jmrs-portal-btn--primary" href="<?php echo esc_url( $referrals_url ); ?>">
+		<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( $referrals_url ); ?>">
 			<?php
 			echo esc_html(
 				$scoped_to_assigned
@@ -123,6 +123,7 @@ $referrals_url                 = (string) ( $referrals_url ?? '' );
 						<th scope="col"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Staff', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -132,6 +133,7 @@ $referrals_url                 = (string) ( $referrals_url ?? '' );
 						$status_label = $visit_status_labels[ $status_key ] ?? $status_key;
 						$ref_url      = (string) ( $visit_row['referral_url'] ?? '' );
 						$client       = (string) ( $visit_row['client_name'] ?? '' );
+						$execute_url  = (string) ( $visit_row['execute_url'] ?? '' );
 						?>
 						<tr>
 							<td data-label="<?php echo esc_attr__( 'Date', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $visit_row['visit_date'] ?? '' ) ); ?></td>
@@ -144,6 +146,96 @@ $referrals_url                 = (string) ( $referrals_url ?? '' );
 							</td>
 							<td data-label="<?php echo esc_attr__( 'Staff', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $visit_row['assigned_staff_name'] ?? '' ) ); ?></td>
 							<td data-label="<?php echo esc_attr__( 'Status', 'jm-referral-system' ); ?>"><span class="jmrs-portal-badge"><?php echo esc_html( $status_label ); ?></span></td>
+							<td data-label="<?php echo esc_attr__( 'Actions', 'jm-referral-system' ); ?>">
+								<?php if ( '' !== $execute_url ) : ?>
+									<a class="jmrs-portal-link" href="<?php echo esc_url( $execute_url ); ?>"><?php echo esc_html__( 'Execute', 'jm-referral-system' ); ?></a>
+								<?php else : ?>
+									—
+								<?php endif; ?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+	</section>
+<?php endif; ?>
+
+<?php if ( $show_awaiting_review && ! empty( $awaiting_review_visits ) ) : ?>
+	<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-dash-awaiting-review">
+		<h2 id="jmrs-portal-dash-awaiting-review" class="jmrs-portal-section__title"><?php echo esc_html__( 'Visits Awaiting Review', 'jm-referral-system' ); ?></h2>
+		<div class="jmrs-portal-table-wrap">
+			<table class="jmrs-portal-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Date', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Staff', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $awaiting_review_visits as $visit_row ) : ?>
+						<?php
+						$ref_url      = (string) ( $visit_row['referral_url'] ?? '' );
+						$client       = (string) ( $visit_row['client_name'] ?? '' );
+						$review_url   = (string) ( $visit_row['review_url'] ?? '' );
+						$outcome_text = (string) ( $visit_row['outcome_label'] ?? '' );
+						?>
+						<tr>
+							<td data-label="<?php echo esc_attr__( 'Date', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $visit_row['visit_date'] ?? '' ) ); ?></td>
+							<td data-label="<?php echo esc_attr__( 'Client', 'jm-referral-system' ); ?>">
+								<?php if ( '' !== $ref_url ) : ?>
+									<a href="<?php echo esc_url( $ref_url ); ?>"><?php echo esc_html( '' !== $client ? $client : __( 'View referral', 'jm-referral-system' ) ); ?></a>
+								<?php else : ?>
+									<?php echo esc_html( $client ); ?>
+								<?php endif; ?>
+							</td>
+							<td data-label="<?php echo esc_attr__( 'Staff', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $visit_row['assigned_staff_name'] ?? '' ) ); ?></td>
+							<td data-label="<?php echo esc_attr__( 'Outcome', 'jm-referral-system' ); ?>"><?php echo '' !== $outcome_text ? esc_html( $outcome_text ) : '—'; ?></td>
+							<td data-label="<?php echo esc_attr__( 'Actions', 'jm-referral-system' ); ?>">
+								<?php if ( '' !== $review_url ) : ?>
+									<a class="jmrs-portal-link" href="<?php echo esc_url( $review_url ); ?>"><?php echo esc_html__( 'Review', 'jm-referral-system' ); ?></a>
+								<?php else : ?>
+									—
+								<?php endif; ?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+	</section>
+<?php endif; ?>
+
+<?php if ( $show_todays_completed && ! empty( $todays_completed_visits ) ) : ?>
+	<section class="jmrs-portal-section" aria-labelledby="jmrs-portal-dash-completed">
+		<h2 id="jmrs-portal-dash-completed" class="jmrs-portal-section__title"><?php echo esc_html__( "Today's Completed Visits", 'jm-referral-system' ); ?></h2>
+		<div class="jmrs-portal-table-wrap">
+			<table class="jmrs-portal-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $todays_completed_visits as $visit_row ) : ?>
+						<?php
+						$ref_url      = (string) ( $visit_row['referral_url'] ?? '' );
+						$client       = (string) ( $visit_row['client_name'] ?? '' );
+						$outcome_text = (string) ( $visit_row['outcome_label'] ?? '' );
+						?>
+						<tr>
+							<td data-label="<?php echo esc_attr__( 'Client', 'jm-referral-system' ); ?>">
+								<?php if ( '' !== $ref_url ) : ?>
+									<a href="<?php echo esc_url( $ref_url ); ?>"><?php echo esc_html( '' !== $client ? $client : __( 'View referral', 'jm-referral-system' ) ); ?></a>
+								<?php else : ?>
+									<?php echo esc_html( $client ); ?>
+								<?php endif; ?>
+							</td>
+							<td data-label="<?php echo esc_attr__( 'Outcome', 'jm-referral-system' ); ?>"><?php echo '' !== $outcome_text ? esc_html( $outcome_text ) : '—'; ?></td>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>
@@ -182,21 +274,48 @@ $referrals_url                 = (string) ( $referrals_url ?? '' );
 				<tbody>
 					<?php foreach ( $recent as $row ) : ?>
 						<?php
-						$portal_url = (string) ( $row['portal_url'] ?? '' );
-						$client     = trim( (string) ( $row['client_first_name'] ?? '' ) . ' ' . (string) ( $row['client_last_name'] ?? '' ) );
+						$portal_url  = (string) ( $row['portal_url'] ?? '' );
+						$edit_url    = (string) ( $row['edit_url'] ?? '' );
+						$archive_url = (string) ( $row['archive_url'] ?? '' );
+						$can_restore = ! empty( $row['can_restore'] );
+						$is_arch     = ! empty( $row['is_archived'] );
+						$row_id      = absint( $row['id'] ?? 0 );
+						$client      = trim( (string) ( $row['client_first_name'] ?? '' ) . ' ' . (string) ( $row['client_last_name'] ?? '' ) );
 						if ( '' === $client ) {
 							$client = (string) ( $row['client_name'] ?? '' );
 						}
 						?>
 						<tr>
-							<td data-label="<?php echo esc_attr__( 'Number', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?></td>
+							<td data-label="<?php echo esc_attr__( 'Number', 'jm-referral-system' ); ?>">
+								<?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?>
+								<?php if ( $is_arch ) : ?>
+									<span class="jmrs-portal-badge jmrs-portal-badge--archive"><?php echo esc_html__( 'Archived', 'jm-referral-system' ); ?></span>
+								<?php endif; ?>
+							</td>
 							<td data-label="<?php echo esc_attr__( 'Client', 'jm-referral-system' ); ?>"><?php echo esc_html( $client ); ?></td>
 							<td data-label="<?php echo esc_attr__( 'Status', 'jm-referral-system' ); ?>"><span class="jmrs-portal-badge"><?php echo esc_html( ucfirst( str_replace( '_', ' ', (string) ( $row['status'] ?? '' ) ) ) ); ?></span></td>
 							<td data-label="<?php echo esc_attr__( 'Priority', 'jm-referral-system' ); ?>"><span class="jmrs-portal-badge jmrs-portal-badge--priority"><?php echo esc_html( ucfirst( (string) ( $row['priority'] ?? '' ) ) ); ?></span></td>
 							<td data-label="<?php echo esc_attr__( 'Actions', 'jm-referral-system' ); ?>">
-								<?php if ( '' !== $portal_url ) : ?>
-									<a class="jmrs-portal-link" href="<?php echo esc_url( $portal_url ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
-								<?php endif; ?>
+								<div class="jmrs-portal-row-actions">
+									<?php if ( '' !== $portal_url ) : ?>
+										<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $portal_url ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( '' !== $edit_url ) : ?>
+										<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( $edit_url ); ?>"><?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( '' !== $archive_url ) : ?>
+										<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $archive_url ); ?>"><?php echo esc_html__( 'Archive', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( $can_restore && $row_id > 0 && '' !== $portal_url ) : ?>
+										<form class="jmrs-portal-inline-form" method="post" action="<?php echo esc_url( $portal_url ); ?>" data-jmrs-confirm="<?php echo esc_attr__( 'Restore this archived referral?', 'jm-referral-system' ); ?>">
+											<?php wp_nonce_field( 'jmrs_restore_referral_' . $row_id, 'jmrs_restore_nonce' ); ?>
+											<input type="hidden" name="referral_id" value="<?php echo esc_attr( (string) $row_id ); ?>" />
+											<button type="submit" name="jmrs_restore_referral" value="1" class="jmrs-button jmrs-button--secondary">
+												<?php echo esc_html__( 'Restore', 'jm-referral-system' ); ?>
+											</button>
+										</form>
+									<?php endif; ?>
+								</div>
 							</td>
 						</tr>
 					<?php endforeach; ?>

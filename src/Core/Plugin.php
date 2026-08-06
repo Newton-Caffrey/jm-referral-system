@@ -30,9 +30,17 @@ use JMReferral\Frontend\PublicReferralShortcode;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
 use JMReferral\Permissions\AccessPolicy;
+use JMReferral\Portal\Clinical\CarePlanReviewHandler;
+use JMReferral\Portal\Clinical\CareTeamHandler;
+use JMReferral\Portal\Clinical\ClinicalAccess;
+use JMReferral\Portal\Clinical\ClinicalDispatcher;
+use JMReferral\Portal\Clinical\MedicationHandler;
+use JMReferral\Portal\Clinical\ScheduleHandler;
+use JMReferral\Portal\Clinical\VisitHandler;
 use JMReferral\Portal\PortalAccess;
 use JMReferral\Portal\PortalController;
 use JMReferral\Portal\PortalNavigation;
+use JMReferral\Portal\PortalRetentionHandler;
 use JMReferral\Portal\PortalRouter;
 use JMReferral\Referral\ReferralActivityRepository;
 use JMReferral\Referral\ReferralActivityService;
@@ -331,14 +339,26 @@ class Plugin
             $this->access_policy
         );
 
-        $this->registerStaffPortal(
+        $this->edit_controller = new ReferralEditController(
+            $this->service,
+            $validator,
             $repository,
-            $activity_repository,
-            $document_repository,
-            $assessment_repository,
-            $care_plan_repository,
-            $visit_repository,
-            $retention_service
+            $this->user_provider,
+            $this->service_type_service,
+            $this->workflow_stage_service,
+            $this->access_policy
+        );
+
+        $assessment_controller = new ReferralAssessmentController(
+            $assessment_service,
+            $repository,
+            $this->access_policy
+        );
+
+        $care_plan_controller = new ReferralCarePlanController(
+            $care_plan_service,
+            $repository,
+            $this->access_policy
         );
 
         $this->list_controller = new ReferralListController(
@@ -349,15 +369,6 @@ class Plugin
             $this->workflow_stage_service,
             $this->access_policy,
             $retention_service
-        );
-        $this->edit_controller = new ReferralEditController(
-            $this->service,
-            $validator,
-            $repository,
-            $this->user_provider,
-            $this->service_type_service,
-            $this->workflow_stage_service,
-            $this->access_policy
         );
         $this->view_controller = new ReferralViewController(
             $repository,
@@ -389,18 +400,6 @@ class Plugin
         );
 
         $document_migration_controller = new DocumentMigrationController($document_service);
-
-        $assessment_controller = new ReferralAssessmentController(
-            $assessment_service,
-            $repository,
-            $this->access_policy
-        );
-
-        $care_plan_controller = new ReferralCarePlanController(
-            $care_plan_service,
-            $repository,
-            $this->access_policy
-        );
 
         $this->care_plan_review_controller = new ReferralCarePlanReviewController(
             $care_plan_review_service,
@@ -440,6 +439,21 @@ class Plugin
             $this->access_policy
         );
 
+        $this->registerStaffPortal(
+            $repository,
+            $activity_repository,
+            $document_repository,
+            $assessment_repository,
+            $care_plan_repository,
+            $visit_repository,
+            $retention_service,
+            $this->edit_controller,
+            $assessment_controller,
+            $care_plan_controller,
+            $visit_task_service,
+            $care_plan_review_service
+        );
+
         $create_controller->register();
         $this->list_controller->register();
         $this->edit_controller->register();
@@ -469,7 +483,12 @@ class Plugin
         ReferralAssessmentRepository $assessment_repository,
         ReferralCarePlanRepository $care_plan_repository,
         CareVisitRepository $visit_repository,
-        ReferralRetentionService $retention_service
+        ReferralRetentionService $retention_service,
+        ReferralEditController $edit_controller,
+        ReferralAssessmentController $assessment_controller,
+        ReferralCarePlanController $care_plan_controller,
+        VisitTaskService $visit_task_service,
+        ReferralCarePlanReviewService $care_plan_review_service
     ): void {
         $operational_alert_service = new OperationalAlertService(
             $repository,
@@ -505,8 +524,72 @@ class Plugin
             $document_repository,
             $assessment_repository,
             $care_plan_repository,
-            $activity_repository
+            $activity_repository,
+            $edit_controller,
+            new PortalRetentionHandler($retention_service),
+            $assessment_controller,
+            $care_plan_controller,
+            $care_plan_review_service
         );
+
+        $clinical_access = new ClinicalAccess(
+            $repository,
+            $this->access_policy,
+            $retention_service
+        );
+
+        $care_plan_review_handler = new CarePlanReviewHandler(
+            $controller,
+            $clinical_access,
+            $this->care_plan_review_controller,
+            $care_plan_repository
+        );
+
+        $medication_handler = new MedicationHandler(
+            $controller,
+            $clinical_access,
+            $this->medication_controller,
+            $this->medication_service
+        );
+
+        $care_team_handler = new CareTeamHandler(
+            $controller,
+            $clinical_access,
+            $this->care_team_controller,
+            $this->care_team_service,
+            $this->user_provider
+        );
+
+        $schedule_handler = new ScheduleHandler(
+            $controller,
+            $clinical_access,
+            $this->schedule_controller,
+            $this->schedule_service
+        );
+
+        $visit_handler = new VisitHandler(
+            $controller,
+            $clinical_access,
+            $this->care_visit_controller,
+            $this->care_visit_service,
+            $this->visit_execution_service,
+            $visit_task_service,
+            $this->medication_administration_service,
+            $visit_repository,
+            new ScheduleRepository(),
+            $this->user_provider
+        );
+
+        $clinical_dispatcher = new ClinicalDispatcher(
+            $controller,
+            $care_plan_review_handler,
+            $medication_handler,
+            $care_team_handler,
+            $schedule_handler,
+            $visit_handler
+        );
+
+        $controller->set_clinical_dispatcher($clinical_dispatcher);
 
         PortalRouter::set_controller($controller);
         PortalRouter::register();

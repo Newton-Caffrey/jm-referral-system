@@ -29,7 +29,7 @@ Architecture follows **Repository → Service → Controller → Template** with
 - Operational alerts and reporting foundation  
 - Private document storage and secure downloads  
 - Public intake shortcode with multi-step wizard  
-- Optional staff portal (read-only foundation)  
+- Optional staff portal (referral edit + clinical day-to-day workflows)  
 - Archive / restore / safe delete; data integrity counts  
 
 ---
@@ -60,7 +60,7 @@ Go-live ticks: [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
 
 ### Portal
 
-Default path `/staff-portal/` — disabled until enabled in **Settings → Staff Portal**.
+Default path `/staff-portal/` — disabled until enabled in **Settings → Staff Portal**. Supports referral editing and clinical operations (care-plan review, medications, care team, schedules, visits/execute/MAR, manager review) via shared services — not a fork of wp-admin logic. See [`docs/STAFF_PORTAL.md`](docs/STAFF_PORTAL.md).
 
 ---
 

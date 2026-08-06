@@ -66,18 +66,15 @@ class ReferralEditController
             wp_die(esc_html__('You do not have permission to edit this referral.', 'jm-referral-system'));
         }
 
-        $form_state        = self::get_form_state($referral_id);
-        $errors            = $form_state['errors'];
-        $data              = ! empty($form_state['data'])
+        $form_state       = self::get_form_state($referral_id);
+        $errors           = $form_state['errors'];
+        $data             = ! empty($form_state['data'])
             ? $form_state['data']
             : $this->map_referral_to_form_data($referral);
-        $assignable_users  = $this->user_provider->get_assignable_users();
-        $service_types     = $this->service_type_service->get_options_for_referral(
-            absint($data['service_type_id'] ?? 0)
-        );
-        $workflow_stages   = $this->workflow_stage_service->get_options_for_referral(
-            absint($data['workflow_stage_id'] ?? 0)
-        );
+        $form_options     = $this->get_form_options($data);
+        $assignable_users = $form_options['assignable_users'];
+        $service_types    = $form_options['service_types'];
+        $workflow_stages  = $form_options['workflow_stages'];
 
         include JMRS_PLUGIN_PATH . 'templates/referrals/edit.php';
     }
@@ -99,43 +96,26 @@ class ReferralEditController
 
         check_admin_referer('jmrs_edit_referral_' . $referral_id, 'jmrs_edit_referral_nonce');
 
-        $existing = $this->repository->find($referral_id);
+        $result = $this->attempt_update($referral_id, $_POST);
 
-        if (null === $existing) {
-            wp_die(esc_html__('Referral not found.', 'jm-referral-system'));
-        }
+        if (! $result['success']) {
+            if (! empty($result['not_found'])) {
+                wp_die(esc_html__('Referral not found.', 'jm-referral-system'));
+            }
 
-        if (! $this->access_policy->can_mutate_referral($existing)) {
-            wp_die(esc_html__('You do not have permission to edit this referral.', 'jm-referral-system'));
-        }
+            if (! empty($result['forbidden'])) {
+                wp_die(esc_html__('You do not have permission to edit this referral.', 'jm-referral-system'));
+            }
 
-        $data                            = $this->sanitize_input($_POST);
-        $data['current_service_type_id'] = (string) absint($existing['service_type_id'] ?? 0);
-        $data['current_workflow_stage_id'] = (string) absint($existing['workflow_stage_id'] ?? 0);
-        $errors                          = $this->validator->validate($data);
+            $this->store_form_state($referral_id, $result['data'], $result['errors']);
 
-        if (! empty($errors)) {
-            $this->store_form_state($referral_id, $data, $errors);
-            return;
-        }
-
-        $updated = $this->service->update($referral_id, $data);
-
-        if (! $updated) {
-            $this->store_form_state(
-                $referral_id,
-                $data,
-                [
-                    'general' => __('Unable to update the referral. Please try again.', 'jm-referral-system'),
-                ]
-            );
             return;
         }
 
         $redirect_url = add_query_arg(
             [
-                'page'        => 'jm-referrals-edit',
-                'referral_id' => $referral_id,
+                'page'         => 'jm-referrals-edit',
+                'referral_id'  => $referral_id,
                 'jmrs_updated' => '1',
             ],
             admin_url('admin.php')
@@ -143,6 +123,143 @@ class ReferralEditController
 
         wp_safe_redirect($redirect_url);
         exit;
+    }
+
+    /**
+     * Shared sanitize → validate → ReferralService::update() pipeline for admin and portal.
+     *
+     * Callers must verify capability and nonce before invoking.
+     *
+     * @param array<string, mixed> $raw_input Raw request data (typically $_POST).
+     * @return array{
+     *     success: bool,
+     *     data: array<string, string>,
+     *     errors: array<string, string>,
+     *     not_found: bool,
+     *     forbidden: bool
+     * }
+     */
+    public function attempt_update(int $referral_id, array $raw_input): array
+    {
+        $existing = $this->repository->find($referral_id);
+
+        if (null === $existing) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'not_found' => true,
+                'forbidden' => false,
+            ];
+        }
+
+        if (! $this->access_policy->can_mutate_referral($existing)) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [],
+                'not_found' => false,
+                'forbidden' => true,
+            ];
+        }
+
+        $data                              = $this->sanitize_input($raw_input);
+        $data['current_service_type_id']   = (string) absint($existing['service_type_id'] ?? 0);
+        $data['current_workflow_stage_id'] = (string) absint($existing['workflow_stage_id'] ?? 0);
+        $errors                            = $this->validator->validate($data);
+
+        if (! empty($errors)) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => $errors,
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        $updated = $this->service->update($referral_id, $data);
+
+        if (! $updated) {
+            return [
+                'success'   => false,
+                'data'      => $data,
+                'errors'    => [
+                    'general' => __('Unable to update the referral. Please try again.', 'jm-referral-system'),
+                ],
+                'not_found' => false,
+                'forbidden' => false,
+            ];
+        }
+
+        return [
+            'success'   => true,
+            'data'      => $data,
+            'errors'    => [],
+            'not_found' => false,
+            'forbidden' => false,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $referral
+     * @return array<string, string>
+     */
+    public function map_referral_to_form_data(array $referral): array
+    {
+        return [
+            'client_name'              => (string) ($referral['client_name'] ?? ''),
+            'client_email'             => (string) ($referral['client_email'] ?? ''),
+            'client_phone'             => (string) ($referral['client_phone'] ?? ''),
+            'service_type_id'          => (string) absint($referral['service_type_id'] ?? 0),
+            'current_service_type_id'  => (string) absint($referral['service_type_id'] ?? 0),
+            'workflow_stage_id'        => (string) absint($referral['workflow_stage_id'] ?? 0),
+            'current_workflow_stage_id'=> (string) absint($referral['workflow_stage_id'] ?? 0),
+            'priority'                 => (string) ($referral['priority'] ?? 'medium'),
+            'referrer_name'            => (string) ($referral['referrer_name'] ?? ''),
+            'referrer_email'           => (string) ($referral['referrer_email'] ?? ''),
+            'notes'                    => (string) ($referral['notes'] ?? ''),
+            'status'                   => (string) ($referral['status'] ?? 'new'),
+            'assigned_to'              => (string) absint($referral['assigned_to'] ?? 0),
+            'referral_source'          => (string) ($referral['referral_source'] ?? ''),
+            'care_start_date'          => (string) ($referral['care_start_date'] ?? ''),
+            'preferred_contact_method' => (string) ($referral['preferred_contact_method'] ?? ''),
+            'care_requirements'        => (string) ($referral['care_requirements'] ?? ''),
+        ];
+    }
+
+    /**
+     * Field options for the edit form (admin and portal).
+     *
+     * @param array<string, string> $data
+     * @return array{
+     *     assignable_users: array<int, array{id: int, display_name: string}>,
+     *     service_types: array<int, array<string, mixed>>,
+     *     workflow_stages: array<int, array<string, mixed>>
+     * }
+     */
+    public function get_form_options(array $data): array
+    {
+        return [
+            'assignable_users' => $this->user_provider->get_assignable_users(),
+            'service_types'    => $this->service_type_service->get_options_for_referral(
+                absint($data['service_type_id'] ?? 0)
+            ),
+            'workflow_stages'  => $this->workflow_stage_service->get_options_for_referral(
+                absint($data['workflow_stage_id'] ?? 0)
+            ),
+        ];
+    }
+
+    /**
+     * Persist validation errors for PRG redisplay (admin and portal).
+     *
+     * @param array<string, string> $data
+     * @param array<string, string> $errors
+     */
+    public function persist_form_state(int $referral_id, array $data, array $errors): void
+    {
+        $this->store_form_state($referral_id, $data, $errors);
     }
 
     /**
@@ -216,33 +333,6 @@ class ReferralEditController
         return [
             'data'   => is_array($state['data'] ?? null) ? $state['data'] : [],
             'errors' => is_array($state['errors'] ?? null) ? $state['errors'] : [],
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $referral
-     * @return array<string, string>
-     */
-    private function map_referral_to_form_data(array $referral): array
-    {
-        return [
-            'client_name'      => (string) ($referral['client_name'] ?? ''),
-            'client_email'     => (string) ($referral['client_email'] ?? ''),
-            'client_phone'             => (string) ($referral['client_phone'] ?? ''),
-            'service_type_id'          => (string) absint($referral['service_type_id'] ?? 0),
-            'current_service_type_id'  => (string) absint($referral['service_type_id'] ?? 0),
-            'workflow_stage_id'        => (string) absint($referral['workflow_stage_id'] ?? 0),
-            'current_workflow_stage_id'=> (string) absint($referral['workflow_stage_id'] ?? 0),
-            'priority'                 => (string) ($referral['priority'] ?? 'medium'),
-            'referrer_name'    => (string) ($referral['referrer_name'] ?? ''),
-            'referrer_email'   => (string) ($referral['referrer_email'] ?? ''),
-            'notes'            => (string) ($referral['notes'] ?? ''),
-            'status'           => (string) ($referral['status'] ?? 'new'),
-            'assigned_to'              => (string) absint($referral['assigned_to'] ?? 0),
-            'referral_source'          => (string) ($referral['referral_source'] ?? ''),
-            'care_start_date'          => (string) ($referral['care_start_date'] ?? ''),
-            'preferred_contact_method' => (string) ($referral['preferred_contact_method'] ?? ''),
-            'care_requirements'        => (string) ($referral['care_requirements'] ?? ''),
         ];
     }
 
