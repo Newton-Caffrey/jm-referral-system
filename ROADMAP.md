@@ -121,6 +121,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Portal assessment & care plan editing
 - [x] Phase 1.1C: portal clinical operations (care-plan review, meds, care team, schedules, visits/execute/MAR, manager review)
 - [x] Phase 1.1D: staff portal UX/a11y/navigation polish (partials, grouped nav, dashboard + referral view redesign, loading states, responsive refinements) — presentation-only
+- [x] Phase 1.1E: UAT preparation package (`docs/uat/`) for v1.1.0 sign-off
 - [ ] Phase 6.2B+ / **v1.1**: remaining frontend workflows (notes, document uploads, reports, operational alerts page)
 
 ### Version 1.0.0 Production Package ✅
@@ -139,6 +140,7 @@ Planned themes (not committed scope):
 - [x] Phase 1.1A: Staff portal referral editing
 - [x] Phase 1.1C: Staff portal clinical operations (review, meds, care team, schedules, visits, MAR, manager review)
 - [x] Phase 1.1D: Staff portal UX/a11y/navigation polish (presentation-only)
+- [x] Phase 1.1E: UAT package for v1.1.0 (scenarios, cases, sign-off)
 - [ ] Remaining portal gaps: notes UI, document uploads, reports / operational-alerts pages
 - [ ] Remaining performance / Menu DI / search strategy
 - [ ] Chart.js local vendor pin

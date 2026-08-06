@@ -167,6 +167,12 @@ Presentation-only pass over the existing portal shell and pages. No new routes, 
 
 ---
 
+## UAT for v1.1.0
+
+Formal acceptance testing for the staff portal and related workflows is documented under [`docs/uat/`](uat/README.md). **v1.1.0 production release requires UAT sign-off** (`UAT_SIGN_OFF.md`) after mandatory scenarios pass.
+
+---
+
 ## Manual test checklist
 
 - Portal disabled → routes unavailable / 404 after flush

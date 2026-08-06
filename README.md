@@ -104,8 +104,11 @@ Report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md) and [`docs
 | [Troubleshooting](docs/TROUBLESHOOTING.md) / [FAQ](docs/FAQ.md) | Support |
 | [Known limitations](docs/KNOWN_LIMITATIONS.md) | Honest constraints |
 | [Backup & recovery](docs/BACKUP_AND_RECOVERY.md) | Ops continuity |
+| [UAT package (v1.1.0)](docs/uat/README.md) | Acceptance test plan, scenarios, cases, sign-off |
 
 Additional technical docs: performance/production audits, retention policy, UI/a11y, portal/intake deep-dives under `docs/`.
+
+**v1.1.0 note:** Production promotion of the 1.1 line requires completed UAT and recorded sign-off in `docs/uat/UAT_SIGN_OFF.md` (fictional data only; evidence stays outside Git).
 
 ### Developer documentation
 
@@ -146,7 +149,7 @@ Suggested archive root folder name: `jm-referral-system/`.
 
 ## Roadmap
 
-v1.0.0 is the first production package. **Next planned product line: 1.1** — see [`ROADMAP.md`](ROADMAP.md) (portal workflows, hardening backlog, integrations).
+v1.0.0 is the first production package. **Product line 1.1** (portal clinical ops + UX) requires UAT sign-off before production — see [`docs/uat/`](docs/uat/README.md) and [`ROADMAP.md`](ROADMAP.md).
 
 ---
 

@@ -48,6 +48,7 @@ Genuine remaining limitations after Phase 5.6 readiness review. Do not treat thi
 | No client or family portal | Staff admin + optional staff portal only |
 | Staff portal clinical ops in portal (1.1C) | Day-to-day clinical workflows available; notes uploads / reports / alerts pages still wp-admin |
 | Staff portal disabled by default | Enable in Settings → Staff Portal; test before enabling wp-admin redirect |
+| v1.1.0 needs UAT sign-off | Use `docs/uat/` package; evidence stays outside Git (`uat-evidence/`) |
 | Public intake wizard has no save-and-resume | Values live in the DOM for the session; refresh clears unsaved input |
 | Public intake: no CAPTCHA / tracking portal | Honeypot + rate limit + timing only; see `docs/PUBLIC_REFERRAL_INTAKE.md` |
 | Consent checkboxes are operational evidence | Not a full legal consent-management product |

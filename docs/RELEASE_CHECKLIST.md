@@ -118,6 +118,20 @@ Use this checklist before promoting a build to production. Tick items on staging
 
 ---
 
+## UAT (required for v1.1.0 production)
+
+v1.1.0 must not go to production without UAT sign-off (or a documented JM Project Owner exception).
+
+- [ ] Staging prepared per `docs/uat/UAT_PLAN.md` entry criteria
+- [ ] Fictional users + seed data per `docs/uat/UAT_ROLE_MATRIX.md` and `UAT_DATA_SETUP.md`
+- [ ] Mandatory scenarios completed (`docs/uat/UAT_SCENARIOS.md`)
+- [ ] Defects logged; no open Critical; no open High on core workflows
+- [ ] Backup/restore drill recorded
+- [ ] `docs/uat/UAT_SIGN_OFF.md` completed with production recommendation
+- [ ] Evidence kept privately under `uat-evidence/` (gitignored — not in ZIP)
+
+---
+
 ## Alerts & reports
 
 - [ ] Operational Alerts page loads; filters work
@@ -184,11 +198,14 @@ Use this checklist before promoting a build to production. Tick items on staging
 - [ ] `docs/TROUBLESHOOTING.md`
 - [ ] `docs/FAQ.md`
 - [ ] `docs/RELEASE_NOTES_v1.0.0.md`
+- [ ] `docs/uat/README.md` (v1.1.0 UAT package)
 - [ ] `LICENSE`, `CONTRIBUTING.md`, updated `README.md`
 
 ---
 
 ## Sign-off
+
+For **v1.1.0**, use the formal UAT sign-off form: [`docs/uat/UAT_SIGN_OFF.md`](uat/UAT_SIGN_OFF.md).
 
 | Role | Name | Date | Result |
 | --- | --- | --- | --- |

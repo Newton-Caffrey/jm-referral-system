@@ -5,3 +5,6 @@ Thumbs.db
 .env
 .idea/
 .vscode/
+
+# UAT evidence (screenshots, exports, logs, backups) — never commit PHI or secrets
+/uat-evidence/
