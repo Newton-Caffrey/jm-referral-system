@@ -64,7 +64,10 @@ class PublicReferralController
             return;
         }
 
+        $this->debug_log('submission handler reached');
+
         if (! PublicReferralSettings::is_enabled()) {
+            $this->debug_log('rejected: public intake disabled');
             $this->errors = [
                 'form' => __('Public referral submissions are currently unavailable.', 'jm-referral-system'),
             ];
@@ -82,6 +85,7 @@ class PublicReferralController
                 self::NONCE_ACTION
             )
         ) {
+            $this->debug_log('rejected: nonce failure');
             $this->errors = [
                 'form' => __('Unable to submit your referral. Please try again.', 'jm-referral-system'),
             ];
@@ -95,12 +99,14 @@ class PublicReferralController
         $result = $this->public_referral_service->submit($_POST, $_FILES);
 
         if (! empty($result['ok'])) {
+            $this->debug_log('persistence ok; redirecting to receipt');
             $this->redirect_after_success(
                 (string) ($result['referral_number'] ?? ''),
                 ! empty($result['upload_partial'])
             );
         }
 
+        $this->debug_log('validation or persistence failed; re-rendering form');
         $this->errors       = is_array($result['errors'] ?? null) ? $result['errors'] : [];
         $this->values       = is_array($result['values'] ?? null) ? $result['values'] : $this->public_referral_service->empty_values();
         $this->focus_errors = true;
@@ -332,11 +338,19 @@ class PublicReferralController
 
     private function debug_log(string $event): void
     {
-        if (! defined('WP_DEBUG') || ! WP_DEBUG) {
+        if (! $this->should_debug_log()) {
             return;
         }
 
         // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated; no PHI.
         error_log('[JMRS] public referral: ' . $event);
+    }
+
+    private function should_debug_log(): bool
+    {
+        $debug = defined('WP_DEBUG') && WP_DEBUG;
+        $log   = defined('WP_DEBUG_LOG') && WP_DEBUG_LOG;
+
+        return $debug || $log;
     }
 }

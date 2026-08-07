@@ -103,7 +103,7 @@ class PublicReferralService
         }
 
         $this->bump_rate_limit();
-        $this->debug_log('submission accepted');
+        $this->debug_log('persistence success');
 
         $referral_id     = absint($created['id'] ?? 0);
         $referral_number = (string) ($created['referral_number'] ?? '');
@@ -113,12 +113,15 @@ class PublicReferralService
         if (! empty($settings['allow_uploads']) && $referral_id > 0) {
             $upload_result  = $this->handle_uploads($referral_id, $files, $settings);
             $upload_partial = ! empty($upload_result['partial']);
+            $this->debug_log($upload_partial ? 'uploads partial' : 'uploads complete');
         }
 
-        $referral = $this->referral_repository->find($referral_id);
-        if (is_array($referral)) {
-            $this->notification_service->notify_public_referral_received($referral);
-            $this->notification_service->notify_public_referral_confirmation($referral);
+        /*
+         * Defer notifications until shutdown so a slow/unavailable SMTP provider
+         * cannot block the PRG receipt redirect after a successful save.
+         */
+        if ($referral_id > 0) {
+            $this->schedule_public_referral_notifications($referral_id);
         }
 
         return [
@@ -127,6 +130,56 @@ class PublicReferralService
             'referral_number' => $referral_number,
             'upload_partial'  => $upload_partial,
         ];
+    }
+
+    /**
+     * Queue public intake emails after the HTTP response path completes.
+     */
+    private function schedule_public_referral_notifications(int $referral_id): void
+    {
+        $this->debug_log('notification stage scheduled');
+
+        add_action(
+            'shutdown',
+            function () use ($referral_id): void {
+                if (function_exists('fastcgi_finish_request')) {
+                    // Close the HTTP connection so a slow mail transport cannot hang the browser.
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- optional runtime optimisation.
+                    @fastcgi_finish_request();
+                }
+
+                try {
+                    $referral = $this->referral_repository->find($referral_id);
+                    if (! is_array($referral)) {
+                        $this->debug_log('notification stage skipped: referral missing');
+                        $this->log_notification_failure('referral missing after save');
+
+                        return;
+                    }
+
+                    $this->debug_log('notification stage: ops inbox');
+                    $this->notification_service->notify_public_referral_received($referral);
+
+                    $this->debug_log('notification stage: referrer confirmation');
+                    $this->notification_service->notify_public_referral_confirmation($referral);
+
+                    $this->debug_log('notification stage complete');
+                } catch (\Throwable $e) {
+                    $this->debug_log('notification stage failed');
+                    $this->log_notification_failure('exception during notification stage');
+                }
+            },
+            20
+        );
+    }
+
+    /**
+     * Always record a non-PHI notification failure (not only when WP_DEBUG is on).
+     */
+    private function log_notification_failure(string $reason): void
+    {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- no PHI; operational only.
+        error_log('[JMRS] public referral notification failure: ' . $reason);
     }
 
     /**
@@ -530,7 +583,9 @@ class PublicReferralService
 
     private function debug_log(string $event): void
     {
-        if (! defined('WP_DEBUG') || ! WP_DEBUG) {
+        $debug = defined('WP_DEBUG') && WP_DEBUG;
+        $log   = defined('WP_DEBUG_LOG') && WP_DEBUG_LOG;
+        if (! $debug && ! $log) {
             return;
         }
 

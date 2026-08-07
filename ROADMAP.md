@@ -122,6 +122,10 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Phase 1.1C: portal clinical operations (care-plan review, meds, care team, schedules, visits/execute/MAR, manager review)
 - [x] Phase 1.1D: staff portal UX/a11y/navigation polish (partials, grouped nav, dashboard + referral view redesign, loading states, responsive refinements) — presentation-only
 - [x] Phase 1.1E: UAT preparation package (`docs/uat/`) for v1.1.0 sign-off
+- [x] Phase 1.1F: theme isolation & production CSS compatibility (public wizard + portal) — presentation-only
+- [x] Phase 1.1F.1: public wizard visibility/design restore + submission hang hotfix
+- [x] Phase 1.1F.2: strict visual parity (approved staging design metrics + retained isolation)
+- [x] Phase 1.1F.3: screenshot-driven portal heading/table fixes; public weight lightening (font-family TBD)
 - [ ] Phase 6.2B+ / **v1.1**: remaining frontend workflows (notes, document uploads, reports, operational alerts page)
 
 ### Version 1.0.0 Production Package ✅
@@ -141,6 +145,9 @@ Planned themes (not committed scope):
 - [x] Phase 1.1C: Staff portal clinical operations (review, meds, care team, schedules, visits, MAR, manager review)
 - [x] Phase 1.1D: Staff portal UX/a11y/navigation polish (presentation-only)
 - [x] Phase 1.1E: UAT package for v1.1.0 (scenarios, cases, sign-off)
+- [x] Phase 1.1F: Theme isolation & production compatibility (scoped public/portal CSS, portal theme dequeue, admin-bar offsets, filemtime cache bust)
+- [x] Phase 1.1F.1: Public wizard `[hidden]`/design restore + deferred notification send after save
+- [x] Phase 1.1F.2: Strict visual parity with approved staging CSS metrics
 - [ ] Remaining portal gaps: notes UI, document uploads, reports / operational-alerts pages
 - [ ] Remaining performance / Menu DI / search strategy
 - [ ] Chart.js local vendor pin

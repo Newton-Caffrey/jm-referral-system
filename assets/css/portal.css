@@ -1,8 +1,19 @@
-/* JM Referral System — Staff Portal (scoped under .jmrs-portal) */
+﻿/* JM Referral System — Staff Portal (scoped under .jmrs-portal) */
 
 .jmrs-portal-body {
 	margin: 0;
 	background: #f3f5f4;
+	--jmrs-admin-bar-offset: 0px;
+}
+
+body.admin-bar.jmrs-portal-body {
+	--jmrs-admin-bar-offset: 32px;
+}
+
+@media screen and (max-width: 782px) {
+	body.admin-bar.jmrs-portal-body {
+		--jmrs-admin-bar-offset: 46px;
+	}
 }
 
 .jmrs-portal {
@@ -20,6 +31,9 @@
 	--jmrs-portal-info-tint: #e7f3f5;
 	--jmrs-portal-info-border: #b9dde3;
 	--jmrs-portal-sidebar-width: 16.5rem;
+	--jmrs-portal-content-padding: 1.25rem 1.5rem 2.5rem;
+	--jmrs-portal-topbar-padding: 1.25rem 1.5rem 1rem;
+	--jmrs-portal-card-radius: 0.5rem;
 	--jmrs-portal-focus: #0b5f4b;
 	--jmrs-portal-space-xs: 0.35rem;
 	--jmrs-portal-space-sm: 0.65rem;
@@ -27,8 +41,10 @@
 	--jmrs-portal-space-lg: 1.5rem;
 	--jmrs-portal-space-xl: 2.25rem;
 	--jmrs-portal-radius: 0.5rem;
+	--jmrs-portal-font: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+	--jmrs-portal-heading-size: 1.5rem;
 	color: var(--jmrs-portal-text);
-	font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+	font-family: var(--jmrs-portal-font);
 	font-size: 15px;
 	line-height: 1.5;
 	min-height: 100vh;
@@ -86,9 +102,9 @@
 	color: #f4f8f6;
 	padding: 1.25rem 1rem 2rem;
 	position: sticky;
-	top: 0;
+	top: var(--jmrs-admin-bar-offset, 0px);
 	align-self: flex-start;
-	min-height: 100vh;
+	min-height: calc(100vh - var(--jmrs-admin-bar-offset, 0px));
 	z-index: 40;
 }
 
@@ -228,18 +244,21 @@
 	justify-content: space-between;
 	align-items: flex-start;
 	gap: 1rem;
-	padding: 1.25rem 1.5rem 1rem;
+	padding: var(--jmrs-portal-topbar-padding);
 	background: var(--jmrs-portal-surface);
 	border-bottom: 1px solid var(--jmrs-portal-border);
 	position: sticky;
-	top: 0;
+	top: var(--jmrs-admin-bar-offset, 0px);
 	z-index: 20;
 }
 
 .jmrs-portal-page-title {
 	margin: 0.25rem 0 0;
-	font-size: 1.5rem;
-	line-height: 1.25;
+	/* Staging measured: 24px / 400 / 30px — px avoids theme root rem drift */
+	font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+	font-size: 24px;
+	font-weight: 400;
+	line-height: 30px;
 	color: var(--jmrs-portal-secondary);
 }
 
@@ -315,13 +334,13 @@
 }
 
 .jmrs-portal-main {
-	padding: 1.25rem 1.5rem 2.5rem;
+	padding: var(--jmrs-portal-content-padding);
 }
 
 .jmrs-portal-section {
 	background: var(--jmrs-portal-surface);
 	border: 1px solid var(--jmrs-portal-border);
-	border-radius: 0.5rem;
+	border-radius: var(--jmrs-portal-card-radius);
 	padding: 1.15rem 1.25rem 1.35rem;
 	margin-bottom: 1.15rem;
 }
@@ -329,11 +348,29 @@
 .jmrs-portal-subsection__title {
 	margin: 1.15rem 0 0.65rem;
 	font-size: 0.98rem;
+	font-weight: 600;
+	line-height: 1.35;
 	color: var(--jmrs-portal-secondary);
 }
 
 .jmrs-portal-section > .jmrs-portal-subsection__title:first-child {
 	margin-top: 0;
+}
+
+/*
+ * Section titles (e.g. Results) are <h2>. Staging never had a JMRS size rule —
+ * measured 30.9133px / 400 / 34.7775px. Use px so theme root rem changes cannot
+ * shift the approved desktop typography.
+ */
+.jmrs-portal .jmrs-portal-section__title {
+	margin: 0 0 0.75rem;
+	font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+	font-size: 30.9133px;
+	font-weight: 400;
+	line-height: 34.7775px;
+	color: var(--jmrs-portal-secondary);
+	letter-spacing: normal;
+	text-transform: none;
 }
 
 .jmrs-portal-section__meta {
@@ -856,25 +893,44 @@
 	overflow-x: auto;
 }
 
-.jmrs-portal-table {
+.jmrs-portal .jmrs-portal-table {
 	width: 100%;
 	border-collapse: collapse;
+	border-spacing: 0;
+	border: 0;
 	font-size: 0.95rem;
+	font-weight: 400;
+	background: transparent;
 }
 
-.jmrs-portal-table th,
-.jmrs-portal-table td {
+.jmrs-portal .jmrs-portal-table th,
+.jmrs-portal .jmrs-portal-table td {
 	text-align: left;
 	padding: 0.65rem 0.55rem;
+	/* Horizontal separators only — no cell grid / vertical rules. */
+	border: 0;
 	border-bottom: 1px solid var(--jmrs-portal-border);
 	vertical-align: top;
+	font-weight: 400;
+	background: transparent;
+	box-shadow: none;
 }
 
-.jmrs-portal-table th {
+.jmrs-portal .jmrs-portal-table th {
 	font-size: 0.8rem;
+	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
 	color: var(--jmrs-portal-muted);
+	border-bottom-color: var(--jmrs-portal-border);
+}
+
+.jmrs-portal .jmrs-portal-table thead th {
+	background: transparent;
+}
+
+.jmrs-portal .jmrs-portal-table tbody tr:last-child td {
+	border-bottom: 0;
 }
 
 .jmrs-portal-badge {
@@ -1186,20 +1242,25 @@
 	color: var(--jmrs-portal-muted);
 }
 
-.jmrs-portal-field input[type="text"],
-.jmrs-portal-field input[type="email"],
-.jmrs-portal-field input[type="date"],
-.jmrs-portal-field input[type="time"],
-.jmrs-portal-field input[type="datetime-local"],
-.jmrs-portal-field input[type="number"],
-.jmrs-portal-field select,
-.jmrs-portal-field textarea {
+.jmrs-portal .jmrs-portal-field input[type="text"],
+.jmrs-portal .jmrs-portal-field input[type="email"],
+.jmrs-portal .jmrs-portal-field input[type="tel"],
+.jmrs-portal .jmrs-portal-field input[type="date"],
+.jmrs-portal .jmrs-portal-field input[type="time"],
+.jmrs-portal .jmrs-portal-field input[type="datetime-local"],
+.jmrs-portal .jmrs-portal-field input[type="number"],
+.jmrs-portal .jmrs-portal-field input[type="search"],
+.jmrs-portal .jmrs-portal-field select,
+.jmrs-portal .jmrs-portal-field textarea {
 	width: 100%;
 	max-width: 100%;
+	min-width: 0;
+	margin: 0;
 	padding: 0.55rem 0.65rem;
 	border: 1px solid var(--jmrs-portal-border);
 	border-radius: 0.35rem;
 	font: inherit;
+	line-height: inherit;
 	background: #fff;
 	color: var(--jmrs-portal-text);
 }
@@ -1277,7 +1338,7 @@
 .jmrs-portal-nav-toggle {
 	display: none;
 	position: fixed;
-	top: 0.75rem;
+	top: calc(0.75rem + var(--jmrs-admin-bar-offset, 0px));
 	left: 0.75rem;
 	z-index: 60;
 	width: 2.75rem;
@@ -1369,7 +1430,8 @@
 	.jmrs-portal-sidebar {
 		position: fixed;
 		left: 0;
-		top: 0;
+		top: var(--jmrs-admin-bar-offset, 0px);
+		min-height: calc(100vh - var(--jmrs-admin-bar-offset, 0px));
 		transform: translateX(-105%);
 		transition: transform 0.2s ease;
 		box-shadow: 0 0 0 rgba(0, 0, 0, 0);

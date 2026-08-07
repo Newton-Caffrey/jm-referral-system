@@ -18,7 +18,8 @@ class PublicReferralShortcode
     {
         add_shortcode('jmrs_public_referral_form', [$this, 'render']);
         add_filter('the_posts', [$this, 'detect_shortcode_in_posts'], 10, 2);
-        add_action('wp_enqueue_scripts', [$this, 'maybe_enqueue_assets']);
+        // Late priority so plugin CSS follows typical theme stylesheets in the cascade.
+        add_action('wp_enqueue_scripts', [$this, 'maybe_enqueue_assets'], 100);
     }
 
     /**

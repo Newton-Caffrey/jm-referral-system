@@ -287,12 +287,15 @@
 		var step = this.step;
 		if (this.btnBack) {
 			this.btnBack.hidden = step <= 0;
+			this.btnBack.setAttribute('aria-hidden', step <= 0 ? 'true' : 'false');
 		}
 		if (this.btnContinue) {
 			this.btnContinue.hidden = step === 0 || step === 5;
+			this.btnContinue.setAttribute('aria-hidden', step === 0 || step === 5 ? 'true' : 'false');
 		}
 		if (this.btnFinal) {
 			this.btnFinal.hidden = step !== 5;
+			this.btnFinal.setAttribute('aria-hidden', step !== 5 ? 'true' : 'false');
 		}
 		var nav = this.root.querySelector('#jmrs-wizard-nav');
 		if (nav) {
@@ -626,24 +629,59 @@
 			return;
 		}
 
-		// Final step client consent check when submitting from wizard.
+		/*
+		 * Defensive: never allow a final native submission unless the wizard is
+		 * on Review & Submit. Visibility alone is not trusted (theme CSS can lie).
+		 */
 		if (this.root.classList.contains('jmrs-js') && this.step !== 5) {
 			event.preventDefault();
+			this.clearSubmittingState();
 			this.goTo(5, { announce: true, focus: true });
 			return;
 		}
 
 		if (this.root.classList.contains('jmrs-js') && !this.validateStep(5)) {
 			event.preventDefault();
+			this.clearSubmittingState();
 			return;
 		}
 
 		var submitter =
 			event.submitter ||
-			this.form.querySelector('button[type="submit"]:not([hidden]), input[type="submit"]');
+			(this.btnFinal && !this.btnFinal.hidden ? this.btnFinal : null) ||
+			this.form.querySelector(
+				'button[type="submit"][data-jmrs-final-submit]:not([hidden]), button[type="submit"][name="jmrs_public_referral_submit"]:not([hidden]), input[type="submit"]:not([hidden])'
+			);
+
+		/* At this point step === 5; require the named final submit control. */
+		if (
+			this.root.classList.contains('jmrs-js') &&
+			(!submitter || submitter.getAttribute('name') !== 'jmrs_public_referral_submit')
+		) {
+			event.preventDefault();
+			this.clearSubmittingState();
+			return;
+		}
 
 		preserveSubmitter(this.form, submitter);
+		this.setSubmittingState(submitter);
 
+		try {
+			document.dispatchEvent(new CustomEvent('jmrs:publicReferralSubmitted', { detail: {} }));
+		} catch (e) {
+			/* ignore */
+		}
+
+		/* Disable after the browser has accepted the submit (avoids cancelling POST). */
+		window.setTimeout(
+			function () {
+				this.lockSubmitControls(submitter);
+			}.bind(this),
+			0
+		);
+	};
+
+	PublicReferralWizard.prototype.setSubmittingState = function (submitter) {
 		var label = this.form.getAttribute('data-jmrs-busy-label') || 'Sending…';
 		if (submitter) {
 			submitter.setAttribute('aria-busy', 'true');
@@ -659,27 +697,49 @@
 				submitter.textContent = label;
 			}
 		}
-
 		this.form.setAttribute('data-jmrs-submitting', '1');
+	};
 
-		try {
-			document.dispatchEvent(new CustomEvent('jmrs:publicReferralSubmitted', { detail: {} }));
-		} catch (e) {
-			/* ignore */
+	PublicReferralWizard.prototype.lockSubmitControls = function (submitter) {
+		if (!this.form || this.form.getAttribute('data-jmrs-submitting') !== '1') {
+			return;
 		}
-
-		window.setTimeout(function () {
-			if (!submitter) {
-				return;
-			}
+		var others = this.form.querySelectorAll('button[type="submit"], input[type="submit"]');
+		Array.prototype.forEach.call(others, function (btn) {
+			btn.disabled = true;
+		});
+		if (this.btnContinue) {
+			this.btnContinue.disabled = true;
+		}
+		if (this.btnBack) {
+			this.btnBack.disabled = true;
+		}
+		if (submitter) {
 			submitter.disabled = true;
-			var others = this.form.querySelectorAll('button[type="submit"], input[type="submit"]');
-			Array.prototype.forEach.call(others, function (btn) {
-				if (btn !== submitter) {
-					btn.disabled = true;
+		}
+	};
+
+	PublicReferralWizard.prototype.clearSubmittingState = function () {
+		if (!this.form) {
+			return;
+		}
+		this.form.removeAttribute('data-jmrs-submitting');
+		var controls = this.form.querySelectorAll(
+			'button[type="submit"], input[type="submit"], [data-jmrs-continue], [data-jmrs-back]'
+		);
+		Array.prototype.forEach.call(controls, function (btn) {
+			btn.disabled = false;
+			btn.removeAttribute('aria-busy');
+			var original = btn.getAttribute('data-jmrs-original-label');
+			if (original) {
+				if (btn.tagName === 'INPUT') {
+					btn.value = original;
+				} else {
+					btn.textContent = original;
 				}
-			});
-		}.bind(this), 0);
+				btn.removeAttribute('data-jmrs-original-label');
+			}
+		});
 	};
 
 	ready(function () {
@@ -697,6 +757,16 @@
 		if (!root || !root.querySelector('.jmrs-public-referral__form')) {
 			return;
 		}
-		new PublicReferralWizard(root);
+
+		var wizard = new PublicReferralWizard(root);
+
+		/* Restore controls if the browser restores a cached page after a failed/aborted navigation. */
+		window.addEventListener('pageshow', function (event) {
+			if (wizard && typeof wizard.clearSubmittingState === 'function') {
+				if (event.persisted || (wizard.form && wizard.form.getAttribute('data-jmrs-submitting') === '1')) {
+					wizard.clearSubmittingState();
+				}
+			}
+		});
 	});
 })();

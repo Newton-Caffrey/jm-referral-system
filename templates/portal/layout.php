@@ -49,7 +49,7 @@ $document_title        = $page_title !== '' ? $page_title . ' — ' . $portal_na
 	<title><?php echo esc_html( $document_title ); ?></title>
 	<?php wp_head(); ?>
 </head>
-<body class="jmrs-portal-body">
+<body <?php body_class( 'jmrs-portal-body' ); ?>>
 <div class="jmrs-portal" id="jmrs-portal-root">
 	<a class="jmrs-portal-skip" href="#jmrs-portal-main"><?php echo esc_html__( 'Skip to content', 'jm-referral-system' ); ?></a>
 

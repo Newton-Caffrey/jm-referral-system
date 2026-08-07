@@ -18,6 +18,12 @@ Secure, branded frontend portal for JM staff. Reuses existing JMRS services, rep
 
 Templates receive prepared view models only (no SQL, no scattered capability logic).
 
+### Theme isolation (Phase 1.1F)
+
+- Root: `.jmrs-portal` / body class `jmrs-portal-body` (via `body_class()` so `admin-bar` applies when visible)
+- Host theme, block library, and global styles are dequeued on portal routes; WordPress admin-bar CSS is retained
+- Sticky sidebar, topbar, and mobile nav toggle use `--jmrs-admin-bar-offset` (32px / 46px)
+- Portal CSS/JS versioned with `filemtime` — purge host/CDN caches after deploy
 ---
 
 ## Routes
@@ -189,6 +195,7 @@ Formal acceptance testing for the staff portal and related workflows is document
 - Cache / privacy headers present
 - Base path change flushes rewrites once
 - No theme header/footer; no admin/Chart.js/wizard assets on portal
+- Theme stylesheets are dequeued on portal routes (admin-bar retained); sticky sidebar/topbar offset for WP admin bar
 - Care-plan review: add review, status/next-review effects, Support Worker read-only
 - Medications: add/edit/pause/discontinue via status; permission gates; inactive display
 - Care team: add/edit; primary enforcement; inactive members

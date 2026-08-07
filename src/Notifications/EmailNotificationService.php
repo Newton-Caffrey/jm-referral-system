@@ -33,7 +33,14 @@ class EmailNotificationService
             'Content-Type: text/html; charset=UTF-8',
         ];
 
-        return wp_mail($to, $subject, $body, $headers);
+        try {
+            return wp_mail($to, $subject, $body, $headers);
+        } catch (\Throwable $e) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- no PHI; mail transport only.
+            error_log('[JMRS] email send failed (transport exception)');
+
+            return false;
+        }
     }
 
     /**

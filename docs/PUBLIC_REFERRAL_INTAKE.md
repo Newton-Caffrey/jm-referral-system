@@ -16,6 +16,8 @@ Place on any normal WordPress page (for example `/make-a-referral/`). Theme-inde
 
 Root wrapper: `.jmrs-public-referral` (scoped styles; CSS variables including `--jmrs-primary` from settings).
 
+**Theme isolation (Phase 1.1F):** all public referral CSS is scoped under `.jmrs-public-referral` with a narrow component reset, explicit typography (`clamp()` where useful), and normalised form controls so host themes (Astra, Elementor, Kadence, etc.) cannot collapse field widths or override heading/button styles. Assets use `filemtime` cache-busting and enqueue at priority `100` so they follow typical theme stylesheets. After deploying CSS changes, purge production page/CDN caches.
+
 ---
 
 ## Wizard steps (Phase 6.1B)

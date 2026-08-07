@@ -19,6 +19,7 @@ Use this checklist before promoting a build to production. Tick items on staging
 - [ ] Confirm PHP version meets requirements (8.0+, 8.1+ preferred)
 - [ ] Confirm product header / `JMRS_VERSION` / README / CHANGELOG all read `1.0.0`
 - [ ] Read `docs/KNOWN_LIMITATIONS.md` and `docs/RELEASE_NOTES_v1.0.0.md`
+- [ ] After deploying CSS/JS changes: purge host/page/CDN caches so `filemtime` asset URLs are fetched fresh (Phase 1.1F)
 
 ---
 

@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Phase 1.1F: theme isolation for public referral wizard (`.jmrs-public-referral`) and staff portal (`.jmrs-portal`) — scoped component reset, explicit typography/form normalisation, portal theme stylesheet dequeue (admin-bar retained), WP admin-bar sticky offsets, late public asset enqueue + existing `filemtime` versions; presentation-only
+- Phase 1.1F.1 hotfix: restore approved public wizard visuals; preserve `[hidden]` for step actions; defer public referral emails to `shutdown` so SMTP cannot hang the receipt redirect; strengthen submit loading reset / final-step guards
+- Phase 1.1F.2: strict visual parity — restore pre-1.1F approved design metrics for public wizard + portal; keep isolation/`[hidden]`/admin-bar offsets; lock shared Segoe UI font stack (CSS only)
+- Phase 1.1F.3: screenshot-driven parity — portal Results/page-title weights + horizontal-only table rules; public removes portal Segoe lock and lightens heading/label/button weights (exact public font-family pending screenshot re-attach)
+- Phase 1.1F.3 typography correction: public Manrope + measured title/label metrics; portal Referrals `1.5rem/400` and Results `1.932rem/400` from staging computed styles
 - Portal rewrite version `1.1.2` (clinical operations routes; auto-flush when version mismatches)
 - Portal referral view section headers with capability-aware clinical actions; Schedules section; dashboard visit Execute/Review links stay on portal
 - Portal action button styles (`.jmrs-button`) with explicit link/visited/hover/focus colours to fix primary Edit contrast
