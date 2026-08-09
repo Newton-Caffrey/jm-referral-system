@@ -72,7 +72,8 @@ class VisitExecutionService
         private ReferralActivityService $activity_service,
         private AccessPolicy $access_policy,
         private VisitTaskService $visit_task_service,
-        private MedicationAdministrationService $medication_administration_service
+        private MedicationAdministrationService $medication_administration_service,
+        private ServiceLocationResolver $service_location_resolver
     ) {
     }
 
@@ -168,22 +169,33 @@ class VisitExecutionService
                 : '')
         );
 
+        // Execution-time location snapshot (immutable once recorded_at is set).
+        // Merged into the same visit UPDATE as outcome/status — single atomic write.
+        // Unresolved location still snapshots; never blocks execution.
+        $location = $this->service_location_resolver->snapshot_for_execution(
+            null !== $referral ? $referral : ['id' => $referral_id, 'care_setting' => null]
+        );
+        $snapshot = $location->to_snapshot_row($now);
+
         $updated = $this->visit_repository->update(
             $visit_id,
-            [
-                'arrival_time'             => $arrival,
-                'departure_time'           => $departure,
-                'actual_duration_minutes'  => $duration,
-                'visit_outcome'            => (string) ($input['visit_outcome'] ?? ''),
-                'tasks_completed'          => '' !== $summaries['completed_text'] ? $summaries['completed_text'] : null,
-                'tasks_not_completed'      => '' !== $not_completed ? $not_completed : null,
-                'client_response'          => $this->nullable_text((string) ($input['client_response'] ?? '')),
-                'wellbeing_observations'   => $this->nullable_text((string) ($input['wellbeing_observations'] ?? '')),
-                'incident_report'          => $this->nullable_text((string) ($input['incident_report'] ?? '')),
-                'visit_status'             => CareVisitService::STATUS_COMPLETED,
-                'completed_at'             => $completed_at,
-                'updated_at'               => $now,
-            ]
+            array_merge(
+                [
+                    'arrival_time'             => $arrival,
+                    'departure_time'           => $departure,
+                    'actual_duration_minutes'  => $duration,
+                    'visit_outcome'            => (string) ($input['visit_outcome'] ?? ''),
+                    'tasks_completed'          => '' !== $summaries['completed_text'] ? $summaries['completed_text'] : null,
+                    'tasks_not_completed'      => '' !== $not_completed ? $not_completed : null,
+                    'client_response'          => $this->nullable_text((string) ($input['client_response'] ?? '')),
+                    'wellbeing_observations'   => $this->nullable_text((string) ($input['wellbeing_observations'] ?? '')),
+                    'incident_report'          => $this->nullable_text((string) ($input['incident_report'] ?? '')),
+                    'visit_status'             => CareVisitService::STATUS_COMPLETED,
+                    'completed_at'             => $completed_at,
+                    'updated_at'               => $now,
+                ],
+                $snapshot
+            )
         );
 
         if (! $updated) {

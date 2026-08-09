@@ -55,8 +55,14 @@ $referral_source          = $data['referral_source'] ?? '';
 $care_start_date          = $data['care_start_date'] ?? '';
 $preferred_contact_method = $data['preferred_contact_method'] ?? '';
 $care_requirements        = $data['care_requirements'] ?? '';
+$care_setting             = $data['care_setting'] ?? '';
+$address_line_1           = $data['address_line_1'] ?? '';
+$address_line_2           = $data['address_line_2'] ?? '';
+$city                     = $data['city'] ?? '';
+$postcode                 = $data['postcode'] ?? '';
 $source_options           = \JMReferral\Referral\ReferralSources::options();
 $contact_options          = \JMReferral\Referral\PreferredContactMethods::options();
+$care_setting_options     = \JMReferral\Referral\CareSetting::form_options();
 
 $field_error = static function ( array $errors, string $key ): void {
 	if ( ! isset( $errors[ $key ] ) ) {
@@ -115,6 +121,23 @@ $field_error = static function ( array $errors, string $key ): void {
 			<div class="jmrs-portal-field">
 				<label for="jmrs_client_phone"><?php echo esc_html__( 'Client Phone', 'jm-referral-system' ); ?></label>
 				<input type="text" name="jmrs_client_phone" id="jmrs_client_phone" value="<?php echo esc_attr( $client_phone ); ?>" />
+			</div>
+			<div class="jmrs-portal-field">
+				<label for="jmrs_address_line_1"><?php echo esc_html__( 'Address Line 1', 'jm-referral-system' ); ?></label>
+				<input type="text" name="jmrs_address_line_1" id="jmrs_address_line_1" value="<?php echo esc_attr( $address_line_1 ); ?>" autocomplete="address-line1" />
+			</div>
+			<div class="jmrs-portal-field">
+				<label for="jmrs_address_line_2"><?php echo esc_html__( 'Address Line 2', 'jm-referral-system' ); ?></label>
+				<input type="text" name="jmrs_address_line_2" id="jmrs_address_line_2" value="<?php echo esc_attr( $address_line_2 ); ?>" autocomplete="address-line2" />
+				<p class="jmrs-portal-field__hint"><?php echo esc_html__( 'Optional.', 'jm-referral-system' ); ?></p>
+			</div>
+			<div class="jmrs-portal-field">
+				<label for="jmrs_city"><?php echo esc_html__( 'City', 'jm-referral-system' ); ?></label>
+				<input type="text" name="jmrs_city" id="jmrs_city" value="<?php echo esc_attr( $city ); ?>" autocomplete="address-level2" />
+			</div>
+			<div class="jmrs-portal-field">
+				<label for="jmrs_postcode"><?php echo esc_html__( 'Postcode', 'jm-referral-system' ); ?></label>
+				<input type="text" name="jmrs_postcode" id="jmrs_postcode" value="<?php echo esc_attr( $postcode ); ?>" autocomplete="postal-code" />
 			</div>
 			<div class="jmrs-portal-field">
 				<label for="jmrs_service_type_id"><?php echo esc_html__( 'Service Required', 'jm-referral-system' ); ?></label>
@@ -203,6 +226,24 @@ $field_error = static function ( array $errors, string $key ): void {
 				<label for="jmrs_referrer_email"><?php echo esc_html__( 'Referrer Email', 'jm-referral-system' ); ?></label>
 				<input type="email" name="jmrs_referrer_email" id="jmrs_referrer_email" value="<?php echo esc_attr( $referrer_email ); ?>" />
 				<?php $field_error( $errors, 'referrer_email' ); ?>
+			</div>
+		</div>
+	</section>
+
+	<section class="jmrs-portal-section">
+		<h2 class="jmrs-portal-section__title"><?php echo esc_html__( 'Care Setting', 'jm-referral-system' ); ?></h2>
+		<p class="jmrs-portal-muted"><?php echo esc_html__( 'Where care is delivered. Independent of service type (what care is delivered).', 'jm-referral-system' ); ?></p>
+		<div class="jmrs-portal-form-grid">
+			<div class="jmrs-portal-field">
+				<label for="jmrs_care_setting"><?php echo esc_html__( 'Care Setting', 'jm-referral-system' ); ?></label>
+				<select name="jmrs_care_setting" id="jmrs_care_setting">
+					<?php foreach ( $care_setting_options as $setting_value => $setting_label ) : ?>
+						<option value="<?php echo esc_attr( (string) $setting_value ); ?>" <?php selected( $care_setting, (string) $setting_value ); ?>>
+							<?php echo esc_html( $setting_label ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+				<?php $field_error( $errors, 'care_setting' ); ?>
 			</div>
 		</div>
 	</section>

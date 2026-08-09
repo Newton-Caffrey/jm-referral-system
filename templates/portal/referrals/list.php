@@ -34,7 +34,9 @@ $search        = (string) ( $filters['search'] ?? '' );
 $status        = (string) ( $filters['status'] ?? '' );
 $priority      = (string) ( $filters['priority'] ?? '' );
 $assigned_to   = absint( $filters['assigned_to'] ?? 0 );
+$care_setting  = (string) ( $filters['care_setting'] ?? '' );
 $archive_scope = (string) ( $filters['archive_scope'] ?? ( $archive_scope ?? 'active' ) );
+$care_setting_options = is_array( $care_setting_options ?? null ) ? $care_setting_options : array();
 
 $scope_labels = array(
 	'active'   => __( 'Active', 'jm-referral-system' ),
@@ -129,6 +131,15 @@ $current_scope_label = $scope_labels[ $archive_scope ] ?? $scope_labels['active'
 					<?php endforeach; ?>
 				</select>
 			</p>
+			<p>
+				<label for="jmrs_care_setting"><?php echo esc_html__( 'Care Setting', 'jm-referral-system' ); ?></label>
+				<select name="jmrs_care_setting" id="jmrs_care_setting">
+					<option value=""><?php echo esc_html__( 'All Care Settings', 'jm-referral-system' ); ?></option>
+					<?php foreach ( $care_setting_options as $value => $label ) : ?>
+						<option value="<?php echo esc_attr( (string) $value ); ?>" <?php selected( $care_setting, (string) $value ); ?>><?php echo esc_html( (string) $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</p>
 			<?php if ( $can_filter_assignee ) : ?>
 				<p>
 					<label for="jmrs_assigned_to"><?php echo esc_html__( 'Assigned staff', 'jm-referral-system' ); ?></label>
@@ -191,6 +202,7 @@ $current_scope_label = $scope_labels[ $archive_scope ] ?? $scope_labels['active'
 						<th scope="col"><?php echo esc_html__( 'Client', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Service', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Care Setting', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Priority', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Stage', 'jm-referral-system' ); ?></th>
 						<?php if ( ! $scope_to_assigned ) : ?>
@@ -223,6 +235,9 @@ $current_scope_label = $scope_labels[ $archive_scope ] ?? $scope_labels['active'
 							<td data-label="<?php echo esc_attr__( 'Client', 'jm-referral-system' ); ?>"><?php echo esc_html( $client ); ?></td>
 							<td data-label="<?php echo esc_attr__( 'Service', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $row['service_name'] ?? '' ) ); ?></td>
 							<td data-label="<?php echo esc_attr__( 'Status', 'jm-referral-system' ); ?>"><span class="jmrs-portal-badge"><?php echo esc_html( ucfirst( str_replace( '_', ' ', (string) ( $row['status'] ?? '' ) ) ) ); ?></span></td>
+							<td data-label="<?php echo esc_attr__( 'Care Setting', 'jm-referral-system' ); ?>">
+								<span class="jmrs-portal-badge"><?php echo esc_html( \JMReferral\Referral\CareSetting::label( isset( $row['care_setting'] ) ? (string) $row['care_setting'] : null ) ); ?></span>
+							</td>
 							<td data-label="<?php echo esc_attr__( 'Priority', 'jm-referral-system' ); ?>"><span class="jmrs-portal-badge jmrs-portal-badge--priority"><?php echo esc_html( ucfirst( (string) ( $row['priority'] ?? '' ) ) ); ?></span></td>
 							<td data-label="<?php echo esc_attr__( 'Stage', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $row['workflow_stage_name'] ?? '' ) ); ?></td>
 							<?php if ( ! $scope_to_assigned ) : ?>

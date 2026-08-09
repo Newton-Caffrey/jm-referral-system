@@ -27,6 +27,10 @@ $field_error = static function ( array $errors, string $key ): void {
 	}
 	echo '<p class="jmrs-portal-field-error">' . esc_html( (string) $errors[ $key ] ) . '</p>';
 };
+
+if ( isset( $service_location_panel ) && is_array( $service_location_panel ) ) {
+	include JMRS_PLUGIN_PATH . 'templates/portal/partials/service-location.php';
+}
 ?>
 <?php if ( ! empty( $errors ) ) : ?>
 	<div class="jmrs-portal-notice jmrs-portal-notice--error" role="alert">
@@ -40,9 +44,24 @@ $field_error = static function ( array $errors, string $key ): void {
 <?php endif; ?>
 
 <section class="jmrs-portal-section">
+	<h2 class="jmrs-portal-section__title"><?php echo esc_html__( 'Generate Visits', 'jm-referral-system' ); ?></h2>
+	<p class="jmrs-portal-muted">
+		<?php
+		echo esc_html(
+			sprintf(
+				/* translators: %s: client name */
+				__( 'Client: %s', 'jm-referral-system' ),
+				(string) ( $referral['client_name'] ?? '' )
+			)
+		);
+		?>
+	</p>
+</section>
+
+<section class="jmrs-portal-section">
 	<h2 class="jmrs-portal-section__title"><?php echo esc_html( (string) ( $schedule['schedule_name'] ?? '' ) ); ?></h2>
 	<p class="jmrs-portal-muted">
-		<?php echo esc_html__( 'Generates care visits for this schedule within the selected date range. Existing visits and occurrences outside the schedule range are skipped automatically.', 'jm-referral-system' ); ?>
+		<?php echo esc_html__( 'Generates care visits for this schedule within the selected date range. Existing visits and occurrences outside the schedule range are skipped automatically. Generated visits do not store a service-location snapshot until execution.', 'jm-referral-system' ); ?>
 	</p>
 
 	<form

@@ -238,9 +238,11 @@ $jmrs_partials_path = JMRS_PLUGIN_PATH . 'templates/portal/partials/';
 	</div>
 </section>
 
+<?php include JMRS_PLUGIN_PATH . 'templates/portal/partials/care-setting-panels.php'; ?>
+
 <section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-referrer">
 	<h2 id="jmrs-portal-ref-referrer" class="jmrs-portal-section__title"><?php echo esc_html__( 'Referrer', 'jm-referral-system' ); ?></h2>
-	<div class="jmrs-portal-dl-grid">
+	<div class="jmrs-portal-dl-grid jmrs-portal-dl-grid--referrer">
 		<div>
 			<dt><?php echo esc_html__( 'Name', 'jm-referral-system' ); ?></dt>
 			<dd><?php echo esc_html( (string) ( $referral['referrer_name'] ?? '—' ) ); ?></dd>
@@ -842,6 +844,7 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 							<th scope="col"><?php echo esc_html__( 'Visit Type', 'jm-referral-system' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Source', 'jm-referral-system' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Service Location', 'jm-referral-system' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
 						</tr>
@@ -867,6 +870,7 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 							$visit_edit_url    = (string) ( $visit_row['edit_url'] ?? '' );
 							$visit_execute_url = (string) ( $visit_row['execute_url'] ?? '' );
 							$visit_review_url  = (string) ( $visit_row['review_url'] ?? '' );
+							$location_short    = (string) ( $visit_row['service_location_short'] ?? '' );
 							?>
 							<tr>
 								<td data-label="<?php echo esc_attr__( 'Date', 'jm-referral-system' ); ?>"><?php echo esc_html( $visit_date_display ); ?></td>
@@ -875,6 +879,7 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 								<td data-label="<?php echo esc_attr__( 'Visit Type', 'jm-referral-system' ); ?>"><?php echo '' !== trim( $visit_type ) ? esc_html( $visit_type ) : '—'; ?></td>
 								<td data-label="<?php echo esc_attr__( 'Source', 'jm-referral-system' ); ?>"><?php echo esc_html( $source_label ); ?></td>
 								<td data-label="<?php echo esc_attr__( 'Status', 'jm-referral-system' ); ?>"><span class="jmrs-portal-badge"><?php echo esc_html( $status_label ); ?></span></td>
+								<td data-label="<?php echo esc_attr__( 'Service Location', 'jm-referral-system' ); ?>"><?php echo '' !== $location_short ? esc_html( $location_short ) : '—'; ?></td>
 								<td data-label="<?php echo esc_attr__( 'Outcome', 'jm-referral-system' ); ?>"><?php echo '' !== $outcome_label ? esc_html( $outcome_label ) : '—'; ?></td>
 								<td data-label="<?php echo esc_attr__( 'Actions', 'jm-referral-system' ); ?>">
 									<?php

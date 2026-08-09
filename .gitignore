@@ -8,3 +8,9 @@ Thumbs.db
 
 # UAT evidence (screenshots, exports, logs, backups) — never commit PHI or secrets
 /uat-evidence/
+
+# Local packaging / temp artefacts
+*.zip
+*.sql
+*.bak
+*.tmp

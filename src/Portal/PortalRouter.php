@@ -7,7 +7,7 @@ namespace JMReferral\Portal;
  */
 class PortalRouter
 {
-    public const REWRITE_VERSION = '1.1.2';
+    public const REWRITE_VERSION = '1.2.1';
 
     public const QV_PORTAL = 'jmrs_portal';
     public const QV_ROUTE = 'jmrs_portal_route';
@@ -57,6 +57,16 @@ class PortalRouter
             ['/referrals/([0-9]+)/visits/([0-9]+)/execute/?$', 'visit_execute', '$matches[1]', '$matches[2]'],
             ['/referrals/([0-9]+)/visits/([0-9]+)/review/?$', 'visit_review', '$matches[1]', '$matches[2]'],
             ['/referrals/([0-9]+)/?$', 'referral', '$matches[1]', null],
+            ['/homes/?$', 'homes', null, null],
+            ['/homes/new/?$', 'home_new', null, null],
+            ['/homes/([0-9]+)/edit/?$', 'home_edit', '$matches[1]', null],
+            ['/homes/([0-9]+)/bedrooms/new/?$', 'bedroom_new', '$matches[1]', null],
+            ['/homes/([0-9]+)/bedrooms/([0-9]+)/edit/?$', 'bedroom_edit', '$matches[1]', '$matches[2]'],
+            ['/homes/([0-9]+)/?$', 'home', '$matches[1]', null],
+            ['/occupancy/?$', 'occupancy', null, null],
+            ['/occupancy/place/?$', 'occupancy_place', null, null],
+            ['/occupancy/([0-9]+)/transfer/?$', 'occupancy_transfer', '$matches[1]', null],
+            ['/occupancy/([0-9]+)/end/?$', 'occupancy_end', '$matches[1]', null],
         ];
 
         foreach ($rules as [$pattern, $route, $id, $entity]) {

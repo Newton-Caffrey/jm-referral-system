@@ -456,6 +456,37 @@ class ReferralActivityService
     }
 
     /**
+     * Logs an explicit care setting change (not auto-classification during placement).
+     */
+    public function log_care_setting_changed(int $referral_id, ?string $care_setting): void
+    {
+        $label = CareSetting::label($care_setting);
+
+        $this->log(
+            $referral_id,
+            'care_setting_changed',
+            sprintf(
+                /* translators: %s: care setting label */
+                __('Care setting changed to %s.', 'jm-referral-system'),
+                $label
+            )
+        );
+    }
+
+    /**
+     * Logs a client residential address change (own-home service location).
+     * Description deliberately omits address text.
+     */
+    public function log_client_address_updated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'client_address_updated',
+            __('Client address updated.', 'jm-referral-system')
+        );
+    }
+
+    /**
      * Persists an activity entry for the current user.
      */
     private function log(int $referral_id, string $action, string $description): void

@@ -162,7 +162,7 @@ class ReferralRepository
         $table = Tables::referrals_table();
         [$where_sql, $params] = $this->build_filter_clause($filters, $access_assigned_to);
 
-        $sql = "SELECT id, referral_number, client_name, client_email, client_phone, service_required, service_type_id, workflow_stage_id, priority, status, assigned_to, referral_source, care_start_date, preferred_contact_method, care_requirements, submission_channel, referrer_type, referrer_organisation, relationship_to_client, public_consent_at, public_consent_version, client_first_name, client_last_name, client_date_of_birth, address_line_1, address_line_2, city, postcode, referrer_phone, archived_at, archived_by, archive_reason, created_at, updated_at
+        $sql = "SELECT id, referral_number, client_name, client_email, client_phone, service_required, service_type_id, workflow_stage_id, priority, status, assigned_to, referral_source, care_start_date, preferred_contact_method, care_requirements, care_setting, submission_channel, referrer_type, referrer_organisation, relationship_to_client, public_consent_at, public_consent_version, client_first_name, client_last_name, client_date_of_birth, address_line_1, address_line_2, city, postcode, referrer_phone, archived_at, archived_by, archive_reason, created_at, updated_at
             FROM {$table}
             WHERE {$where_sql}
             ORDER BY created_at DESC, id DESC";
@@ -223,7 +223,8 @@ class ReferralRepository
      *     status?: string,
      *     priority?: string,
      *     assigned_to?: int,
-     *     archive_scope?: string
+     *     archive_scope?: string,
+     *     care_setting?: string
      * } $filters
      * @param int|null $access_assigned_to Optional record-level assignee constraint.
      * @return array{0: string, 1: array<int, mixed>}
@@ -255,6 +256,14 @@ class ReferralRepository
         if ('' !== $priority) {
             $where[]  = 'priority = %s';
             $params[] = $priority;
+        }
+
+        $care_setting = isset($filters['care_setting']) ? (string) $filters['care_setting'] : '';
+        if (CareSetting::NOT_SPECIFIED === $care_setting) {
+            $where[] = '(care_setting IS NULL OR care_setting = \'\')';
+        } elseif ('' !== $care_setting && CareSetting::is_valid($care_setting)) {
+            $where[]  = 'care_setting = %s';
+            $params[] = $care_setting;
         }
 
         // Record-level access constraint always wins over request assignee filters.
@@ -403,6 +412,11 @@ class ReferralRepository
                 'care_start_date'          => $data['care_start_date'],
                 'preferred_contact_method' => $data['preferred_contact_method'],
                 'care_requirements'        => $data['care_requirements'],
+                'care_setting'             => $data['care_setting'],
+                'address_line_1'           => $data['address_line_1'] ?? null,
+                'address_line_2'           => $data['address_line_2'] ?? null,
+                'city'                     => $data['city'] ?? null,
+                'postcode'                 => $data['postcode'] ?? null,
                 'updated_at'               => $data['updated_at'],
             ],
             ['id' => $id],
@@ -424,7 +438,41 @@ class ReferralRepository
                 '%s',
                 '%s',
                 '%s',
+                '%s',
+                '%s',
+                '%s',
+                '%s',
+                '%s',
             ],
+            ['%d']
+        );
+
+        return false !== $result;
+    }
+
+    /**
+     * Updates only care_setting (used inside occupancy placement transactions).
+     */
+    public function update_care_setting(int $id, ?string $care_setting): bool
+    {
+        global $wpdb;
+
+        if ($id <= 0) {
+            return false;
+        }
+
+        if (null !== $care_setting && ! CareSetting::is_valid($care_setting)) {
+            return false;
+        }
+
+        $result = $wpdb->update(
+            Tables::referrals_table(),
+            [
+                'care_setting' => $care_setting,
+                'updated_at'   => current_time('mysql'),
+            ],
+            ['id' => $id],
+            ['%s', '%s'],
             ['%d']
         );
 

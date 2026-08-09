@@ -31,6 +31,10 @@ $outstanding_list = is_array( $task_summaries['outstanding'] ?? null ) ? $task_s
 $refused_list     = is_array( $task_summaries['refused'] ?? null ) ? $task_summaries['refused'] : array();
 
 $date_time_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+
+if ( isset( $service_location_panel ) && is_array( $service_location_panel ) ) {
+	include JMRS_PLUGIN_PATH . 'templates/portal/partials/service-location.php';
+}
 ?>
 <?php if ( ! empty( $errors ) ) : ?>
 	<div class="jmrs-portal-notice jmrs-portal-notice--error" role="alert">

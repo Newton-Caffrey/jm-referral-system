@@ -34,8 +34,9 @@ Configurable base path (default `staff-portal`):
 | --- | --- |
 | `/staff-portal/` | Dashboard |
 | `/staff-portal/referrals/` | Referral list |
-| `/staff-portal/referrals/{id}/` | Referral view |
-| `/staff-portal/referrals/{id}/edit/` | Referral edit |
+| `/staff-portal/homes/{id}/` | Home operational dashboard (residents, bedrooms, upcoming visits, attention) |
+| `/staff-portal/referrals/{id}/` | Referral view (incl. Care Setting / Own-Home / Supported Living panels) |
+| `/staff-portal/referrals/{id}/edit/` | Referral edit (incl. care setting) |
 | `/staff-portal/referrals/{id}/assessment/` | Assessment create/edit |
 | `/staff-portal/referrals/{id}/care-plan/` | Care plan create/edit |
 | `/staff-portal/referrals/{id}/care-plan/review/` | Care plan review |
@@ -112,14 +113,14 @@ Optional setting: **Redirect JMRS Staff Away From wp-admin**.
 | --- | --- |
 | Dashboard | Scoped widgets; upcoming/awaiting/completed visits link to portal execute/review; Recent Referrals show View / Edit / Archive / Restore when permitted |
 | Referral list | Search/filters/pagination; Active / Archived / All scope; Edit / Archive / Restore when permitted |
-| Referral view | Summaries + secure downloads; contextual clinical actions (review care plan, meds, care team, schedules, visits); archived remains read-only |
-| Referral edit | Core referral/client/referrer fields |
+| Referral view | Summaries + secure downloads; Care Setting + current service location; contextual clinical actions (review care plan, meds, care team, schedules, visits); archived remains read-only |
+| Referral edit | Shared `ReferralService::update()` pipeline including client address (own-home service location) |
 | Assessment / Care Plan | Shared `attempt_*` pipelines; PRG to referral view |
 | Care plan reviews | `jmrs_review_care_plans` + AccessPolicy; history on referral view |
 | Medications | Add/edit via status field (pause/discontinue); Support Workers read-only |
 | Care team | Add/edit; primary-carer rules unchanged |
-| Schedules | List + create/edit + generate visits |
-| Visits | Schedule/edit; execute with task checklist + MAR; manager review |
+| Schedules | List + create/edit + generate visits; current service location shown (informational) |
+| Visits | Create/edit/execute/review with current vs historical service location panels |
 | Shared services | Portal handlers call the same admin controller `attempt_*` methods (no forked validation) |
 
 WordPress Admin UI remains fully available for administrators and when redirect is off.
@@ -173,9 +174,9 @@ Presentation-only pass over the existing portal shell and pages. No new routes, 
 
 ---
 
-## UAT for v1.1.0
+## UAT for Supported Living / v1.2.0
 
-Formal acceptance testing for the staff portal and related workflows is documented under [`docs/uat/`](uat/README.md). **v1.1.0 production release requires UAT sign-off** (`UAT_SIGN_OFF.md`) after mandatory scenarios pass.
+Formal acceptance testing for Supported Living is documented in [`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`](uat/UAT_SUPPORTED_LIVING_V1_2.md). Reporting subset: [`docs/uat/UAT_SUPPORTED_LIVING_REPORTING.md`](uat/UAT_SUPPORTED_LIVING_REPORTING.md). **v1.2.0 production release requires UAT + `docs/RELEASE_CHECKLIST.md` gate** after mandatory scenarios pass.
 
 ---
 

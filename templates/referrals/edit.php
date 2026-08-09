@@ -43,8 +43,14 @@ $referral_source  = $data['referral_source'] ?? '';
 $care_start_date  = $data['care_start_date'] ?? '';
 $preferred_contact_method = $data['preferred_contact_method'] ?? '';
 $care_requirements = $data['care_requirements'] ?? '';
+$care_setting     = $data['care_setting'] ?? '';
+$address_line_1   = $data['address_line_1'] ?? '';
+$address_line_2   = $data['address_line_2'] ?? '';
+$city             = $data['city'] ?? '';
+$postcode         = $data['postcode'] ?? '';
 $source_options   = \JMReferral\Referral\ReferralSources::options();
 $contact_options  = \JMReferral\Referral\PreferredContactMethods::options();
+$care_setting_options = \JMReferral\Referral\CareSetting::form_options();
 
 $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 ?>
@@ -124,6 +130,67 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 							id="jmrs_client_phone"
 							class="regular-text"
 							value="<?php echo esc_attr( $client_phone ); ?>"
+						/>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="jmrs_address_line_1"><?php echo esc_html__( 'Address Line 1', 'jm-referral-system' ); ?></label>
+					</th>
+					<td>
+						<input
+							type="text"
+							name="jmrs_address_line_1"
+							id="jmrs_address_line_1"
+							class="regular-text"
+							value="<?php echo esc_attr( $address_line_1 ); ?>"
+							autocomplete="address-line1"
+						/>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="jmrs_address_line_2"><?php echo esc_html__( 'Address Line 2', 'jm-referral-system' ); ?></label>
+					</th>
+					<td>
+						<input
+							type="text"
+							name="jmrs_address_line_2"
+							id="jmrs_address_line_2"
+							class="regular-text"
+							value="<?php echo esc_attr( $address_line_2 ); ?>"
+							autocomplete="address-line2"
+						/>
+						<p class="description"><?php echo esc_html__( 'Optional.', 'jm-referral-system' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="jmrs_city"><?php echo esc_html__( 'City', 'jm-referral-system' ); ?></label>
+					</th>
+					<td>
+						<input
+							type="text"
+							name="jmrs_city"
+							id="jmrs_city"
+							class="regular-text"
+							value="<?php echo esc_attr( $city ); ?>"
+							autocomplete="address-level2"
+						/>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="jmrs_postcode"><?php echo esc_html__( 'Postcode', 'jm-referral-system' ); ?></label>
+					</th>
+					<td>
+						<input
+							type="text"
+							name="jmrs_postcode"
+							id="jmrs_postcode"
+							class="regular-text"
+							value="<?php echo esc_attr( $postcode ); ?>"
+							autocomplete="postal-code"
 						/>
 					</td>
 				</tr>
@@ -285,6 +352,24 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 						/>
 						<?php if ( isset( $errors['care_start_date'] ) ) : ?>
 							<p class="description"><?php echo esc_html( $errors['care_start_date'] ); ?></p>
+						<?php endif; ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="jmrs_care_setting"><?php echo esc_html__( 'Care Setting', 'jm-referral-system' ); ?></label>
+					</th>
+					<td>
+						<select name="jmrs_care_setting" id="jmrs_care_setting">
+							<?php foreach ( $care_setting_options as $setting_value => $setting_label ) : ?>
+								<option value="<?php echo esc_attr( (string) $setting_value ); ?>" <?php selected( $care_setting, (string) $setting_value ); ?>>
+									<?php echo esc_html( $setting_label ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php echo esc_html__( 'Where care is delivered. Independent of service type.', 'jm-referral-system' ); ?></p>
+						<?php if ( isset( $errors['care_setting'] ) ) : ?>
+							<p class="description"><?php echo esc_html( $errors['care_setting'] ); ?></p>
 						<?php endif; ?>
 					</td>
 				</tr>

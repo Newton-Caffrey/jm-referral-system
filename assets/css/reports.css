@@ -1,5 +1,11 @@
 /* Reports page (screen only; also used for print). */
 
+.jmrs-reports-wrap {
+	max-width: 100%;
+	overflow-x: hidden;
+	box-sizing: border-box;
+}
+
 .jmrs-report-toolbar {
 	display: flex;
 	flex-wrap: wrap;
@@ -13,6 +19,30 @@
 	border: 1px solid #c3c4c7;
 	padding: 12px 16px;
 	margin: 0 0 20px;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.jmrs-report-filter-group {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+
+.jmrs-report-filter-group + .jmrs-report-filter-group {
+	margin-top: 14px;
+	padding-top: 12px;
+	border-top: 1px solid #dcdcde;
+}
+
+.jmrs-report-filter-group legend {
+	display: block;
+	padding: 0;
+	margin: 0 0 8px;
+	font-weight: 600;
+	font-size: 13px;
+	color: #1d2327;
 }
 
 .jmrs-report-filters .jmrs-filter-row {
@@ -22,10 +52,30 @@
 	align-items: flex-end;
 }
 
+.jmrs-filter-field {
+	min-width: 0;
+	flex: 1 1 160px;
+	max-width: 100%;
+}
+
+.jmrs-filter-field--actions {
+	flex: 0 1 auto;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
 .jmrs-report-filters label {
 	display: block;
 	font-weight: 600;
 	margin-bottom: 4px;
+}
+
+.jmrs-report-filters select,
+.jmrs-report-filters input[type="date"] {
+	max-width: 100%;
+	box-sizing: border-box;
 }
 
 .jmrs-report-filters .description {
@@ -35,11 +85,15 @@
 
 .jmrs-report-section {
 	margin: 0 0 28px;
+	min-width: 0;
+	max-width: 100%;
 }
 
 .jmrs-report-section h2 {
 	margin: 0 0 12px;
 	font-size: 1.15em;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .jmrs-report-section-header {
@@ -53,11 +107,42 @@
 
 .jmrs-report-section-header h2 {
 	margin: 0;
+	flex: 1 1 auto;
+}
+
+.jmrs-report-section-actions {
+	margin: 0;
+	flex: 0 0 auto;
+}
+
+.jmrs-report-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.jmrs-report-badge--snapshot {
+	background: #f0f6fc;
+	color: #135e96;
+	border: 1px solid #c5d9ed;
+}
+
+.jmrs-report-badge--period {
+	background: #f6f7f7;
+	color: #50575e;
+	border: 1px solid #dcdcde;
 }
 
 .jmrs-report-section h3 {
 	margin: 0 0 8px;
 	font-size: 1em;
+	overflow-wrap: anywhere;
 }
 
 .jmrs-report-kpis {
@@ -71,6 +156,7 @@
 	border: 1px solid #c3c4c7;
 	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 	padding: 14px;
+	min-width: 0;
 	break-inside: avoid;
 	page-break-inside: avoid;
 }
@@ -81,6 +167,7 @@
 	font-weight: 600;
 	line-height: 1.2;
 	color: #1d2327;
+	overflow-wrap: anywhere;
 }
 
 .jmrs-report-kpi-label {
@@ -88,6 +175,7 @@
 	margin-top: 4px;
 	color: #646970;
 	font-size: 13px;
+	overflow-wrap: anywhere;
 }
 
 .jmrs-report-kpi.is-warning .jmrs-report-kpi-number {
@@ -98,18 +186,106 @@
 	color: #b32d2e;
 }
 
-.jmrs-report-range-note {
+.jmrs-report-range-note,
+.jmrs-report-filter-active-note {
 	margin: 0 0 16px;
 	color: #646970;
+}
+
+.jmrs-report-filter-active-note {
+	padding: 8px 12px;
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 2px;
+}
+
+.jmrs-report-filter-hint {
+	margin-top: 10px !important;
+	color: #646970 !important;
+}
+
+.jmrs-report-section-note {
+	margin: 0 0 12px;
+	color: #646970;
+}
+
+.jmrs-report-section--snapshot,
+.jmrs-report-section--period {
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	padding: 16px;
+	box-sizing: border-box;
+}
+
+.jmrs-report-section--period {
+	margin-bottom: 28px;
+}
+
+.jmrs-report-snapshot-note,
+.jmrs-report-empty-state {
+	margin: 0 0 14px;
+	color: #646970;
+}
+
+.jmrs-report-section--snapshot h3,
+.jmrs-report-section--period h3 {
+	margin: 16px 0 10px;
+	font-size: 1em;
+}
+
+.jmrs-report-section--snapshot .jmrs-report-kpis,
+.jmrs-report-section--period .jmrs-report-kpis {
+	margin-bottom: 8px;
+}
+
+.jmrs-report-table-wrap {
+	overflow-x: auto;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.jmrs-report-table-wrap table {
+	width: 100%;
+	table-layout: auto;
+}
+
+.jmrs-report-table-wrap th,
+.jmrs-report-table-wrap td {
+	word-break: break-word;
+	overflow-wrap: anywhere;
+	min-width: 0;
+	vertical-align: top;
+}
+
+.jmrs-report-vacancy-table th,
+.jmrs-report-vacancy-table td,
+.jmrs-report-movements-table th,
+.jmrs-report-movements-table td {
+	word-break: break-word;
+	overflow-wrap: anywhere;
+	min-width: 0;
+	vertical-align: top;
+}
+
+.jmrs-report-dataset--movements,
+.jmrs-report-dataset--vacancy {
+	margin-top: 16px;
 }
 
 .jmrs-report-dataset {
 	background: #fff;
 	border: 1px solid #c3c4c7;
 	padding: 12px 16px;
-	margin: 0 0 16px;
+	margin: 16px 0 0;
+	min-width: 0;
+	box-sizing: border-box;
 	break-inside: avoid;
 	page-break-inside: avoid;
+}
+
+.jmrs-report-section--snapshot .jmrs-report-dataset,
+.jmrs-report-section--period .jmrs-report-dataset {
+	border-color: #dcdcde;
 }
 
 .jmrs-report-dataset-note {
@@ -120,22 +296,47 @@
 
 .jmrs-report-dataset-grid {
 	display: grid;
-	grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.2fr);
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
 	gap: 16px;
 }
 
-@media (max-width: 782px) {
+@media (max-width: 960px) {
 	.jmrs-report-dataset-grid {
 		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 782px) {
+	.jmrs-report-filters {
+		padding: 12px;
+	}
+
+	.jmrs-filter-field {
+		flex: 1 1 100%;
+	}
+
+	.jmrs-report-kpis {
+		grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+	}
+
+	.jmrs-report-section--snapshot,
+	.jmrs-report-section--period {
+		padding: 12px;
+	}
+
+	.jmrs-chart-wrap {
+		min-height: 200px;
 	}
 }
 
 .jmrs-chart-wrap {
 	position: relative;
 	min-height: 240px;
+	min-width: 0;
 	border: 1px solid #dcdcde;
 	background: #f6f7f7;
 	padding: 12px;
+	box-sizing: border-box;
 }
 
 .jmrs-chart-wrap canvas {

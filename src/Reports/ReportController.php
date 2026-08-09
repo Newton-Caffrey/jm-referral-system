@@ -58,20 +58,34 @@ class ReportController
         $filters = $this->filters_from_request();
         $result  = $this->report_service->get_report_data($filters);
 
-        $kpis          = $result['kpis'];
-        $sections      = $result['sections'] ?? [];
-        $range_labels  = $result['range_labels'];
-        $filter_range  = $result['range'];
-        $filter_start  = $result['start_date'];
-        $filter_end    = $result['end_date'];
-        $filter_errors = $result['errors'];
-        $reports_url   = ReportService::get_reports_page_url();
-        $alerts_url    = admin_url('admin.php?page=jm-referrals-operational-alerts');
+        $kpis             = $result['kpis'];
+        $supported_living = is_array($result['supported_living'] ?? null)
+            ? $result['supported_living']
+            : [];
+        $vacancy          = is_array($result['vacancy'] ?? null) ? $result['vacancy'] : [];
+        $placement_movements = is_array($result['placement_movements'] ?? null)
+            ? $result['placement_movements']
+            : [];
+        $visit_filters    = is_array($result['visit_filters'] ?? null) ? $result['visit_filters'] : [];
+        $sections         = $result['sections'] ?? [];
+        $range_labels     = $result['range_labels'];
+        $filter_range     = $result['range'];
+        $filter_start     = $result['start_date'];
+        $filter_end       = $result['end_date'];
+        $filter_errors    = $result['errors'];
+        $filter_home_id   = (int) ($vacancy['home_id'] ?? 0);
+        $filter_visit_care_context = (string) ($visit_filters['care_context'] ?? VisitDeliveryContext::ALL);
+        $filter_visit_home_id      = (int) ($visit_filters['home_id'] ?? 0);
+        $reports_url      = ReportService::get_reports_page_url();
+        $alerts_url       = admin_url('admin.php?page=jm-referrals-operational-alerts');
 
         $export_filters = [
-            'range'      => $filter_range,
-            'start_date' => $filter_start,
-            'end_date'   => $filter_end,
+            'range'               => $filter_range,
+            'start_date'          => $filter_start,
+            'end_date'            => $filter_end,
+            'home_id'             => $filter_home_id,
+            'visit_care_context'  => $filter_visit_care_context,
+            'visit_home_id'       => $filter_visit_home_id,
         ];
         $full_export_url = ReportExportController::get_full_export_url($export_filters);
 
@@ -101,7 +115,14 @@ class ReportController
     }
 
     /**
-     * @return array{range: string, start_date: string, end_date: string}
+     * @return array{
+     *     range: string,
+     *     start_date: string,
+     *     end_date: string,
+     *     home_id: int,
+     *     visit_care_context: string,
+     *     visit_home_id: int
+     * }
      */
     private function filters_from_request(): array
     {
@@ -115,15 +136,27 @@ class ReportController
         $end_date = isset($_GET['jmrs_report_end'])
             ? sanitize_text_field(wp_unslash((string) $_GET['jmrs_report_end']))
             : '';
+        $home_id = isset($_GET['jmrs_report_home'])
+            ? absint(wp_unslash((string) $_GET['jmrs_report_home']))
+            : 0;
+        $visit_care_context = isset($_GET['jmrs_visit_care_context'])
+            ? sanitize_key(wp_unslash((string) $_GET['jmrs_visit_care_context']))
+            : VisitDeliveryContext::ALL;
+        $visit_home_id = isset($_GET['jmrs_visit_home'])
+            ? absint(wp_unslash((string) $_GET['jmrs_visit_home']))
+            : 0;
 
         if (! in_array($range, ReportService::allowed_ranges(), true)) {
             $range = ReportService::RANGE_THIS_MONTH;
         }
 
         return [
-            'range'      => $range,
-            'start_date' => $start_date,
-            'end_date'   => $end_date,
+            'range'               => $range,
+            'start_date'          => $start_date,
+            'end_date'            => $end_date,
+            'home_id'             => $home_id,
+            'visit_care_context'  => $visit_care_context,
+            'visit_home_id'       => $visit_home_id,
         ];
     }
 

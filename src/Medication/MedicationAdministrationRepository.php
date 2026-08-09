@@ -300,6 +300,42 @@ class MedicationAdministrationRepository
         return is_array($results) ? $results : [];
     }
 
+    /**
+     * Count today's medication administration exceptions for the given referrals.
+     *
+     * Uses the same exception statuses as OperationalAlertService.
+     *
+     * @param array<int, int> $referral_ids
+     */
+    public function count_exceptions_for_date_and_referral_ids(string $date, array $referral_ids): int
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $ids) {
+            return 0;
+        }
+
+        $admin_table = Tables::medication_administrations_table();
+        $referrals   = Tables::referrals_table();
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        $params = array_merge([$date, $date], $ids);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $sql = "SELECT COUNT(*)
+            FROM {$admin_table} a
+            INNER JOIN {$referrals} r ON r.id = a.referral_id
+            WHERE a.administration_status IN ('refused', 'omitted', 'unavailable', 'error')
+              AND (DATE(a.administered_time) = %s OR (a.administered_time IS NULL AND DATE(a.created_at) = %s))
+              AND r.archived_at IS NULL
+              AND a.referral_id IN ({$placeholders})";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $count = $wpdb->get_var($wpdb->prepare($sql, ...$params));
+
+        return (int) $count;
+    }
+
     public function count_exceptions_for_date(string $date, ?int $access_assigned_to = null): int
     {
         global $wpdb;

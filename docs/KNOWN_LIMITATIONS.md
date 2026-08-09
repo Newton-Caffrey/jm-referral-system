@@ -1,6 +1,6 @@
-# Known Limitations — JM Referral System v1.0.0
+# Known Limitations — JM Referral System v1.2.0
 
-Genuine remaining limitations after Phase 5.6 readiness review. Do not treat this as a full backlog.
+Genuine remaining limitations. Do not treat this as a full backlog.
 
 ---
 
@@ -48,7 +48,7 @@ Genuine remaining limitations after Phase 5.6 readiness review. Do not treat thi
 | No client or family portal | Staff admin + optional staff portal only |
 | Staff portal clinical ops in portal (1.1C) | Day-to-day clinical workflows available; notes uploads / reports / alerts pages still wp-admin |
 | Staff portal disabled by default | Enable in Settings → Staff Portal; test before enabling wp-admin redirect |
-| v1.1.0 needs UAT sign-off | Use `docs/uat/` package; evidence stays outside Git (`uat-evidence/`) |
+| v1.2.0 needs UAT sign-off | Use `docs/uat/UAT_SUPPORTED_LIVING_V1_2.md` + release checklist; evidence stays outside Git (`uat-evidence/`) |
 | Public intake wizard has no save-and-resume | Values live in the DOM for the session; refresh clears unsaved input |
 | Public intake: no CAPTCHA / tracking portal | Honeypot + rate limit + timing only; see `docs/PUBLIC_REFERRAL_INTAKE.md` |
 | Consent checkboxes are operational evidence | Not a full legal consent-management product |
@@ -83,6 +83,20 @@ See `docs/ACCESSIBILITY_REVIEW.md`.
 | WP_DEBUG query metrics | Optional generic counts when `WP_DEBUG` is true (no PHI/SQL) |
 | Uninstall default preserves data | Opt-in wipe requires `JMRS_DELETE_DATA_ON_UNINSTALL === true` |
 | InputAllowlist helper | Available utility; not all forms use it yet (local allowlists remain) |
+
+---
+
+## Supported Living reporting (v1.2 / Phase 2G)
+
+| Limitation | Notes |
+| --- | --- |
+| Movement period uses recorded-at time | Placement movement KPIs/CSV filter on `jmrs_referral_activity.created_at`, not backdated move-in/out dates |
+| No home-specific historical movement filter | Activity has no structured Home IDs; Vacancy Home (`jmrs_report_home`) does not apply to movements |
+| Vacant Since = latest occupancy end | Uses latest recorded `move_out_date` (or Never occupied); not a reconstructed vacancy calendar |
+| Monthly historical occupancy trend deferred | Current Snapshot / Vacancy are as-of-today only |
+| Legacy visits without snapshots | Terminal/executed visits without `service_location_*` appear as Location Not Recorded; never inferred from current Home |
+| Support Workers lack estate-wide Homes/Reports | By design — no `jmrs_view_homes` / `jmrs_view_reports` on Support Worker role |
+| Schedules have no independent location override | Service location resolves from care setting / occupancy / address; schedules do not store a separate override |
 
 ---
 

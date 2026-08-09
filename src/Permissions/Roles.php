@@ -62,6 +62,9 @@ class Roles
                     Capabilities::VIEW_MEDICATIONS,
                     Capabilities::MANAGE_MEDICATIONS,
                     Capabilities::ADMINISTER_MEDICATIONS,
+                    Capabilities::VIEW_HOMES,
+                    Capabilities::MANAGE_HOMES,
+                    Capabilities::MANAGE_OCCUPANCIES,
                 ],
             ],
             self::CARE_COORDINATOR => [
@@ -90,6 +93,9 @@ class Roles
                     Capabilities::VIEW_MEDICATIONS,
                     Capabilities::MANAGE_MEDICATIONS,
                     Capabilities::ADMINISTER_MEDICATIONS,
+                    Capabilities::VIEW_HOMES,
+                    Capabilities::MANAGE_HOMES,
+                    Capabilities::MANAGE_OCCUPANCIES,
                 ],
             ],
             self::ASSESSOR => [
@@ -108,6 +114,7 @@ class Roles
                     Capabilities::VIEW_SCHEDULES,
                     Capabilities::VIEW_MEDICATIONS,
                     Capabilities::MANAGE_MEDICATIONS,
+                    Capabilities::VIEW_HOMES,
                 ],
             ],
             self::SUPPORT_WORKER => [

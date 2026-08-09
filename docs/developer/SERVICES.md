@@ -73,8 +73,13 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Deps:** Visit + referral + care plan repos, activity, AccessPolicy, `UserProvider`, `CareTeamService`, `VisitTaskService`
 
 ### `VisitExecutionService`
-- **Purpose:** Execute/complete visits; manager review; awaiting-review / completed dashboards.
-- **Deps:** Visit + referral repos, activity, AccessPolicy, `VisitTaskService`, `MedicationAdministrationService`
+- **Purpose:** Execute/complete visits; manager review; awaiting-review / completed dashboards. On execute, freezes service-location snapshot with outcome in one visit UPDATE.
+- **Deps:** Visit + referral repos, activity, AccessPolicy, `VisitTaskService`, `MedicationAdministrationService`, `ServiceLocationResolver`
+
+### `ServiceLocationResolver`
+- **Purpose:** Read-only current/historical service location (Supported Living occupancy or own-home address). Never mutates data. Unexecuted → dynamic; executed → snapshot or legacy-unrecorded.
+- **Deps:** `ReferralRepository`, `OccupancyRepository`, `HomeRepository`, `BedroomRepository`
+- **UI (2F.2):** Staff Portal panels via `ServiceLocationPresenter` + `templates/portal/partials/service-location.php` (no DB in templates)
 
 ### `VisitTaskService`
 - **Purpose:** Generate/update/summarize visit tasks; bulk load by visit IDs.
@@ -99,6 +104,15 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 ### `ServiceTypeService`
 - **Purpose:** CRUD/active list; selectable checks for public/admin.
 - **Deps:** `ServiceTypeRepository`, `ReferralRepository`
+
+### `HomeService` / `BedroomService` / `OccupancyService` / `HomeDashboardService`
+- **Purpose:** Supported living homes, bedrooms, historical placements (2B/2C), care-setting integration (2D), and home operational dashboard read model (2E). Capacity = active bedrooms; occupancy metrics shared via `OccupancyService::compute_metrics()`.
+- **Deps:** Home/Bedroom/Occupancy repositories, visit/care-plan/MAR repos (dashboard), `UserProvider`, `ReferralRepository`, `AccessPolicy`, `ReferralActivityService`
+- **Docs:** `docs/SUPPORTED_LIVING.md`
+
+### `CareSetting` (domain)
+- **Purpose:** Allowlist / labels for `jmrs_referrals.care_setting` (`supported_living`, `own_home`, NULL = not specified).
+- **Used by:** `ReferralService`, `ReferralFilters`, `OccupancyService`, portal/admin list+edit, CSV export.
 
 ### `WorkflowStageService`
 - **Purpose:** CRUD; default stage; pipeline counts for dashboard.
@@ -126,9 +140,15 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Used by:** Alerts page (Menu), dashboard, portal dashboard, `ReportService`
 
 ### `ReportService`
-- **Purpose:** Report payloads and dashboard summary shortcut.
-- **Deps:** `ReportRepository`, AccessPolicy, `OperationalAlertService`, `UserProvider`
+- **Purpose:** Report payloads and dashboard summary shortcut; Phase 2G.1 Supported Living current-snapshot aggregates; Phase 2G.2 vacancy report; Phase 2G.3 placement movements; Phase 2G.4 visit care-delivery filters.
+- **Deps:** `ReportRepository`, AccessPolicy, `OperationalAlertService`, `UserProvider`, `OccupancyRepository`
 - **Constructed in:** `Menu` (not `Plugin::registerReferralControllers`)
+- **Notes:** Estate KPIs reuse `OccupancyRepository::estate_summary()` / `OccupancyService::compute_metrics()`. Care-setting counts reuse Active Clients semantics (`archived_at IS NULL`, status not completed/cancelled). Snapshot metrics are not date-range filtered. Vacancy detail uses `ReportRepository::list_current_vacancies()` (one grouped query) and home filter `jmrs_report_home`; detailed vacancy requires `jmrs_view_reports` + `jmrs_view_homes`. Placement movements use `count_placement_movements_in_range` / `list_placement_movements_in_range` on `jmrs_referral_activity` (`activity.created_at`); assigned-to scope only (historical completed/archived events retained); home filter not applied. Visit care-delivery filters (`jmrs_visit_care_context` / `jmrs_visit_home`) use `VisitDeliveryContext` classification (snapshot for executed; current care setting/occupancy for open; Location Not Recorded for terminal without snapshot) and must not reuse vacancy `jmrs_report_home`. Phase 2G.5 polish: filter fieldsets, snapshot/period badges, empty states, CareSetting label alignment, responsive Reports CSS, UAT checklist.
+
+### `VisitDeliveryContext`
+- **Purpose:** Shared Visit report filter normalisation and SQL predicates for Phase 2G.4.
+- **Used by:** `ReportRepository`, `ReportService`, `ReportController` / `ReportExportController` request params
+- **Notes:** No per-visit PHP loops; occupancy LEFT JOIN only when Visit filters are active.
 
 ---
 

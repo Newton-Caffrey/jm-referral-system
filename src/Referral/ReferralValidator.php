@@ -100,6 +100,13 @@ class ReferralValidator
             $errors['preferred_contact_method'] = __('Please select a valid preferred contact method.', 'jm-referral-system');
         }
 
+        if (array_key_exists('care_setting', $data)) {
+            $care_setting = trim((string) ($data['care_setting'] ?? ''));
+            if ('' !== $care_setting && ! CareSetting::is_valid($care_setting)) {
+                $errors['care_setting'] = __('Please select a valid care setting.', 'jm-referral-system');
+            }
+        }
+
         return $errors;
     }
 

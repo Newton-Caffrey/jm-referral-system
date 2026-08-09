@@ -21,6 +21,10 @@ use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Portal\Clinical\ClinicalDispatcher;
 use JMReferral\Portal\Clinical\PortalViewHost;
+use JMReferral\Portal\Homes\HomesHandler;
+use JMReferral\Portal\Homes\OccupancyHandler;
+use JMReferral\Homes\OccupancyService;
+use JMReferral\Referral\CareSetting;
 use JMReferral\Referral\ReferralActivityRepository;
 use JMReferral\Referral\ReferralEditController;
 use JMReferral\Referral\ReferralFilters;
@@ -30,6 +34,8 @@ use JMReferral\Referral\ReferralService;
 use JMReferral\Services\ServiceTypeService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\ServiceLocationPresenter;
+use JMReferral\Visits\ServiceLocationResolver;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Scheduling\ScheduleService;
 use JMReferral\Workflow\WorkflowStageService;
@@ -48,6 +54,20 @@ class PortalController implements PortalViewHost
      * PortalViewHost interface).
      */
     private ?ClinicalDispatcher $clinical_dispatcher = null;
+
+    /**
+     * Set after construction via set_homes_handler() (HomesHandler needs PortalViewHost).
+     */
+    private ?HomesHandler $homes_handler = null;
+
+    /**
+     * Set after construction via set_occupancy_handler() / set_occupancy_service().
+     */
+    private ?OccupancyHandler $occupancy_handler = null;
+
+    private ?OccupancyService $occupancy_service = null;
+
+    private ?ServiceLocationResolver $service_location_resolver = null;
 
     public function __construct(
         private PortalNavigation $navigation,
@@ -85,6 +105,30 @@ class PortalController implements PortalViewHost
     public function set_clinical_dispatcher(ClinicalDispatcher $clinical_dispatcher): void
     {
         $this->clinical_dispatcher = $clinical_dispatcher;
+    }
+
+    /**
+     * Breaks the PortalController <-> HomesHandler circular dependency.
+     * Must be called once during plugin bootstrap before dispatch().
+     */
+    public function set_homes_handler(HomesHandler $homes_handler): void
+    {
+        $this->homes_handler = $homes_handler;
+    }
+
+    public function set_occupancy_handler(OccupancyHandler $occupancy_handler): void
+    {
+        $this->occupancy_handler = $occupancy_handler;
+    }
+
+    public function set_occupancy_service(OccupancyService $occupancy_service): void
+    {
+        $this->occupancy_service = $occupancy_service;
+    }
+
+    public function set_service_location_resolver(ServiceLocationResolver $service_location_resolver): void
+    {
+        $this->service_location_resolver = $service_location_resolver;
     }
 
     public function render_portal_page(
@@ -156,6 +200,18 @@ class PortalController implements PortalViewHost
             }
 
             $this->clinical_dispatcher->dispatch($route);
+
+            return;
+        }
+
+        if (null !== $this->homes_handler && $this->homes_handler->handles($route)) {
+            $this->homes_handler->dispatch($route);
+
+            return;
+        }
+
+        if (null !== $this->occupancy_handler && $this->occupancy_handler->handles($route)) {
+            $this->occupancy_handler->dispatch($route);
 
             return;
         }
@@ -474,6 +530,7 @@ class PortalController implements PortalViewHost
                 'high'   => __('High', 'jm-referral-system'),
                 'urgent' => __('Urgent', 'jm-referral-system'),
             ],
+            'care_setting_options'=> CareSetting::filter_options(),
             'list_notice'         => $this->portal_retention_notice(),
         ];
 
@@ -681,8 +738,33 @@ class PortalController implements PortalViewHost
                 $visit_row['edit_url']    = $can_edit_visit ? PortalUrls::visit_edit($referral_id, $visit_id_row) : '';
                 $visit_row['execute_url'] = $can_execute_visit ? PortalUrls::visit_execute($referral_id, $visit_id_row) : '';
                 $visit_row['review_url']  = $can_review_visit ? PortalUrls::visit_review($referral_id, $visit_id_row) : '';
+                $visit_row['service_location_short'] = '';
 
                 $care_visits[] = $visit_row;
+            }
+
+            // One current-location resolve for the referral; historical labels use visit snapshot fields only.
+            if (null !== $this->service_location_resolver && [] !== $care_visits) {
+                $current_for_list = $this->service_location_resolver->resolve_for_referral($referral_id);
+                $current_short    = ServiceLocationPresenter::short_label($current_for_list);
+                foreach ($care_visits as $idx => $visit_row) {
+                    if ('' !== trim((string) ($visit_row['visit_outcome'] ?? ''))) {
+                        $care_visits[$idx]['service_location_short'] = ServiceLocationPresenter::short_label(
+                            $this->service_location_resolver->resolve_for_visit($visit_row)
+                        );
+                    } elseif (ServiceLocationPresenter::is_terminal_without_snapshot($visit_row)) {
+                        $care_visits[$idx]['service_location_short'] = __('Unavailable', 'jm-referral-system');
+                    } elseif (
+                        'completed' === strtolower(trim((string) ($visit_row['visit_status'] ?? '')))
+                        && '' === trim((string) ($visit_row['visit_outcome'] ?? ''))
+                    ) {
+                        $care_visits[$idx]['service_location_short'] = ServiceLocationPresenter::short_label(
+                            $this->service_location_resolver->resolve_for_visit($visit_row)
+                        );
+                    } else {
+                        $care_visits[$idx]['service_location_short'] = $current_short;
+                    }
+                }
             }
         }
 
@@ -767,7 +849,74 @@ class PortalController implements PortalViewHost
         $can_filter_archive = ! $this->access_policy->should_scope_to_assigned();
 
         $updated_notice = isset($_GET['jmrs_updated']) && '1' === (string) wp_unslash($_GET['jmrs_updated']);
+        $address_warning_notice = isset($_GET['jmrs_address_warning']) && '1' === (string) wp_unslash($_GET['jmrs_address_warning']);
         $clinical_notice = $this->portal_clinical_notice();
+
+        $care_setting_raw = $referral['care_setting'] ?? null;
+        $care_setting_raw = null === $care_setting_raw || '' === trim((string) $care_setting_raw)
+            ? null
+            : (string) $care_setting_raw;
+        $care_setting_label = CareSetting::label($care_setting_raw);
+        $is_own_home_setting = CareSetting::is_own_home($care_setting_raw);
+        $is_supported_living_setting = CareSetting::is_supported_living($care_setting_raw);
+        $is_care_setting_unspecified = CareSetting::is_unspecified($care_setting_raw);
+        $own_home_address_incomplete = $is_own_home_setting
+            && ! CareSetting::is_own_home_address_complete($referral);
+
+        $current_placement = null;
+        $placement_history = [];
+        $can_manage_occupancies = Capabilities::current_user_can(Capabilities::MANAGE_OCCUPANCIES)
+            && $this->access_policy->can_mutate_referral($referral);
+        $can_view_placement = Capabilities::current_user_can(Capabilities::VIEW_HOMES)
+            || Capabilities::current_user_can(Capabilities::MANAGE_OCCUPANCIES);
+        $place_url = '';
+        $transfer_url = '';
+        $end_placement_url = '';
+        $placement_notice = null;
+
+        if ($can_view_placement && null !== $this->occupancy_service) {
+            $current_raw = $this->occupancy_service->current_for_referral($referral_id);
+            if (null !== $current_raw) {
+                $current_placement = $this->occupancy_service->enrich_rows([$current_raw])[0] ?? $current_raw;
+                $occ_id = absint($current_placement['id'] ?? 0);
+                if ($can_manage_occupancies && $occ_id > 0) {
+                    $transfer_url      = PortalUrls::occupancy_transfer($occ_id);
+                    $end_placement_url = PortalUrls::occupancy_end($occ_id);
+                }
+            } elseif ($can_manage_occupancies && ! $is_archived && $is_supported_living_setting) {
+                // Place Resident only when explicitly Supported Living (not own_home / not unspecified primary CTA).
+                $place_url = PortalUrls::occupancy_place(['referral_id' => $referral_id]);
+            }
+            $placement_history = $this->occupancy_service->enrich_rows(
+                $this->occupancy_service->history_for_referral($referral_id)
+            );
+        }
+
+        if (isset($_GET['jmrs_placement_saved']) && '1' === (string) wp_unslash($_GET['jmrs_placement_saved'])) {
+            $placement_notice = [
+                'type'    => 'success',
+                'message' => __('Supported Living placement saved successfully.', 'jm-referral-system'),
+            ];
+        } elseif (isset($_GET['jmrs_placement_ended']) && '1' === (string) wp_unslash($_GET['jmrs_placement_ended'])) {
+            $placement_notice = [
+                'type'    => 'success',
+                'message' => __('Supported Living placement ended successfully.', 'jm-referral-system'),
+            ];
+        }
+
+        $service_location_panel = null;
+        $current_service_location = null;
+        if (null !== $this->service_location_resolver) {
+            $current_service_location = $this->service_location_resolver->resolve_for_referral($referral_id);
+            $service_location_panel   = ServiceLocationPresenter::panel_vars(
+                $current_service_location,
+                [
+                    'heading'      => ServiceLocationPresenter::heading('referral', $current_service_location),
+                    'show_warning' => true,
+                ]
+            );
+            $service_location_panel['service_location_panel_id'] = 'jmrs-portal-ref-service-location';
+        }
 
         $view = [
             'referral'                   => $referral,
@@ -849,8 +998,24 @@ class PortalController implements PortalViewHost
             'can_archive_referral'       => $can_archive_referral,
             'can_restore_referral'       => $can_restore_referral,
             'updated_notice'             => $updated_notice,
+            'address_warning_notice'     => $address_warning_notice,
             'retention_notice'           => $this->portal_retention_notice(),
             'clinical_notice'            => $clinical_notice,
+            'care_setting'               => $care_setting_raw,
+            'care_setting_label'         => $care_setting_label,
+            'is_own_home_setting'        => $is_own_home_setting,
+            'is_supported_living_setting'=> $is_supported_living_setting,
+            'is_care_setting_unspecified'=> $is_care_setting_unspecified,
+            'own_home_address_incomplete'=> $own_home_address_incomplete || $address_warning_notice,
+            'can_view_placement'         => $can_view_placement,
+            'can_manage_occupancies'     => $can_manage_occupancies,
+            'current_placement'          => $current_placement,
+            'placement_history'          => $placement_history,
+            'place_url'                  => $place_url,
+            'transfer_url'               => $transfer_url,
+            'end_placement_url'          => $end_placement_url,
+            'placement_notice'           => $placement_notice,
+            'service_location_panel'     => $service_location_panel,
         ];
 
         // Presentation-only grouping of already-gated action URLs for the
@@ -980,7 +1145,15 @@ class PortalController implements PortalViewHost
         }
 
         wp_safe_redirect(
-            add_query_arg('jmrs_updated', '1', PortalUrls::referral($referral_id))
+            add_query_arg(
+                array_filter(
+                    [
+                        'jmrs_updated'         => '1',
+                        'jmrs_address_warning' => ! empty($result['care_setting_warning']) ? '1' : null,
+                    ]
+                ),
+                PortalUrls::referral($referral_id)
+            )
         );
         exit;
     }
@@ -1373,6 +1546,7 @@ class PortalController implements PortalViewHost
             ['can_manage_visits', 'visit_new_url', __('Schedule Visit', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
             ['can_manage_medications', 'medication_new_url', __('Add Medication', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
             ['can_manage_care_team', 'care_team_new_url', __('Add Team Member', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
+            ['can_manage_occupancies', 'place_url', __('Place in Supported Living', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
         ];
 
         foreach ($candidates as [$flag_key, $url_key, $label, $class]) {
@@ -1585,6 +1759,9 @@ class PortalController implements PortalViewHost
         }
         if (! empty($filters['assigned_to'])) {
             $args['jmrs_assigned_to'] = absint($filters['assigned_to']);
+        }
+        if (! empty($filters['care_setting'])) {
+            $args['jmrs_care_setting'] = (string) $filters['care_setting'];
         }
         $archive_scope = (string) ($filters['archive_scope'] ?? 'active');
         if ('' !== $archive_scope && 'active' !== $archive_scope) {

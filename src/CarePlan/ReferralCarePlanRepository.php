@@ -181,6 +181,42 @@ class ReferralCarePlanRepository
     }
 
     /**
+     * Count active care plans with overdue review_date for the given referrals.
+     *
+     * @param array<int, int> $referral_ids
+     */
+    public function count_overdue_reviews_for_referral_ids(array $referral_ids, string $today): int
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $ids) {
+            return 0;
+        }
+
+        $care_plans = Tables::referral_care_plans_table();
+        $referrals  = Tables::referrals_table();
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        $params = array_merge([$today], $ids);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $sql = "SELECT COUNT(*)
+            FROM {$care_plans} cp
+            INNER JOIN {$referrals} r ON r.id = cp.referral_id
+            WHERE cp.plan_status = 'active'
+              AND cp.review_date IS NOT NULL
+              AND cp.review_date != ''
+              AND cp.review_date < %s
+              AND r.archived_at IS NULL
+              AND cp.referral_id IN ({$placeholders})";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $count = $wpdb->get_var($wpdb->prepare($sql, ...$params));
+
+        return (int) $count;
+    }
+
+    /**
      * Active care plans with no active care-team member on the referral.
      *
      * @return array<int, array<string, mixed>>

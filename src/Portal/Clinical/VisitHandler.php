@@ -10,6 +10,8 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\ServiceLocationPresenter;
+use JMReferral\Visits\ServiceLocationResolver;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskService;
 
@@ -28,8 +30,51 @@ class VisitHandler
         private MedicationAdministrationService $medication_administration_service,
         private CareVisitRepository $visit_repository,
         private ScheduleRepository $schedule_repository,
-        private UserProvider $user_provider
+        private UserProvider $user_provider,
+        private ServiceLocationResolver $service_location_resolver
     ) {
+    }
+
+    /**
+     * @param array<string, mixed> $referral
+     * @param array<string, mixed>|null $visit
+     * @return array<string, mixed>
+     */
+    private function build_service_location_panel(array $referral, ?array $visit, string $context): array
+    {
+        $referral_id = absint($referral['id'] ?? 0);
+
+        if (null !== $visit && ServiceLocationPresenter::is_terminal_without_snapshot($visit)) {
+            $current = $this->service_location_resolver->resolve_for_referral($referral_id);
+
+            return ServiceLocationPresenter::panel_vars(
+                $current,
+                [
+                    'heading'             => ServiceLocationPresenter::heading('cancelled', $current),
+                    'unavailable_message' => __('Recorded service location unavailable', 'jm-referral-system'),
+                    'show_warning'        => false,
+                    'secondary_heading'   => __('Current Client Service Location', 'jm-referral-system'),
+                    'secondary_location'  => $current,
+                ]
+            );
+        }
+
+        if (null !== $visit) {
+            $location = $this->service_location_resolver->resolve_for_visit($visit);
+        } else {
+            $location = $this->service_location_resolver->resolve_for_referral($referral_id);
+        }
+
+        $show_recorded = $location->is_historical() && null !== $location->recorded_at();
+
+        return ServiceLocationPresenter::panel_vars(
+            $location,
+            [
+                'heading'          => ServiceLocationPresenter::heading($context, $location),
+                'show_warning'     => ! $location->is_historical(),
+                'show_recorded_at' => $show_recorded,
+            ]
+        );
     }
 
     public function handle_new(int $referral_id): void
@@ -127,6 +172,13 @@ class VisitHandler
             'form_action'            => $form_action,
             'cancel_url'             => PortalUrls::referral($referral_id),
             'is_create'              => null === $visit,
+            'service_location_panel' => $this->build_service_location_panel(
+                $referral,
+                is_array($visit) ? $visit : null,
+                null !== $visit && '' !== trim((string) ($visit['visit_outcome'] ?? ''))
+                    ? 'visit_historical'
+                    : 'visit_current'
+            ),
         ];
 
         $this->view_host->render_portal_page(
@@ -287,6 +339,7 @@ class VisitHandler
             'witness_users'                => $this->user_provider->get_assignable_users(),
             'form_action'                  => PortalUrls::visit_execute($referral_id, $visit_id),
             'cancel_url'                   => PortalUrls::referral($referral_id),
+            'service_location_panel'       => $this->build_service_location_panel($referral, $visit, 'execute'),
         ];
 
         $this->view_host->render_portal_page(
@@ -405,6 +458,7 @@ class VisitHandler
             'task_summaries' => $task_summaries,
             'form_action'    => PortalUrls::visit_review($referral_id, $visit_id),
             'cancel_url'     => PortalUrls::referral($referral_id),
+            'service_location_panel' => $this->build_service_location_panel($referral, $visit, 'review'),
         ];
 
         $this->view_host->render_portal_page(

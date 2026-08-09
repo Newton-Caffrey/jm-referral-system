@@ -10,6 +10,23 @@
 		});
 	}
 
+	function chartHasRenderableData(chartConfig) {
+		if (!chartConfig) {
+			return false;
+		}
+
+		if (Array.isArray(chartConfig.series) && chartConfig.series.length > 0) {
+			if (Array.isArray(chartConfig.labels) && chartConfig.labels.length > 0) {
+				return true;
+			}
+			return chartConfig.series.some(function (series) {
+				return hasValues(series && series.values);
+			});
+		}
+
+		return hasValues(chartConfig.values);
+	}
+
 	function palette(count) {
 		var colors = [
 			'#2271b1',
@@ -31,6 +48,39 @@
 		return out;
 	}
 
+	function buildDatasets(chartConfig, type) {
+		var isDoughnut = type === 'doughnut' || type === 'pie';
+		var series = Array.isArray(chartConfig.series) ? chartConfig.series : null;
+
+		if (series && series.length > 0 && !isDoughnut) {
+			var seriesColors = palette(Math.max(series.length, 2));
+			return series.map(function (item, index) {
+				return {
+					label: (item && item.label) || '',
+					data: Array.isArray(item && item.values) ? item.values : [],
+					backgroundColor: seriesColors[index % seriesColors.length],
+					borderColor: seriesColors[index % seriesColors.length],
+					borderWidth: 1
+				};
+			});
+		}
+
+		var values = Array.isArray(chartConfig.values) ? chartConfig.values : [];
+		var colors = palette(values.length);
+
+		return [
+			{
+				label: chartConfig.title || '',
+				data: values,
+				backgroundColor: isDoughnut ? colors : colors[0],
+				borderColor: isDoughnut ? '#ffffff' : colors[0],
+				borderWidth: isDoughnut ? 2 : 1,
+				tension: type === 'line' ? 0.25 : 0,
+				fill: type === 'line'
+			}
+		];
+	}
+
 	function initCharts(config) {
 		if (!config || !Array.isArray(config.charts) || typeof Chart === 'undefined') {
 			return;
@@ -47,10 +97,13 @@
 			}
 
 			var labels = Array.isArray(chartConfig.labels) ? chartConfig.labels : [];
-			var values = Array.isArray(chartConfig.values) ? chartConfig.values : [];
 			var emptyEl = document.getElementById('jmrs-chart-empty-' + chartConfig.id);
+			var type = chartConfig.type || 'bar';
+			var indexAxis = chartConfig.indexAxis || 'x';
+			var isDoughnut = type === 'doughnut' || type === 'pie';
+			var isGrouped = Array.isArray(chartConfig.series) && chartConfig.series.length > 0 && !isDoughnut;
 
-			if (!hasValues(values)) {
+			if (!chartHasRenderableData(chartConfig)) {
 				canvas.classList.add('jmrs-chart-hidden');
 				if (emptyEl) {
 					emptyEl.hidden = false;
@@ -62,26 +115,11 @@
 				emptyEl.hidden = true;
 			}
 
-			var type = chartConfig.type || 'bar';
-			var indexAxis = chartConfig.indexAxis || 'x';
-			var colors = palette(values.length);
-			var isDoughnut = type === 'doughnut' || type === 'pie';
-
 			new Chart(canvas.getContext('2d'), {
 				type: type,
 				data: {
 					labels: labels,
-					datasets: [
-						{
-							label: chartConfig.title || '',
-							data: values,
-							backgroundColor: isDoughnut ? colors : colors[0],
-							borderColor: isDoughnut ? '#ffffff' : colors[0],
-							borderWidth: isDoughnut ? 2 : 1,
-							tension: type === 'line' ? 0.25 : 0,
-							fill: type === 'line'
-						}
-					]
+					datasets: buildDatasets(chartConfig, type)
 				},
 				options: {
 					responsive: true,
@@ -89,7 +127,7 @@
 					indexAxis: indexAxis,
 					plugins: {
 						legend: {
-							display: isDoughnut,
+							display: isDoughnut || isGrouped,
 							position: 'bottom'
 						},
 						title: {
@@ -101,12 +139,14 @@
 						: {
 								x: {
 									beginAtZero: true,
+									stacked: false,
 									ticks: {
 										precision: 0
 									}
 								},
 								y: {
 									beginAtZero: true,
+									stacked: false,
 									ticks: {
 										precision: 0
 									}

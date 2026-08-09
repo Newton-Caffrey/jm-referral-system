@@ -1,6 +1,6 @@
 # JM Referral System
 
-**Version 1.0.0** · **Database schema 2.17.0**
+**Version 1.2.0** · **Database schema 2.21.0**
 
 A secure WordPress plugin for healthcare referral and domiciliary care management, built for **J&M Healthcare**.
 
@@ -8,7 +8,7 @@ A secure WordPress plugin for healthcare referral and domiciliary care managemen
 
 ## Overview
 
-JM Referral System takes a referral from website or admin intake through assessment, care planning, team assignment, scheduling, visit delivery, and medication administration — with role-based access, audit activity, private documents, and optional staff portal access.
+JM Referral System takes a referral from website or admin intake through assessment, care planning, team assignment, scheduling, visit delivery, and medication administration — with role-based access, audit activity, private documents, optional staff portal access, and **Supported Living** homes/occupancy operations.
 
 Architecture follows **Repository → Service → Controller → Template** with dependency wiring in `Plugin.php`, versioned schema migrations, and capability + AccessPolicy enforcement.
 
@@ -21,35 +21,36 @@ Architecture follows **Repository → Service → Controller → Template** with
 
 ## Features
 
-- Referral CRUD, numbering, assignment, search/filter, CSV export  
-- Workflow stages, notes, activity timeline, email notifications  
-- Assessments, care plans (reviews/versions), care team  
-- Schedules, visit generation/execution, task checklists  
-- Medication list and visit-time administration  
-- Operational alerts and reporting foundation  
-- Private document storage and secure downloads  
-- Public intake shortcode with multi-step wizard  
-- Optional staff portal (referral edit + clinical day-to-day workflows)  
-- Archive / restore / safe delete; data integrity counts  
+- Referral CRUD, numbering, assignment, search/filter, CSV export
+- Workflow stages, notes, activity timeline, email notifications
+- Assessments, care plans (reviews/versions), care team
+- Schedules, visit generation/execution, task checklists
+- Medication list and visit-time administration
+- Operational alerts and reporting (including Supported Living analytics)
+- Private document storage and secure downloads
+- Public intake shortcode with multi-step wizard
+- Optional staff portal (referral edit + clinical day-to-day workflows)
+- Supported Living: Homes, bedrooms, occupancy, transfers, own-home care setting, home dashboard
+- Archive / restore / safe delete; data integrity counts
 
 ---
 
 ## Requirements
 
-- WordPress 6.0+  
-- PHP 8.0+ (8.1+ recommended)  
-- Working `wp_mail` / SMTP for notifications  
-- HTTPS recommended  
+- WordPress 6.0+
+- PHP 8.0+ (8.1+ recommended)
+- Working `wp_mail` / SMTP for notifications
+- HTTPS recommended
 
 ---
 
 ## Installation
 
-1. Upload the release ZIP (must include `vendor/`) under **Plugins → Add New**.  
-2. Activate **J&M Referral System**.  
-3. Configure SMTP, then Settings (public form / portal as needed).  
+1. Upload the release ZIP (must include `vendor/`) under **Plugins → Add New**.
+2. Activate **J&M Referral System**.
+3. Configure SMTP, then Settings (public form / portal as needed).
 
-Full steps: [`docs/INSTALLATION_GUIDE.md`](docs/INSTALLATION_GUIDE.md).  
+Full steps: [`docs/INSTALLATION_GUIDE.md`](docs/INSTALLATION_GUIDE.md).
 Go-live ticks: [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
 
 ### Shortcodes
@@ -82,10 +83,10 @@ Schema version: option `jmrs_db_version` / `Migrator::DB_VERSION` (independent o
 
 ## Security
 
-- Capability checks and AccessPolicy  
-- Private uploads; secure download controllers  
-- Public form spam controls  
-- Portal privacy headers  
+- Capability checks and AccessPolicy
+- Private uploads; secure download controllers
+- Public form spam controls
+- Portal privacy headers
 
 Report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md) and [`docs/SECURITY.md`](docs/SECURITY.md).
 
@@ -99,16 +100,19 @@ Report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md) and [`docs
 | [Administrator](docs/ADMINISTRATOR_GUIDE.md) | Full admin feature map |
 | [Staff user](docs/STAFF_USER_GUIDE.md) | Portal usage |
 | [Public referral](docs/PUBLIC_REFERRAL_GUIDE.md) | Website form |
-| [Release notes](docs/RELEASE_NOTES_v1.0.0.md) | v1.0.0 highlights |
+| [Release notes v1.2.0](docs/RELEASE_NOTES_v1.2.0.md) | Current release highlights |
+| [Release notes v1.0.0](docs/RELEASE_NOTES_v1.0.0.md) | First production package |
+| [Supported Living](docs/SUPPORTED_LIVING.md) | Homes, occupancy, service location, reporting |
 | [Packaging](docs/PACKAGING.md) | Production ZIP build rules |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) / [FAQ](docs/FAQ.md) | Support |
 | [Known limitations](docs/KNOWN_LIMITATIONS.md) | Honest constraints |
 | [Backup & recovery](docs/BACKUP_AND_RECOVERY.md) | Ops continuity |
-| [UAT package (v1.1.0)](docs/uat/README.md) | Acceptance test plan, scenarios, cases, sign-off |
+| [Release checklist](docs/RELEASE_CHECKLIST.md) | Pre-production gate |
+| [UAT package](docs/uat/README.md) | Acceptance tests (portal + Supported Living v1.2) |
 
 Additional technical docs: performance/production audits, retention policy, UI/a11y, portal/intake deep-dives under `docs/`.
 
-**v1.1.0 note:** Production promotion of the 1.1 line requires completed UAT and recorded sign-off in `docs/uat/UAT_SIGN_OFF.md` (fictional data only; evidence stays outside Git).
+**v1.2.0 note:** Production promotion requires completed Supported Living UAT (`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`) and the release checklist gate. Evidence stays outside Git (`uat-evidence/`).
 
 ### Developer documentation
 
@@ -130,18 +134,18 @@ Additional technical docs: performance/production audits, retention policy, UI/a
 
 **Include**
 
-- Plugin PHP, `templates/`, `assets/`, `docs/`  
-- `vendor/` (Composer runtime autoload; run `composer install --no-dev` before packing)  
+- Plugin PHP, `templates/`, `assets/`, `docs/`
+- `vendor/` (Composer runtime autoload; run `composer install --no-dev` before packing)
 - `LICENSE`, `README.md`, `CHANGELOG.md`, `SECURITY.md`, `CONTRIBUTING.md`
 
 **Exclude**
 
-- `.git/`, `.github/`  
-- `node_modules/`  
-- OS junk (`.DS_Store`, `Thumbs.db`)  
-- Editor/IDE configs (`.idea/`, `.vscode/` unless intentionally shared)  
-- Local env files, dumps, personal notes  
-- Dev-only tooling not required at runtime  
+- `.git/`, `.github/`
+- `node_modules/`
+- OS junk (`.DS_Store`, `Thumbs.db`)
+- Editor/IDE configs (`.idea/`, `.vscode/` unless intentionally shared)
+- Local env files, dumps, personal notes
+- Dev-only tooling not required at runtime
 
 Suggested archive root folder name: `jm-referral-system/`.
 
@@ -149,14 +153,15 @@ Suggested archive root folder name: `jm-referral-system/`.
 
 ## Roadmap
 
-v1.0.0 is the first production package. **Product line 1.1** (portal clinical ops + UX) requires UAT sign-off before production — see [`docs/uat/`](docs/uat/README.md) and [`ROADMAP.md`](ROADMAP.md).
+**Current release:** plugin `1.2.0` · DB `2.21.0` — see [`docs/RELEASE_NOTES_v1.2.0.md`](docs/RELEASE_NOTES_v1.2.0.md) and [`ROADMAP.md`](ROADMAP.md).
+Supported Living UAT: [`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`](docs/uat/UAT_SUPPORTED_LIVING_V1_2.md).
 
 ---
 
 ## Support
 
-Internal J&M Healthcare operations / your appointed maintainer.  
-Security: `SECURITY.md`.  
+Internal J&M Healthcare operations / your appointed maintainer.
+Security: `SECURITY.md`.
 Contributing: `CONTRIBUTING.md`.
 
 ---

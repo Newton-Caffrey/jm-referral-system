@@ -4,6 +4,7 @@ namespace JMReferral\Referral;
 
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Homes\OccupancyRepository;
 use JMReferral\Services\ServiceTypeService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Workflow\WorkflowStageService;
@@ -33,7 +34,8 @@ class ReferralEditController
         private UserProvider $user_provider,
         private ServiceTypeService $service_type_service,
         private WorkflowStageService $workflow_stage_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private OccupancyRepository $occupancy_repository
     ) {
     }
 
@@ -168,6 +170,16 @@ class ReferralEditController
         $data['current_workflow_stage_id'] = (string) absint($existing['workflow_stage_id'] ?? 0);
         $errors                            = $this->validator->validate($data);
 
+        $normalized_setting = CareSetting::normalize((string) ($data['care_setting'] ?? ''));
+        if (CareSetting::is_own_home($normalized_setting)
+            && null !== $this->occupancy_repository->current_for_referral($referral_id)
+        ) {
+            $errors['care_setting'] = __(
+                'Cannot set Client\'s Own Home while an active Supported Living placement exists. Transfer or end the placement first.',
+                'jm-referral-system'
+            );
+        }
+
         if (! empty($errors)) {
             return [
                 'success'   => false,
@@ -198,6 +210,15 @@ class ReferralEditController
             'errors'    => [],
             'not_found' => false,
             'forbidden' => false,
+            'care_setting_warning' => CareSetting::is_own_home($normalized_setting)
+                && ! CareSetting::is_own_home_address_complete(
+                    [
+                        'address_line_1' => $data['address_line_1'] ?? ($existing['address_line_1'] ?? ''),
+                        'address_line_2' => $data['address_line_2'] ?? ($existing['address_line_2'] ?? ''),
+                        'city'           => $data['city'] ?? ($existing['city'] ?? ''),
+                        'postcode'       => $data['postcode'] ?? ($existing['postcode'] ?? ''),
+                    ]
+                ),
         ];
     }
 
@@ -225,6 +246,11 @@ class ReferralEditController
             'care_start_date'          => (string) ($referral['care_start_date'] ?? ''),
             'preferred_contact_method' => (string) ($referral['preferred_contact_method'] ?? ''),
             'care_requirements'        => (string) ($referral['care_requirements'] ?? ''),
+            'care_setting'             => (string) ($referral['care_setting'] ?? ''),
+            'address_line_1'           => (string) ($referral['address_line_1'] ?? ''),
+            'address_line_2'           => (string) ($referral['address_line_2'] ?? ''),
+            'city'                     => (string) ($referral['city'] ?? ''),
+            'postcode'                 => (string) ($referral['postcode'] ?? ''),
         ];
     }
 
@@ -410,7 +436,36 @@ class ReferralEditController
             'care_requirements'        => isset($input['jmrs_care_requirements'])
                 ? sanitize_textarea_field(wp_unslash($input['jmrs_care_requirements']))
                 : '',
+            'care_setting'             => $this->sanitize_care_setting($input),
+            'address_line_1'           => isset($input['jmrs_address_line_1'])
+                ? sanitize_text_field(wp_unslash($input['jmrs_address_line_1']))
+                : '',
+            'address_line_2'           => isset($input['jmrs_address_line_2'])
+                ? sanitize_text_field(wp_unslash($input['jmrs_address_line_2']))
+                : '',
+            'city'                     => isset($input['jmrs_city'])
+                ? sanitize_text_field(wp_unslash($input['jmrs_city']))
+                : '',
+            'postcode'                 => isset($input['jmrs_postcode'])
+                ? sanitize_text_field(wp_unslash($input['jmrs_postcode']))
+                : '',
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     */
+    private function sanitize_care_setting(array $input): string
+    {
+        $care_setting = isset($input['jmrs_care_setting'])
+            ? sanitize_key(wp_unslash($input['jmrs_care_setting']))
+            : '';
+
+        if ('' !== $care_setting && ! CareSetting::is_valid($care_setting)) {
+            return '';
+        }
+
+        return $care_setting;
     }
 
     /**

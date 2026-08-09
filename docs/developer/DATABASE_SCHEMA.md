@@ -1,6 +1,6 @@
 # Database Schema — JM Referral System
 
-Schema version: **`2.17.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).  
+Schema version: **`2.21.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
 DDL authority: `JMReferral\Database\Tables::create()` via WordPress `dbDelta`.
 
 All physical names are `{wpdb->prefix}jmrs_*`. Methods below are on `Tables`.
@@ -28,6 +28,10 @@ erDiagram
   jmrs_care_visits ||--o{ jmrs_visit_tasks : tasks
   jmrs_medications ||--o{ jmrs_medication_administrations : mar
   jmrs_care_visits ||--o{ jmrs_medication_administrations : mar
+  jmrs_homes ||--o{ jmrs_bedrooms : contains
+  jmrs_homes ||--o{ jmrs_occupancies : hosts
+  jmrs_bedrooms ||--o{ jmrs_occupancies : occupied_by
+  jmrs_referrals ||--o{ jmrs_occupancies : placed
 ```
 
 ---
@@ -43,11 +47,11 @@ erDiagram
 | **PK** | `id` |
 | **FKs (logical)** | `service_type_id` → service types; `workflow_stage_id` → workflow stages; `assigned_to` / `archived_by` → WP users |
 
-**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, `submission_channel`, `public_consent_at`, `public_consent_version`, **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps.
+**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps.
 
-**Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
+**Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, `care_setting`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
 
-**Workflows:** Create (admin/public), edit, assign, stage change, list/export, archive/restore, portal view.
+**Workflows:** Create (admin/public), edit (incl. care setting), assign, stage change, list/export/filter by care setting, archive/restore, portal view.
 
 ---
 
@@ -60,7 +64,7 @@ erDiagram
 | **PK** | `id` |
 | **FK** | `referral_id` → referrals; `user_id` → WP user |
 
-**Columns:** `action`, `description`, `created_at`.  
+**Columns:** `action`, `description`, `created_at`.
 **Indexes:** `referral_id`, `user_id`, `action`, `referral_id_created_at`.
 
 ---
@@ -74,7 +78,7 @@ erDiagram
 | **PK** | `id` |
 | **FK** | `referral_id`, `user_id` |
 
-**Columns:** `note`, `created_at`.  
+**Columns:** `note`, `created_at`.
 **Indexes:** `referral_id`, `user_id`, `referral_id_created_at`.
 
 ---
@@ -88,7 +92,7 @@ erDiagram
 | **PK** | `id` |
 | **Unique** | `slug` |
 
-**Columns:** `name`, `slug`, `description`, `status`, timestamps.  
+**Columns:** `name`, `slug`, `description`, `status`, timestamps.
 **Indexes:** `UNIQUE slug`, `status`.
 
 ---
@@ -102,7 +106,7 @@ erDiagram
 | **PK** | `id` |
 | **Unique** | `slug` |
 
-**Columns:** `name`, `slug`, `description`, `stage_order`, `status`, timestamps.  
+**Columns:** `name`, `slug`, `description`, `stage_order`, `status`, timestamps.
 Seeded by migrator when empty.
 
 ---
@@ -211,7 +215,15 @@ Seeded by migrator when empty.
 | **Unique** | `generation_key` (idempotent generation) |
 | **FK** | `referral_id`, `care_plan_id`, `schedule_id`, `assigned_user_id`, `reviewed_by` |
 
-**Columns:** `visit_date`, `start_time`, `end_time`, `visit_status`, `visit_type`, execution fields (`arrival_time`, `departure_time`, `visit_outcome`, task summaries, review fields).
+**Columns:** `visit_date`, `start_time`, `end_time`, `visit_status`, `visit_type`, execution fields (`arrival_time`, `departure_time`, `visit_outcome`, task summaries, review fields), service-location snapshot fields (Phase 2F.1; nullable; written only at visit execution):
+
+- `service_location_type` (`supported_living` \| `own_home` \| `unresolved`)
+- `service_location_label` (denormalized display label)
+- `service_address_line_1` / `service_address_line_2` / `service_city` / `service_postcode`
+- `service_home_id` / `service_bedroom_id` / `service_occupancy_id` (app references; no DB FK)
+- `service_location_recorded_at`
+
+Unexecuted / generated visits leave these NULL. No backfill for legacy executed rows.
 
 ---
 
@@ -252,6 +264,53 @@ Seeded by migrator when empty.
 | **FK** | `medication_id`, `visit_id`, witness/admin user fields as stored |
 
 **Columns:** administration status, dose given, reason codes, notes, times.
+
+---
+
+### `jmrs_homes` — `homes_table()`
+
+**Purpose:** Supported living property records (Phase 2B). No referral/client FK.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Indexes** | `status`, `manager_user_id`, `name` |
+| **App FK** | `manager_user_id` → WP user (no DB constraint) |
+
+**Status values:** `active`, `inactive` (soft archive; no hard-delete in Staff Portal).
+
+**Columns:** name, address_line_1/2, city, postcode, phone, manager_user_id, status, notes, timestamps.
+
+### `jmrs_bedrooms` — `bedrooms_table()`
+
+**Purpose:** Rooms within a home. Capacity = count of **active** bedrooms.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Unique** | `(home_id, room_label)` |
+| **Indexes** | `home_id`, `status`, `(home_id, status)` |
+| **App FK** | `home_id` → `jmrs_homes.id` (no DB constraint) |
+
+**Do not store** `referral_id` / `client_id` on bedrooms. Occupancy is Phase 2C (`jmrs_occupancies`).
+
+**Status values:** `active`, `inactive`. New bedrooms cannot be created under an inactive home. Occupied bedrooms cannot be inactivated.
+
+### `jmrs_occupancies` — `occupancies_table()`
+
+**Purpose:** Historical Supported Living placements (one active per bedroom; one active per referral).
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Indexes** | `(referral_id, status)`, `(bedroom_id, status)`, `(home_id, status)`, `move_in_date`, `status` |
+| **App FKs** | `referral_id`, `home_id`, `bedroom_id`, `created_by`, `ended_by` (no DB constraints) |
+
+**Status values:** `active`, `ended`.
+
+**Columns:** move_in_date, move_out_date, notes, end_reason, created_by, ended_by, created_at, updated_at, ended_at.
+
+Active uniqueness is enforced in `OccupancyService` with transactions + `SELECT … FOR UPDATE` (not a partial unique index).
 
 ---
 

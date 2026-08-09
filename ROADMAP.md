@@ -128,6 +128,25 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Phase 1.1F.3: screenshot-driven portal heading/table fixes; public weight lightening (font-family TBD)
 - [ ] Phase 6.2B+ / **v1.1**: remaining frontend workflows (notes, document uploads, reports, operational alerts page)
 
+### Product Phase 2 / Supported Living (v1.2)
+
+- [x] Phase 2A: architecture audit (approved)
+- [x] Phase 2B: Homes & Bedrooms foundation (DB `2.18.0`, Staff Portal) — `docs/SUPPORTED_LIVING.md`
+- [x] Phase 2C: Occupancy / placements (DB `2.19.0`, historical `jmrs_occupancies`)
+- [x] Phase 2D: Care setting & own-home support (DB `2.20.0`, nullable `care_setting`)
+- [x] Phase 2E: Home operational dashboard (read model; no DB migration)
+- [x] Phase 2F.0: Service location architecture audit
+- [x] Phase 2F.1: Service location foundation & historical visit snapshot (DB `2.21.0`)
+- [x] Phase 2F.2: Service location UI & own-home address management (no DB migration)
+- [x] Phase 2G.0: Reporting audit (docs)
+- [x] Phase 2G.1: Supported Living management overview (WP Admin Reports current snapshot; no DB migration)
+- [x] Phase 2G.2: Occupancy & vacancy reporting (current vacancy table + home filter + CSV; no DB migration)
+- [x] Phase 2G.3: Placement movement reporting (activity-based; date-range; no DB migration)
+- [x] Phase 2G.4: Visit analytics by care delivery context (existing Visit reports; snapshot vs current; no DB migration)
+- [x] Phase 2G.5: Reporting polish, export consistency & UAT (no DB migration)
+- [x] Phase 2H: Full Supported Living UAT & release preparation (product `1.2.0`; DB `2.21.0`)
+- [ ] Post-2H: structured movement From/To metadata / occupancy trend (future)
+
 ### Version 1.0.0 Production Package ✅
 
 - [x] Phase 7.1: release documentation, version alignment, LICENSE/CONTRIBUTING/SECURITY, packaging guidance
@@ -217,11 +236,13 @@ Planned themes (not committed scope):
 | Phase 6.2A — Staff portal foundation | Routing, shell, dashboard, referral list/view | ✅ Complete |
 | Phase 7.1 — Production release package | Docs, version alignment, packaging, checklist | ✅ Complete |
 | Phase 7.2 — Developer documentation | Architecture, schema, permissions, DI, history | ✅ Complete |
-| Version 1.1 | Portal workflows + hardening backlog | 🚧 Planned |
-| Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Absorbed into 1.1+ |
+| Version 1.1 | Portal workflows + UX (shipped with 1.2.0 package) | ✅ Complete (bundled in 1.2.0) |
+| Product Phase 2 / v1.2 | Supported Living (homes → occupancy → care setting → home dashboard → service location → reporting → UAT) | ✅ Phase 2H release prep (DB `2.21.0`) |
+| Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Absorbed into 1.1+ / backlog |
 
-**Current release:** plugin `1.0.0` · DB `2.17.0` · see `docs/RELEASE_NOTES_v1.0.0.md`, `docs/RELEASE_CHECKLIST.md`, and `docs/KNOWN_LIMITATIONS.md`.
+**Current shipped release:** plugin `1.2.0` · DB `2.21.0` · see `docs/RELEASE_NOTES_v1.2.0.md`.
+**UAT:** `docs/uat/UAT_SUPPORTED_LIVING_V1_2.md` · checklist `docs/RELEASE_CHECKLIST.md`.
 
-**Next version:** **1.1** — see sections above.
+**Next versions:** Post-1.2 backlog (structured movement From/To metadata, occupancy trend chart, automated tests) — see sections above and `docs/SUPPORTED_LIVING.md`.
 
 See `CHANGELOG.md` for release detail and `README.md` for current system documentation.

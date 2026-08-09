@@ -34,6 +34,9 @@ class Capabilities
     public const VIEW_MEDICATIONS = 'jmrs_view_medications';
     public const MANAGE_MEDICATIONS = 'jmrs_manage_medications';
     public const ADMINISTER_MEDICATIONS = 'jmrs_administer_medications';
+    public const VIEW_HOMES = 'jmrs_view_homes';
+    public const MANAGE_HOMES = 'jmrs_manage_homes';
+    public const MANAGE_OCCUPANCIES = 'jmrs_manage_occupancies';
 
     /**
      * Returns every plugin capability.
@@ -73,6 +76,9 @@ class Capabilities
             self::VIEW_MEDICATIONS,
             self::MANAGE_MEDICATIONS,
             self::ADMINISTER_MEDICATIONS,
+            self::VIEW_HOMES,
+            self::MANAGE_HOMES,
+            self::MANAGE_OCCUPANCIES,
         ];
     }
 

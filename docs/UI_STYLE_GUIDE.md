@@ -178,4 +178,8 @@ Test Referral List, Referral View, Reports, and Alerts at these widths.
 
 ## Reports
 
-Logic unchanged. Spacing only via shared admin CSS (section margins, KPI gaps, filter padding). Charts remain Chart.js + accompanying tables.
+Logic unchanged for date-range sections. Spacing via shared admin CSS (section margins, KPI gaps, filter padding). Charts remain Chart.js + accompanying tables.
+
+Supported Living — Current Snapshot uses `.jmrs-report-section--snapshot` and the same KPI/table/chart patterns; multi-column occupancy table scrolls horizontally inside `.jmrs-report-table-wrap` on narrow viewports.
+
+Vacancy Report uses the same snapshot section styling; vacancy table cells wrap (`word-break` / `overflow-wrap`) to avoid horizontal page overflow.

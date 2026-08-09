@@ -7,6 +7,8 @@ use JMReferral\Portal\PortalUrls;
 use JMReferral\Scheduling\ScheduleController;
 use JMReferral\Scheduling\ScheduleGenerationService;
 use JMReferral\Scheduling\ScheduleService;
+use JMReferral\Visits\ServiceLocationPresenter;
+use JMReferral\Visits\ServiceLocationResolver;
 
 /**
  * Portal handler for schedule create/edit/generate forms.
@@ -17,8 +19,26 @@ class ScheduleHandler
         private PortalViewHost $view_host,
         private ClinicalAccess $clinical_access,
         private ScheduleController $schedule_controller,
-        private ScheduleService $schedule_service
+        private ScheduleService $schedule_service,
+        private ServiceLocationResolver $service_location_resolver
     ) {
+    }
+
+    /**
+     * @param array<string, mixed> $referral
+     * @return array<string, mixed>
+     */
+    private function current_location_panel(array $referral): array
+    {
+        $location = $this->service_location_resolver->resolve_for_referral(absint($referral['id'] ?? 0));
+
+        return ServiceLocationPresenter::panel_vars(
+            $location,
+            [
+                'heading'      => ServiceLocationPresenter::heading('schedule', $location),
+                'show_warning' => true,
+            ]
+        );
     }
 
     public function handle_new(int $referral_id): void
@@ -103,6 +123,7 @@ class ScheduleHandler
             'form_action'    => $form_action,
             'cancel_url'     => PortalUrls::referral($referral_id),
             'is_create'      => null === $schedule,
+            'service_location_panel' => $this->current_location_panel($referral),
         ];
 
         $this->view_host->render_portal_page(
@@ -224,6 +245,7 @@ class ScheduleHandler
             'end_date'    => (string) ($posted['generation_end_date'] ?? ($defaults['end'] ?? '')),
             'form_action' => PortalUrls::schedule_generate($referral_id, $schedule_id),
             'cancel_url'  => PortalUrls::referral($referral_id),
+            'service_location_panel' => $this->current_location_panel($referral),
         ];
 
         $this->view_host->render_portal_page(

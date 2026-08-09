@@ -73,6 +73,33 @@ class PortalNavigation
             ];
         }
 
+        if (Capabilities::current_user_can(Capabilities::VIEW_HOMES)) {
+            $items[] = [
+                'id'      => 'homes',
+                'label'   => __('Homes', 'jm-referral-system'),
+                'url'     => PortalUrls::homes(),
+                'current' => in_array(
+                    $current_route,
+                    ['homes', 'home', 'home_new', 'home_edit', 'bedroom_new', 'bedroom_edit'],
+                    true
+                ),
+                'icon'    => 'homes',
+                'section' => 'supported_living',
+            ];
+            $items[] = [
+                'id'      => 'occupancy',
+                'label'   => __('Vacancies / Occupancy', 'jm-referral-system'),
+                'url'     => PortalUrls::occupancy(),
+                'current' => in_array(
+                    $current_route,
+                    ['occupancy', 'occupancy_place', 'occupancy_transfer', 'occupancy_end'],
+                    true
+                ),
+                'icon'    => 'occupancy',
+                'section' => 'supported_living',
+            ];
+        }
+
         return $items;
     }
 
@@ -84,8 +111,9 @@ class PortalNavigation
     public function section_labels(): array
     {
         return [
-            'overview' => __('Overview', 'jm-referral-system'),
-            'care'     => __('Care', 'jm-referral-system'),
+            'overview'          => __('Overview', 'jm-referral-system'),
+            'care'              => __('Care', 'jm-referral-system'),
+            'supported_living'  => __('Supported Living', 'jm-referral-system'),
         ];
     }
 

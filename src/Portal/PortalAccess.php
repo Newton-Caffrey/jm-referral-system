@@ -27,6 +27,7 @@ class PortalAccess
             Capabilities::VIEW_MEDICATIONS,
             Capabilities::VIEW_CARE_TEAM,
             Capabilities::VIEW_SCHEDULES,
+            Capabilities::VIEW_HOMES,
         ];
     }
 

@@ -1,4 +1,4 @@
-﻿/* JM Referral System — Staff Portal (scoped under .jmrs-portal) */
+/* JM Referral System — Staff Portal (scoped under .jmrs-portal) */
 
 .jmrs-portal-body {
 	margin: 0;
@@ -210,6 +210,16 @@ body.admin-bar.jmrs-portal-body {
 .jmrs-portal-nav__icon[data-icon="referrals"] {
 	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 12c2.7 0 8 1.34 8 4v2H4v-2c0-2.66 5.3-4 8-4zm0-2a4 4 0 1 1 0-8 4 4 0 0 1 0 8z'/%3E%3C/svg%3E");
 	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 12c2.7 0 8 1.34 8 4v2H4v-2c0-2.66 5.3-4 8-4zm0-2a4 4 0 1 1 0-8 4 4 0 0 1 0 8z'/%3E%3C/svg%3E");
+}
+
+.jmrs-portal-nav__icon[data-icon="homes"] {
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z'/%3E%3C/svg%3E");
+}
+
+.jmrs-portal-nav__icon[data-icon="occupancy"] {
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 11h4v9H4v-9zm6-5h4v14h-4V6zm6 8h4v6h-4v-6z'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 11h4v9H4v-9zm6-5h4v14h-4V6zm6 8h4v6h-4v-6z'/%3E%3C/svg%3E");
 }
 
 .jmrs-portal-support {
@@ -1040,6 +1050,11 @@ body.admin-bar.jmrs-portal-body {
 	gap: 0.85rem 1.25rem;
 }
 
+/* Allow grid cells to shrink so long values wrap instead of overlapping neighbours. */
+.jmrs-portal-dl-grid > * {
+	min-width: 0;
+}
+
 .jmrs-portal-dl-grid dt {
 	font-size: 0.8rem;
 	font-weight: 700;
@@ -1054,10 +1069,41 @@ body.admin-bar.jmrs-portal-body {
 	color: var(--jmrs-portal-text);
 	font-size: 0.98rem;
 	line-height: 1.45;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 
 .jmrs-portal-dl-grid__wide {
 	grid-column: 1 / -1;
+}
+
+/* Referrer: email needs a little more room; keep clear column gutters. */
+.jmrs-portal-dl-grid--referrer {
+	column-gap: 1.5rem;
+	row-gap: 0.85rem;
+}
+
+@media (min-width: 64rem) {
+	.jmrs-portal-dl-grid--referrer {
+		grid-template-columns:
+			minmax(0, 1fr)
+			minmax(0, 1.4fr)
+			minmax(0, 1fr)
+			minmax(0, 1fr)
+			minmax(0, 1fr);
+	}
+}
+
+@media (min-width: 40rem) and (max-width: 63.99rem) {
+	.jmrs-portal-dl-grid--referrer {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 39.99rem) {
+	.jmrs-portal-dl-grid--referrer {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 .jmrs-portal-section__header {
@@ -1509,4 +1555,38 @@ body.admin-bar.jmrs-portal-body {
 		color: var(--jmrs-portal-muted);
 		flex: 0 0 40%;
 	}
+}
+
+/* Service location (Phase 2F.2) */
+.jmrs-service-location__address {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	font-style: normal;
+	margin: 0.35rem 0 0;
+	line-height: 1.45;
+	word-break: break-word;
+}
+
+.jmrs-service-location__address-line {
+	display: block;
+}
+
+.jmrs-service-location__label {
+	margin: 0.25rem 0 0;
+}
+
+.jmrs-service-location__unavailable,
+.jmrs-service-location__recorded {
+	margin: 0.5rem 0 0;
+}
+
+.jmrs-service-location__secondary {
+	margin-top: 1rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--jmrs-portal-border);
+}
+
+.jmrs-service-location--compact {
+	padding-top: 0.5rem;
 }

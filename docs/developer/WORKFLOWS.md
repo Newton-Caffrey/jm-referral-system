@@ -72,6 +72,9 @@ flowchart TB
 - Generation: `ScheduleGenerationService::generate` (idempotent `generation_key`)  
 - Execution/review: `VisitExecutionService::execute` / `review`  
 - Tasks: `VisitTaskService`
+- Service location (Phase 2F.1): unexecuted visits resolve dynamically via `ServiceLocationResolver`; execution freezes a denormalized snapshot onto `jmrs_care_visits` in the same UPDATE as `visit_outcome` (no rewrite on transfer/care-setting change)
+- Service location UI (Phase 2F.2): portal schedules/visits/execute/review show current vs historical location; own-home address editable on referral edit; soft unresolved warnings do not block clinical workflows
+- Visit reporting (Phase 2G.4): WP Admin Reports Visit filters use snapshot for executed visits and current care setting/occupancy for open visits; terminal visits without snapshot are Location Not Recorded (never current Home)
 
 Portal: recent visits read-only.
 

@@ -54,6 +54,9 @@ Role slugs are still used for:
 | `VIEW_MEDICATIONS` | `jmrs_view_medications` |
 | `MANAGE_MEDICATIONS` | `jmrs_manage_medications` |
 | `ADMINISTER_MEDICATIONS` | `jmrs_administer_medications` |
+| `VIEW_HOMES` | `jmrs_view_homes` |
+| `MANAGE_HOMES` | `jmrs_manage_homes` |
+| `MANAGE_OCCUPANCIES` | `jmrs_manage_occupancies` |
 
 Helpers: `Capabilities::all()`, `grant_to_administrators()`, `revoke_from_administrators()`, `current_user_can()`.
 
@@ -69,23 +72,25 @@ All JMRS capabilities.
 
 ### `jmrs_referral_manager` — Referral Manager
 
-All except: `manage_service_types`, `manage_workflow_stages`, `manage_settings`.
+All except: `manage_service_types`, `manage_workflow_stages`, `manage_settings`. Includes supported living view + manage homes + manage occupancies.
 
 ### `jmrs_care_coordinator` — Care Coordinator
 
-Dashboard, view/create/edit/assign referrals, notes, documents, care plans (view/manage/review), visits (view/manage/execute), care team, schedules, alerts, reports, medications (view/manage/administer).
+Dashboard, view/create/edit/assign referrals, notes, documents, care plans (view/manage/review), visits (view/manage/execute), care team, schedules, alerts, reports, medications (view/manage/administer), supported living homes (view/manage), occupancies (manage).
 
 **No** delete, archive, restore, export, settings, service types, workflow stages.
 
 ### `jmrs_assessor` — Assessor
 
-View/edit referrals, notes, docs, care plans (view/manage/review), view visits/team/schedules, view/manage medications.
+View/edit referrals, notes, docs, care plans (view/manage/review), view visits/team/schedules, view/manage medications, **view** supported living homes.
 
-**No** dashboard, create, delete, archive, assign, export, execute visits, manage team/schedules, alerts, reports, administer meds, settings.
+**No** dashboard, create, delete, archive, assign, export, execute visits, manage team/schedules, alerts, reports, administer meds, manage homes/occupancies, settings.
 
 ### `jmrs_support_worker` — Support Worker
 
 Dashboard, view referrals, notes, download docs, view care plans/visits/team/schedules/meds, execute visits, administer medications.
+
+**No** estate-wide home or occupancy capabilities.
 
 **Scoped** by AccessPolicy to assigned referrals.
 

@@ -37,11 +37,20 @@ use JMReferral\Portal\Clinical\ClinicalDispatcher;
 use JMReferral\Portal\Clinical\MedicationHandler;
 use JMReferral\Portal\Clinical\ScheduleHandler;
 use JMReferral\Portal\Clinical\VisitHandler;
+use JMReferral\Portal\Homes\HomesHandler;
+use JMReferral\Portal\Homes\OccupancyHandler;
 use JMReferral\Portal\PortalAccess;
 use JMReferral\Portal\PortalController;
 use JMReferral\Portal\PortalNavigation;
 use JMReferral\Portal\PortalRetentionHandler;
 use JMReferral\Portal\PortalRouter;
+use JMReferral\Homes\BedroomRepository;
+use JMReferral\Homes\BedroomService;
+use JMReferral\Homes\HomeDashboardService;
+use JMReferral\Homes\HomeRepository;
+use JMReferral\Homes\HomeService;
+use JMReferral\Homes\OccupancyRepository;
+use JMReferral\Homes\OccupancyService;
 use JMReferral\Referral\ReferralActivityRepository;
 use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralController;
@@ -70,6 +79,7 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\ServiceLocationResolver;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskRepository;
 use JMReferral\Visits\VisitTaskService;
@@ -99,6 +109,7 @@ class Plugin
     private ?CareVisitController $care_visit_controller = null;
     private ?CareVisitService $care_visit_service = null;
     private ?VisitExecutionService $visit_execution_service = null;
+    private ?ServiceLocationResolver $service_location_resolver = null;
     private ?CareTeamController $care_team_controller = null;
     private ?CareTeamService $care_team_service = null;
     private ?ScheduleController $schedule_controller = null;
@@ -256,13 +267,27 @@ class Plugin
             $visit_task_service
         );
 
+        // Homes/occupancy repos created here so ServiceLocationResolver and ReferralService
+        // share the same OccupancyRepository instance (avoid undefined-variable activation fatals).
+        $occupancy_repository = new OccupancyRepository();
+        $home_repository      = new HomeRepository();
+        $bedroom_repository   = new BedroomRepository();
+
+        $this->service_location_resolver = new ServiceLocationResolver(
+            $repository,
+            $occupancy_repository,
+            $home_repository,
+            $bedroom_repository
+        );
+
         $this->visit_execution_service = new VisitExecutionService(
             $visit_repository,
             $repository,
             $activity_service,
             $this->access_policy,
             $visit_task_service,
-            $this->medication_administration_service
+            $this->medication_administration_service,
+            $this->service_location_resolver
         );
 
         $this->schedule_generation_service = new ScheduleGenerationService(
@@ -294,7 +319,8 @@ class Plugin
             $notification_service,
             $this->service_type_service,
             $this->workflow_stage_service,
-            $this->access_policy
+            $this->access_policy,
+            $occupancy_repository
         );
 
         $public_referral_service = new PublicReferralService(
@@ -346,7 +372,8 @@ class Plugin
             $this->user_provider,
             $this->service_type_service,
             $this->workflow_stage_service,
-            $this->access_policy
+            $this->access_policy,
+            $occupancy_repository
         );
 
         $assessment_controller = new ReferralAssessmentController(
@@ -451,7 +478,8 @@ class Plugin
             $assessment_controller,
             $care_plan_controller,
             $visit_task_service,
-            $care_plan_review_service
+            $care_plan_review_service,
+            $occupancy_repository
         );
 
         $create_controller->register();
@@ -488,7 +516,8 @@ class Plugin
         ReferralAssessmentController $assessment_controller,
         ReferralCarePlanController $care_plan_controller,
         VisitTaskService $visit_task_service,
-        ReferralCarePlanReviewService $care_plan_review_service
+        ReferralCarePlanReviewService $care_plan_review_service,
+        OccupancyRepository $occupancy_repository
     ): void {
         $operational_alert_service = new OperationalAlertService(
             $repository,
@@ -560,11 +589,17 @@ class Plugin
             $this->user_provider
         );
 
+        $service_location_resolver = $this->service_location_resolver;
+        if (! $service_location_resolver instanceof ServiceLocationResolver) {
+            throw new \RuntimeException('ServiceLocationResolver was not initialised before staff portal registration.');
+        }
+
         $schedule_handler = new ScheduleHandler(
             $controller,
             $clinical_access,
             $this->schedule_controller,
-            $this->schedule_service
+            $this->schedule_service,
+            $service_location_resolver
         );
 
         $visit_handler = new VisitHandler(
@@ -577,7 +612,8 @@ class Plugin
             $this->medication_administration_service,
             $visit_repository,
             new ScheduleRepository(),
-            $this->user_provider
+            $this->user_provider,
+            $service_location_resolver
         );
 
         $clinical_dispatcher = new ClinicalDispatcher(
@@ -590,6 +626,49 @@ class Plugin
         );
 
         $controller->set_clinical_dispatcher($clinical_dispatcher);
+
+        $home_repository      = new HomeRepository();
+        $bedroom_repository   = new BedroomRepository();
+        $home_service         = new HomeService($home_repository, $this->user_provider, $occupancy_repository);
+        $bedroom_service      = new BedroomService($bedroom_repository, $home_repository, $occupancy_repository);
+        $occupancy_service    = new OccupancyService(
+            $occupancy_repository,
+            $home_repository,
+            $bedroom_repository,
+            $repository,
+            $this->access_policy,
+            new ReferralActivityService($activity_repository)
+        );
+        $dashboard_service = new HomeDashboardService(
+            $home_service,
+            $bedroom_service,
+            $occupancy_service,
+            $visit_repository,
+            new ReferralCarePlanRepository(),
+            new MedicationAdministrationRepository(),
+            $this->access_policy,
+            $this->user_provider
+        );
+        $homes_handler = new HomesHandler(
+            $controller,
+            $home_service,
+            $bedroom_service,
+            $this->user_provider,
+            $occupancy_service,
+            $dashboard_service
+        );
+        $controller->set_homes_handler($homes_handler);
+
+        $occupancy_handler = new OccupancyHandler(
+            $controller,
+            $occupancy_service,
+            $home_service,
+            $repository,
+            $this->access_policy
+        );
+        $controller->set_occupancy_handler($occupancy_handler);
+        $controller->set_occupancy_service($occupancy_service);
+        $controller->set_service_location_resolver($service_location_resolver);
 
         PortalRouter::set_controller($controller);
         PortalRouter::register();

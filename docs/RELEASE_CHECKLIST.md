@@ -1,11 +1,43 @@
-# Release Checklist — JM Referral System v1.0.0
+# Release Checklist — JM Referral System
 
-**Product version:** `1.0.0` (`jm-referral-system.php` / `JMRS_VERSION`)  
-**Database schema:** `2.17.0` (`Migrator::DB_VERSION` / option `jmrs_db_version`)  
-**Date prepared:** 2026-08-05  
-**Release notes:** `docs/RELEASE_NOTES_v1.0.0.md`
+**Current target release:** `1.2.0`
+**Product version:** `1.2.0` (`jm-referral-system.php` / `JMRS_VERSION`)
+**Database schema:** `2.21.0` (`Migrator::DB_VERSION` / option `jmrs_db_version`)
+**Portal rewrite:** `1.2.1` (`PortalRouter::REWRITE_VERSION`)
+**Release notes:** `docs/RELEASE_NOTES_v1.2.0.md`
+**Supported Living UAT:** `docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`
 
-Use this checklist before promoting a build to production. Tick items on staging with synthetic or anonymised data first.
+Use this checklist before promoting a build to production. Tick items on staging with synthetic or anonymised data first. **Do not mark items passed unless manually confirmed.**
+
+---
+
+## v1.2.0 — Supported Living release gate
+
+- [ ] Plugin header Version = `1.2.0`
+- [ ] `JMRS_VERSION` = `1.2.0`
+- [ ] README / CHANGELOG `[1.2.0]` / release notes agree on product `1.2.0`
+- [ ] DB version = `2.21.0` after activate/upgrade
+- [ ] Activation succeeds (no fatal); roles/capabilities sync
+- [ ] Upgrade from previous working install succeeds; existing referrals/clinical data preserved
+- [ ] Tables present: `jmrs_homes`, `jmrs_bedrooms`, `jmrs_occupancies`; referral `care_setting`; visit snapshot columns
+- [ ] Supported Living master UAT passes (`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`)
+- [ ] Reporting UAT passes (`docs/uat/UAT_SUPPORTED_LIVING_REPORTING.md`)
+- [ ] Public referral regression passes
+- [ ] Role/capability tests pass (Admin/Manager/Coordinator vs Assessor/Support Worker)
+- [ ] CSV exports pass (snapshot / vacancy / movements / visit / full) with privacy constraints
+- [ ] Responsive checks pass (Homes, Dashboard, Vacancy, Placement, Visits, Reports)
+- [ ] No PHI in logs / activity dumps / management CSVs (addresses, diagnoses, meds, care-plan narrative)
+- [ ] Production backup taken before deployment (DB + `uploads` including `jmrs-private`)
+- [ ] Rollback package/version identified (previous ZIP + restore procedure)
+- [ ] Release ZIP includes `vendor/`; excludes `.git`, `uat-evidence/`, IDE folders, `*.log`, `.env`, OS junk
+
+---
+
+## Historical baseline (v1.0.0 packaging checks)
+
+The following sections originated with the v1.0.0 package and remain useful smoke checks. Prefer the **v1.2.0 gate** above for this release.
+
+**Original v1.0.0 references:** product `1.0.0`, schema `2.17.0`, `docs/RELEASE_NOTES_v1.0.0.md`
 
 ---
 
@@ -14,24 +46,24 @@ Use this checklist before promoting a build to production. Tick items on staging
 - [ ] Backup WordPress database
 - [ ] Backup `wp-content/uploads/` including `uploads/jmrs-private/`
 - [ ] Confirm release ZIP includes `vendor/` (Composer autoload; `composer install --no-dev`)
-- [ ] Confirm ZIP excludes `.git`, `node_modules`, OS junk, editor-only configs
+- [ ] Confirm ZIP excludes `.git`, `node_modules`, OS junk, editor-only configs, `uat-evidence/`
 - [ ] Confirm SMTP / `wp_mail` works on the target host
 - [ ] Confirm PHP version meets requirements (8.0+, 8.1+ preferred)
-- [ ] Confirm product header / `JMRS_VERSION` / README / CHANGELOG all read `1.0.0`
-- [ ] Read `docs/KNOWN_LIMITATIONS.md` and `docs/RELEASE_NOTES_v1.0.0.md`
-- [ ] After deploying CSS/JS changes: purge host/page/CDN caches so `filemtime` asset URLs are fetched fresh (Phase 1.1F)
+- [ ] Confirm product header / `JMRS_VERSION` / README / CHANGELOG all read `1.2.0`
+- [ ] Read `docs/KNOWN_LIMITATIONS.md` and `docs/RELEASE_NOTES_v1.2.0.md`
+- [ ] After deploying CSS/JS changes: purge host/page/CDN caches so `filemtime` asset URLs are fetched fresh
 
 ---
 
 ## Fresh install
 
 - [ ] Upload/activate plugin
-- [ ] Activation creates tables (`jmrs_db_version` = `2.17.0`)
+- [ ] Activation creates tables (`jmrs_db_version` = `2.21.0`)
 - [ ] JM roles appear (JM Administrator, Referral Manager, Care Coordinator, Assessor, Support Worker)
 - [ ] Administrator receives JM capabilities
 - [ ] Private document directory created under `uploads/jmrs-private/` with protection files
 - [ ] Default workflow stages seeded when empty
-- [ ] Dashboard, Referrals list, Settings load without PHP errors
+- [ ] Dashboard, Referrals list, Settings, Supported Living Homes load without PHP errors
 - [ ] Rewrite flush on activation does not break the site
 
 ---
@@ -39,11 +71,13 @@ Use this checklist before promoting a build to production. Tick items on staging
 ## Upgrade path
 
 - [ ] From previous install: backup → replace files → activate/load admin
-- [ ] `Migrator::maybe_migrate()` reaches `2.17.0` when behind
+- [ ] `Migrator::maybe_migrate()` reaches `2.21.0` when behind
+- [ ] Homes / bedrooms / occupancies / care_setting / visit snapshot columns present after upgrade
 - [ ] Public-intake columns present after upgrade from pre-`2.17.0`
 - [ ] Archive columns present if upgrading from pre-`2.15.0`
 - [ ] Existing referrals, visits, documents, and schedules remain intact
 - [ ] Re-test one Support Worker login after upgrade
+- [ ] Re-test one Care Coordinator Homes/Occupancy path after upgrade
 
 ---
 
@@ -198,15 +232,19 @@ v1.1.0 must not go to production without UAT sign-off (or a documented JM Projec
 - [ ] `docs/BACKUP_AND_RECOVERY.md`
 - [ ] `docs/TROUBLESHOOTING.md`
 - [ ] `docs/FAQ.md`
-- [ ] `docs/RELEASE_NOTES_v1.0.0.md`
-- [ ] `docs/uat/README.md` (v1.1.0 UAT package)
+- [ ] `docs/RELEASE_NOTES_v1.2.0.md`
+- [ ] `docs/RELEASE_NOTES_v1.0.0.md` (historical)
+- [ ] `docs/SUPPORTED_LIVING.md`
+- [ ] `docs/uat/README.md`
+- [ ] `docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`
 - [ ] `LICENSE`, `CONTRIBUTING.md`, updated `README.md`
 
 ---
 
 ## Sign-off
 
-For **v1.1.0**, use the formal UAT sign-off form: [`docs/uat/UAT_SIGN_OFF.md`](uat/UAT_SIGN_OFF.md).
+For **v1.2.0 Supported Living**, complete [`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`](uat/UAT_SUPPORTED_LIVING_V1_2.md) and reporting checklist [`docs/uat/UAT_SUPPORTED_LIVING_REPORTING.md`](uat/UAT_SUPPORTED_LIVING_REPORTING.md).
+Portal package sign-off form remains available: [`docs/uat/UAT_SIGN_OFF.md`](uat/UAT_SIGN_OFF.md).
 
 | Role | Name | Date | Result |
 | --- | --- | --- | --- |
@@ -214,4 +252,4 @@ For **v1.1.0**, use the formal UAT sign-off form: [`docs/uat/UAT_SIGN_OFF.md`](u
 | Operational | | | Pass / Fail |
 | Go-live approved | | | Yes / No |
 
-**Overall release stance:** Ready with recommendations (see `docs/KNOWN_LIMITATIONS.md`).
+**Overall release stance:** Ready for staging UAT; production only after gate items above are manually confirmed. See `docs/KNOWN_LIMITATIONS.md`.

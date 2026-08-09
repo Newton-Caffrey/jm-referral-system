@@ -1,9 +1,9 @@
 # Portal Architecture — JM Referral System
 
-Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clinical`).
+Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clinical`, `JMReferral\Portal\Homes`).
 
-**Default base path:** `staff-portal`  
-**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.1.2`)  
+**Default base path:** `staff-portal`
+**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.1`)
 **Disabled by default** (`PortalSettings`).
 
 ---
@@ -13,13 +13,14 @@ Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clin
 | Class | Responsibility |
 | --- | --- |
 | `PortalSettings` | Option `jmrs_staff_portal_settings`; sanitize; flush rewrites on enable/path change |
-| `PortalUrls` | Portal URL helpers (referral, clinical routes) |
+| `PortalUrls` | Portal URL helpers (referral, clinical, homes routes) |
 | `PortalRouter` | Rewrite rules, query vars (`jmrs_portal_entity`), `template_redirect` dispatch |
 | `PortalController` | Auth gates, dashboard/list/view/edit/assessment/care-plan; implements `PortalViewHost` |
 | `PortalRetentionHandler` | Archive/restore POST → `ReferralRetentionService` |
 | `ClinicalDispatcher` | Routes clinical portal actions to focused handlers |
 | `ClinicalAccess` | Shared referral gates + breadcrumbs for clinical handlers |
 | Handlers | `CarePlanReviewHandler`, `MedicationHandler`, `CareTeamHandler`, `ScheduleHandler`, `VisitHandler` |
+| `HomesHandler` | Supported living homes & bedrooms via shared `HomeService` / `BedroomService` |
 | `PortalAccess` / `PortalNavigation` / `PortalAssets` | Eligibility, nav, CSS/JS |
 
 ---
@@ -48,18 +49,27 @@ Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_e
 | `/{base}/referrals/{id}/visits/{id}/edit/` | `visit_edit` |
 | `/{base}/referrals/{id}/visits/{id}/execute/` | `visit_execute` |
 | `/{base}/referrals/{id}/visits/{id}/review/` | `visit_review` |
+| `/{base}/homes/` | `homes` |
+| `/{base}/homes/new/` | `home_new` |
+| `/{base}/homes/{id}/` | `home` |
+| `/{base}/homes/{id}/edit/` | `home_edit` |
+| `/{base}/homes/{id}/bedrooms/new/` | `bedroom_new` |
+| `/{base}/homes/{id}/bedrooms/{id}/edit/` | `bedroom_edit` |
 
 ```mermaid
 flowchart TD
-  Req[template_redirect] --> QV{jmrs_portal=1?}
+  TR[template_redirect] --> QV{jmrs_portal=1?}
   QV -->|no| Theme[Normal WP theme]
   QV -->|yes| Disp[PortalController::dispatch]
   Disp --> Clinical{clinical route?}
   Clinical -->|yes| CD[ClinicalDispatcher]
-  Clinical -->|no| PC[PortalController pages]
+  Clinical -->|no| Homes{homes route?}
+  Homes -->|yes| HH[HomesHandler]
+  Homes -->|no| PC[PortalController pages]
   CD --> Handlers[Focused clinical handlers]
   Handlers --> Attempt[Admin controller attempt_*]
   Attempt --> Services[Existing services]
+  HH --> HomeSvc[HomeService / BedroomService]
 ```
 
 ---
@@ -68,11 +78,11 @@ flowchart TD
 
 Admin controllers expose `attempt_*` + `persist_form_state` (channel-aware). Portal handlers:
 
-1. Cap + AccessPolicy + archived mutate block  
-2. Nonce (`wp_verify_nonce`)  
-3. `attempt_*` on the admin controller  
-4. On failure: `persist_form_state(..., 'portal')` + redirect to portal form  
-5. On success: PRG to portal referral view with notice query args  
+1. Cap + AccessPolicy + archived mutate block
+2. Nonce (`wp_verify_nonce`)
+3. `attempt_*` on the admin controller
+4. On failure: `persist_form_state(..., 'portal')` + redirect to portal form
+5. On success: PRG to portal referral view with notice query args
 
 Form transient keys: `PREFIX . $channel . '_' . user_id . '_' . referral_id` (`admin` vs `portal`).
 
@@ -90,11 +100,11 @@ MAR is part of visit execution (`MedicationAdministrationService` via `attempt_e
 
 ## Authorization
 
-1. Portal entry capability  
-2. Exact capability per action (`REVIEW_CARE_PLANS`, `MANAGE_MEDICATIONS`, …)  
-3. `AccessPolicy` view/edit/mutate  
-4. Support Worker ownership for visit execution when scoped  
-5. Generic **404** for inaccessible records; **403** for missing capability  
+1. Portal entry capability
+2. Exact capability per action (`REVIEW_CARE_PLANS`, `MANAGE_MEDICATIONS`, …)
+3. `AccessPolicy` view/edit/mutate
+4. Support Worker ownership for visit execution when scoped
+5. Generic **404** for inaccessible records; **403** for missing capability
 
 ---
 

@@ -50,7 +50,8 @@ class ReferralFilters
      *     status: string,
      *     priority: string,
      *     assigned_to: int,
-     *     archive_scope: string
+     *     archive_scope: string,
+     *     care_setting: string
      * }
      */
     public function from_request(): array
@@ -95,12 +96,24 @@ class ReferralFilters
             }
         }
 
+        $care_setting = isset($_GET['jmrs_care_setting'])
+            ? sanitize_key(wp_unslash($_GET['jmrs_care_setting']))
+            : '';
+
+        if ('' !== $care_setting
+            && CareSetting::NOT_SPECIFIED !== $care_setting
+            && ! CareSetting::is_valid($care_setting)
+        ) {
+            $care_setting = '';
+        }
+
         return [
             'search'         => $search,
             'status'         => $status,
             'priority'       => $priority,
             'assigned_to'    => $assigned_to,
             'archive_scope'  => $archive_scope,
+            'care_setting'   => $care_setting,
         ];
     }
 
@@ -138,7 +151,8 @@ class ReferralFilters
      *     status?: string,
      *     priority?: string,
      *     assigned_to?: int,
-     *     archive_scope?: string
+     *     archive_scope?: string,
+     *     care_setting?: string
      * } $filters
      * @return array<string, scalar>
      */
@@ -162,6 +176,10 @@ class ReferralFilters
 
         if (! empty($filters['assigned_to'])) {
             $args['jmrs_assigned_to'] = absint($filters['assigned_to']);
+        }
+
+        if (! empty($filters['care_setting'])) {
+            $args['jmrs_care_setting'] = (string) $filters['care_setting'];
         }
 
         $archive_scope = (string) ($filters['archive_scope'] ?? 'active');

@@ -6,7 +6,7 @@ use JMReferral\Database\Tables;
 
 class CareVisitRepository
 {
-    private const SELECT_COLUMNS = 'id, referral_id, care_plan_id, assigned_user_id, schedule_id, schedule_occurrence_date, generation_key, visit_date, start_time, end_time, visit_status, visit_type, tasks, notes, completed_at, arrival_time, departure_time, actual_duration_minutes, visit_outcome, tasks_completed, tasks_not_completed, client_response, wellbeing_observations, incident_report, manager_review_notes, reviewed_by, reviewed_at, created_by, created_at, updated_at';
+    private const SELECT_COLUMNS = 'id, referral_id, care_plan_id, assigned_user_id, schedule_id, schedule_occurrence_date, generation_key, visit_date, start_time, end_time, visit_status, visit_type, tasks, notes, completed_at, arrival_time, departure_time, actual_duration_minutes, visit_outcome, tasks_completed, tasks_not_completed, client_response, wellbeing_observations, incident_report, manager_review_notes, reviewed_by, reviewed_at, service_location_type, service_location_label, service_address_line_1, service_address_line_2, service_city, service_postcode, service_home_id, service_bedroom_id, service_occupancy_id, service_location_recorded_at, created_by, created_at, updated_at';
 
     /**
      * @param array<string, mixed> $data
@@ -460,6 +460,128 @@ class CareVisitRepository
     }
 
     /**
+     * Upcoming visits for a set of referral IDs within an inclusive date window.
+     *
+     * @param array<int, int> $referral_ids
+     * @return array<int, array<string, mixed>>
+     */
+    public function get_upcoming_for_referral_ids(
+        array $referral_ids,
+        string $from_date,
+        string $to_date,
+        int $limit = 50
+    ): array {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $ids) {
+            return [];
+        }
+
+        $limit = max(1, min(200, $limit));
+        $table = Tables::care_visits_table();
+        $referrals = Tables::referrals_table();
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+
+        $params = array_merge($ids, [$from_date, $to_date, $limit]);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- trusted tables; IN placeholders built from count.
+        $sql = "SELECT v.*, r.client_name AS client_name, r.client_first_name, r.client_last_name,
+                r.referral_number, r.assigned_to
+            FROM {$table} v
+            INNER JOIN {$referrals} r ON r.id = v.referral_id
+            WHERE v.referral_id IN ({$placeholders})
+              AND v.visit_date >= %s
+              AND v.visit_date <= %s
+              AND v.visit_status NOT IN ('cancelled', 'completed', 'missed')
+              AND r.archived_at IS NULL
+            ORDER BY v.visit_date ASC, v.start_time ASC, v.id ASC
+            LIMIT %d";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL built from trusted fragments + prepared placeholders.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Count completed visits awaiting manager review for the given referrals.
+     *
+     * @param array<int, int> $referral_ids
+     */
+    public function count_awaiting_review_for_referral_ids(array $referral_ids): int
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $ids) {
+            return 0;
+        }
+
+        $table = Tables::care_visits_table();
+        $referrals = Tables::referrals_table();
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        $params = $ids;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $sql = "SELECT COUNT(*)
+            FROM {$table} v
+            INNER JOIN {$referrals} r ON r.id = v.referral_id
+            WHERE v.referral_id IN ({$placeholders})
+              AND v.visit_status = 'completed'
+              AND v.visit_outcome IS NOT NULL
+              AND v.visit_outcome != ''
+              AND (v.reviewed_at IS NULL OR v.reviewed_at = '')
+              AND r.archived_at IS NULL";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $count = $wpdb->get_var($wpdb->prepare($sql, ...$params));
+
+        return (int) $count;
+    }
+
+    /**
+     * Completed visits awaiting manager review for the given referrals.
+     *
+     * @param array<int, int> $referral_ids
+     * @return array<int, array<string, mixed>>
+     */
+    public function get_awaiting_review_for_referral_ids(array $referral_ids, int $limit = 10): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $ids) {
+            return [];
+        }
+
+        $limit = max(1, min(100, $limit));
+        $table = Tables::care_visits_table();
+        $referrals = Tables::referrals_table();
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        $params = array_merge($ids, [$limit]);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $sql = "SELECT v.*, r.client_name AS client_name, r.client_first_name, r.client_last_name,
+                r.referral_number, r.assigned_to
+            FROM {$table} v
+            INNER JOIN {$referrals} r ON r.id = v.referral_id
+            WHERE v.referral_id IN ({$placeholders})
+              AND v.visit_status = 'completed'
+              AND v.visit_outcome IS NOT NULL
+              AND v.visit_outcome != ''
+              AND (v.reviewed_at IS NULL OR v.reviewed_at = '')
+              AND r.archived_at IS NULL
+            ORDER BY v.completed_at DESC, v.visit_date DESC, v.id DESC
+            LIMIT %d";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
      * Upcoming visits across all referrals (from today forward).
      *
      * @return array<int, array<string, mixed>>
@@ -746,6 +868,13 @@ class CareVisitRepository
             'incident_report',
             'manager_review_notes',
             'reviewed_at',
+            'service_location_type',
+            'service_location_label',
+            'service_address_line_1',
+            'service_address_line_2',
+            'service_city',
+            'service_postcode',
+            'service_location_recorded_at',
         ];
 
         $required_strings = [
@@ -781,6 +910,9 @@ class CareVisitRepository
             'schedule_id',
             'actual_duration_minutes',
             'reviewed_by',
+            'service_home_id',
+            'service_bedroom_id',
+            'service_occupancy_id',
         ];
 
         foreach ($int_fields as $field) {
@@ -840,6 +972,9 @@ class CareVisitRepository
             'created_by',
             'actual_duration_minutes',
             'reviewed_by',
+            'service_home_id',
+            'service_bedroom_id',
+            'service_occupancy_id',
         ];
         $formats = [];
 

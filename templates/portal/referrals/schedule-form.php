@@ -36,6 +36,10 @@ $field_error = static function ( array $errors, string $key ): void {
 	}
 	echo '<p class="jmrs-portal-field-error">' . esc_html( (string) $errors[ $key ] ) . '</p>';
 };
+
+if ( isset( $service_location_panel ) && is_array( $service_location_panel ) ) {
+	include JMRS_PLUGIN_PATH . 'templates/portal/partials/service-location.php';
+}
 ?>
 <?php if ( ! empty( $errors ) ) : ?>
 	<div class="jmrs-portal-notice jmrs-portal-notice--error" role="alert">

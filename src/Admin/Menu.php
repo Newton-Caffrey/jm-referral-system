@@ -24,6 +24,9 @@ use JMReferral\CareTeam\CareTeamRepository;
 use JMReferral\CareTeam\CareTeamService;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Documents\ReferralDocumentService;
+use JMReferral\Homes\BedroomRepository;
+use JMReferral\Homes\HomeRepository;
+use JMReferral\Homes\OccupancyRepository;
 use JMReferral\Notifications\EmailNotificationService;
 use JMReferral\Notifications\NotificationService;
 use JMReferral\Permissions\AccessPolicy;
@@ -56,6 +59,7 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitController;
 use JMReferral\Visits\CareVisitRepository;
 use JMReferral\Visits\CareVisitService;
+use JMReferral\Visits\ServiceLocationResolver;
 use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskRepository;
 use JMReferral\Visits\VisitTaskService;
@@ -141,6 +145,7 @@ class Menu
         $note_repository      = new ReferralNoteRepository();
         $email_service        = new EmailNotificationService();
         $notification_service = new NotificationService($email_service, $user_provider);
+        $occupancy_repository = new OccupancyRepository();
         $service            ??= new ReferralService(
             $repository,
             $number_generator,
@@ -149,7 +154,8 @@ class Menu
             $notification_service,
             $service_type_service,
             $workflow_stage_service,
-            $access_policy
+            $access_policy,
+            $occupancy_repository
         );
         $validator = new ReferralValidator(
             $user_provider,
@@ -165,7 +171,8 @@ class Menu
                 $user_provider,
                 $service_type_service,
                 $workflow_stage_service,
-                $access_policy
+                $access_policy,
+                $occupancy_repository
             );
         }
 
@@ -238,7 +245,8 @@ class Menu
             new ReportRepository(),
             $access_policy,
             $operational_alert_service,
-            $user_provider
+            $user_provider,
+            $occupancy_repository
         );
         $this->report_controller        = new ReportController($report_service);
         $this->report_export_controller = new ReportExportController($report_service);
@@ -271,7 +279,13 @@ class Menu
             $activity_service,
             $access_policy,
             $visit_task_service,
-            $medication_administration_service
+            $medication_administration_service,
+            new ServiceLocationResolver(
+                $repository,
+                $occupancy_repository,
+                new HomeRepository(),
+                new BedroomRepository()
+            )
         );
 
         $view_controller ??= new ReferralViewController(

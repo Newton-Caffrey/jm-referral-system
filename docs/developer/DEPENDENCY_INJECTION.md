@@ -41,7 +41,7 @@ Approximate order inside `registerReferralControllers()`:
 2. **Documents:** document repo, `PrivateDocumentStorage`, `ReferralDocumentService`
 3. **Assessment / care plan:** assessment service; care plan review service; care plan service
 4. **Team / schedule:** `CareTeamService`, `ScheduleService`
-5. **Visits / meds:** visit repo, `VisitTaskService`, medication + MAR services, `CareVisitService`, `VisitExecutionService`, `ScheduleGenerationService`
+5. **Visits / meds:** visit repo, `VisitTaskService`, medication + MAR services, `CareVisitService`, `ServiceLocationResolver` (explicit Occupancy/Home/Bedroom repos — same `OccupancyRepository` instance later passed to `ReferralService` / portal), `VisitExecutionService`, `ScheduleGenerationService`
 6. **Catalogue:** service type + workflow stage services/controllers
 7. **Notifications + ReferralService**
 8. **Public referral:** `PublicReferralService` → controller → shortcode → `register()`

@@ -108,6 +108,7 @@ class ReferralExportController
                 'Care Start Date',
                 'Preferred Contact Method',
                 'Care Requirements',
+                'Care Setting',
                 'Archived',
                 'Archived At',
                 'Archive Reason',
@@ -235,6 +236,9 @@ class ReferralExportController
                         (string) ($referral['care_start_date'] ?? ''),
                         $contact_label,
                         (string) ($referral['care_requirements'] ?? ''),
+                        CareSetting::label(
+                            isset($referral['care_setting']) ? (string) $referral['care_setting'] : null
+                        ),
                         $is_archived ? 'Yes' : 'No',
                         $archived_at,
                         (string) ($referral['archive_reason'] ?? ''),

@@ -3,6 +3,7 @@
 namespace JMReferral\Referral;
 
 use JMReferral\Notifications\NotificationService;
+use JMReferral\Homes\OccupancyRepository;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Services\ServiceTypeService;
@@ -19,7 +20,8 @@ class ReferralService
         private NotificationService $notification_service,
         private ServiceTypeService $service_type_service,
         private WorkflowStageService $workflow_stage_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private OccupancyRepository $occupancy_repository
     ) {
     }
 
@@ -149,6 +151,28 @@ class ReferralService
         $care_start_date          = (string) ($input['care_start_date'] ?? '');
         $preferred_contact_method = (string) ($input['preferred_contact_method'] ?? '');
         $care_requirements        = (string) ($input['care_requirements'] ?? '');
+        $care_setting             = CareSetting::normalize(
+            array_key_exists('care_setting', $input) ? (string) $input['care_setting'] : null
+        );
+        // When care_setting is omitted from input (e.g. stage-only updates), preserve existing.
+        if (! array_key_exists('care_setting', $input)) {
+            $raw_existing = $existing['care_setting'] ?? null;
+            $care_setting = null === $raw_existing || '' === trim((string) $raw_existing)
+                ? null
+                : (string) $raw_existing;
+        }
+
+        $old_care_setting = $existing['care_setting'] ?? null;
+        $old_care_setting = null === $old_care_setting || '' === trim((string) $old_care_setting)
+            ? null
+            : (string) $old_care_setting;
+
+        if (CareSetting::is_own_home($care_setting)
+            && null !== $this->occupancy_repository->current_for_referral($id)
+        ) {
+            return false;
+        }
+
         $service_type_id          = absint($input['service_type_id'] ?? 0);
         $service_required         = $this->resolve_service_required(
             $service_type_id,
@@ -172,8 +196,23 @@ class ReferralService
             'care_start_date'          => '' !== $care_start_date ? $care_start_date : null,
             'preferred_contact_method' => '' !== $preferred_contact_method ? $preferred_contact_method : null,
             'care_requirements'        => '' !== $care_requirements ? $care_requirements : null,
+            'care_setting'             => $care_setting,
+            'address_line_1'           => array_key_exists('address_line_1', $input)
+                ? $this->nullable_string((string) $input['address_line_1'])
+                : $this->nullable_string((string) ($existing['address_line_1'] ?? '')),
+            'address_line_2'           => array_key_exists('address_line_2', $input)
+                ? $this->nullable_string((string) $input['address_line_2'])
+                : $this->nullable_string((string) ($existing['address_line_2'] ?? '')),
+            'city'                     => array_key_exists('city', $input)
+                ? $this->nullable_string((string) $input['city'])
+                : $this->nullable_string((string) ($existing['city'] ?? '')),
+            'postcode'                 => array_key_exists('postcode', $input)
+                ? $this->nullable_string((string) $input['postcode'])
+                : $this->nullable_string((string) ($existing['postcode'] ?? '')),
             'updated_at'               => current_time('mysql'),
         ];
+
+        $address_changed = $this->address_fields_changed($existing, $data);
 
         $updated = $this->repository->update($id, $data);
 
@@ -182,6 +221,14 @@ class ReferralService
         }
 
         $this->activity_service->log_updated($id);
+
+        if ($address_changed) {
+            $this->activity_service->log_client_address_updated($id);
+        }
+
+        if ($old_care_setting !== $care_setting) {
+            $this->activity_service->log_care_setting_changed($id, $care_setting);
+        }
 
         if ($old_status !== $new_status) {
             $this->activity_service->log_status_changed($id, $old_status, $new_status);
@@ -258,6 +305,7 @@ class ReferralService
             'care_start_date'          => $existing['care_start_date'],
             'preferred_contact_method' => $existing['preferred_contact_method'],
             'care_requirements'        => $existing['care_requirements'],
+            'care_setting'             => $existing['care_setting'] ?? null,
             'updated_at'               => current_time('mysql'),
         ];
 
@@ -393,6 +441,25 @@ class ReferralService
         $value = trim($value);
 
         return '' !== $value ? $value : null;
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @param array<string, mixed> $data
+     */
+    private function address_fields_changed(array $existing, array $data): bool
+    {
+        foreach (['address_line_1', 'address_line_2', 'city', 'postcode'] as $field) {
+            $old = $this->nullable_string((string) ($existing[$field] ?? ''));
+            $new = array_key_exists($field, $data)
+                ? (null === $data[$field] ? null : $this->nullable_string((string) $data[$field]))
+                : $old;
+            if ($old !== $new) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function normalize_submission_channel(string $channel): string

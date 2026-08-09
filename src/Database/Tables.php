@@ -165,6 +165,36 @@ class Tables
     }
 
     /**
+     * Returns the supported living homes table name with the WordPress prefix.
+     */
+    public static function homes_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_homes';
+    }
+
+    /**
+     * Returns the supported living bedrooms table name with the WordPress prefix.
+     */
+    public static function bedrooms_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_bedrooms';
+    }
+
+    /**
+     * Returns the supported living occupancies table name with the WordPress prefix.
+     */
+    public static function occupancies_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_occupancies';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -191,6 +221,9 @@ class Tables
         self::create_visit_tasks_table($charset);
         self::create_medications_table($charset);
         self::create_medication_administrations_table($charset);
+        self::create_homes_table($charset);
+        self::create_bedrooms_table($charset);
+        self::create_occupancies_table($charset);
     }
 
     /**
@@ -236,6 +269,7 @@ class Tables
             archived_at DATETIME NULL,
             archived_by BIGINT UNSIGNED NULL,
             archive_reason TEXT NULL,
+            care_setting VARCHAR(50) NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -248,6 +282,7 @@ class Tables
             KEY submission_channel (submission_channel),
             KEY archived_at (archived_at),
             KEY archived_by (archived_by),
+            KEY care_setting (care_setting),
             KEY created_at (created_at),
             KEY archived_at_status (archived_at, status),
             KEY status_priority (status, priority),
@@ -553,6 +588,16 @@ class Tables
             manager_review_notes LONGTEXT NULL,
             reviewed_by BIGINT UNSIGNED NULL,
             reviewed_at DATETIME NULL,
+            service_location_type VARCHAR(50) NULL,
+            service_location_label VARCHAR(255) NULL,
+            service_address_line_1 VARCHAR(255) NULL,
+            service_address_line_2 VARCHAR(255) NULL,
+            service_city VARCHAR(150) NULL,
+            service_postcode VARCHAR(30) NULL,
+            service_home_id BIGINT UNSIGNED NULL,
+            service_bedroom_id BIGINT UNSIGNED NULL,
+            service_occupancy_id BIGINT UNSIGNED NULL,
+            service_location_recorded_at DATETIME NULL,
             created_by BIGINT UNSIGNED NOT NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
@@ -741,6 +786,97 @@ class Tables
             KEY visit_id_administration_status (visit_id, administration_status),
             KEY referral_id_administered_time (referral_id, administered_time),
             KEY administered_by_administered_time (administered_by, administered_time)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the supported living homes table.
+     */
+    private static function create_homes_table(string $charset): void
+    {
+        $table = self::homes_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(255) NOT NULL,
+            address_line_1 VARCHAR(255) NOT NULL,
+            address_line_2 VARCHAR(255) NULL,
+            city VARCHAR(100) NOT NULL,
+            postcode VARCHAR(20) NOT NULL,
+            phone VARCHAR(50) NULL,
+            manager_user_id BIGINT UNSIGNED NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'active',
+            notes LONGTEXT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY status (status),
+            KEY manager_user_id (manager_user_id),
+            KEY name (name)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the supported living bedrooms table.
+     */
+    private static function create_bedrooms_table(string $charset): void
+    {
+        $table = self::bedrooms_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            home_id BIGINT UNSIGNED NOT NULL,
+            room_label VARCHAR(100) NOT NULL,
+            floor VARCHAR(100) NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'active',
+            notes LONGTEXT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY home_id_room_label (home_id, room_label),
+            KEY home_id (home_id),
+            KEY status (status),
+            KEY home_id_status (home_id, status)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the supported living occupancies table.
+     */
+    private static function create_occupancies_table(string $charset): void
+    {
+        $table = self::occupancies_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            home_id BIGINT UNSIGNED NOT NULL,
+            bedroom_id BIGINT UNSIGNED NOT NULL,
+            move_in_date DATE NOT NULL,
+            move_out_date DATE NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'active',
+            notes LONGTEXT NULL,
+            end_reason VARCHAR(255) NULL,
+            created_by BIGINT UNSIGNED NOT NULL,
+            ended_by BIGINT UNSIGNED NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            ended_at DATETIME NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id_status (referral_id, status),
+            KEY bedroom_id_status (bedroom_id, status),
+            KEY home_id_status (home_id, status),
+            KEY move_in_date (move_in_date),
+            KEY status (status),
+            KEY referral_id (referral_id),
+            KEY bedroom_id (bedroom_id),
+            KEY home_id (home_id)
         ) {$charset};";
 
         dbDelta($sql);

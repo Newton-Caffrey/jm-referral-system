@@ -46,6 +46,8 @@ $status        = (string) ( $filters['status'] ?? '' );
 $priority      = (string) ( $filters['priority'] ?? '' );
 $assigned_to   = (string) absint( $filters['assigned_to'] ?? 0 );
 $archive_scope = (string) ( $filters['archive_scope'] ?? 'active' );
+$care_setting  = (string) ( $filters['care_setting'] ?? '' );
+$care_setting_options = \JMReferral\Referral\CareSetting::filter_options();
 
 $reset_url = admin_url( 'admin.php?page=jm-referrals-list' );
 
@@ -152,6 +154,16 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 					<option value="urgent" <?php selected( $priority, 'urgent' ); ?>><?php echo esc_html__( 'Urgent', 'jm-referral-system' ); ?></option>
 				</select>
 
+				<label class="screen-reader-text" for="jmrs_care_setting"><?php echo esc_html__( 'Filter by care setting', 'jm-referral-system' ); ?></label>
+				<select name="jmrs_care_setting" id="jmrs_care_setting">
+					<option value=""><?php echo esc_html__( 'All Care Settings', 'jm-referral-system' ); ?></option>
+					<?php foreach ( $care_setting_options as $setting_value => $setting_label ) : ?>
+						<option value="<?php echo esc_attr( (string) $setting_value ); ?>" <?php selected( $care_setting, (string) $setting_value ); ?>>
+							<?php echo esc_html( (string) $setting_label ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+
 				<?php if ( ! $scope_to_assigned ) : ?>
 					<label class="screen-reader-text" for="jmrs_assigned_to"><?php echo esc_html__( 'Filter by assignee', 'jm-referral-system' ); ?></label>
 					<select name="jmrs_assigned_to" id="jmrs_assigned_to">
@@ -187,6 +199,7 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 				<th scope="col"><?php echo esc_html__( 'Workflow Stage', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Priority', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+				<th scope="col"><?php echo esc_html__( 'Care Setting', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Source', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Assigned To', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Created Date', 'jm-referral-system' ); ?></th>
@@ -196,7 +209,7 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 		<tbody>
 			<?php if ( empty( $referrals ) ) : ?>
 				<tr class="no-items">
-					<td colspan="10"><?php echo \JMReferral\Support\UiHelper::empty_state( __( 'No referrals found.', 'jm-referral-system' ), '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=jm-referrals-add' ) ) . '">' . esc_html__( 'Add New Referral', 'jm-referral-system' ) . '</a>' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
+					<td colspan="11"><?php echo \JMReferral\Support\UiHelper::empty_state( __( 'No referrals found.', 'jm-referral-system' ), '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=jm-referrals-add' ) ) . '">' . esc_html__( 'Add New Referral', 'jm-referral-system' ) . '</a>' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 				</tr>
 			<?php else : ?>
 				<?php foreach ( $referrals as $referral ) : ?>
@@ -208,6 +221,9 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 					$workflow_stage_name = (string) ( $referral['workflow_stage_name'] ?? '' );
 					$priority_value   = (string) ( $referral['priority'] ?? '' );
 					$status_value     = (string) ( $referral['status'] ?? '' );
+					$care_setting_label = \JMReferral\Referral\CareSetting::label(
+						isset( $referral['care_setting'] ) ? (string) $referral['care_setting'] : null
+					);
 					$source_value     = (string) ( $referral['referral_source'] ?? '' );
 					$source_label     = '' !== $source_value
 						? \JMReferral\Referral\ReferralSources::label( $source_value )
@@ -240,6 +256,7 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 						<td><?php echo '' !== $workflow_stage_name ? esc_html( $workflow_stage_name ) : '—'; ?></td>
 						<td><?php echo \JMReferral\Support\UiHelper::priority_badge( $priority_value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
 						<td><?php echo \JMReferral\Support\UiHelper::status_badge( $status_value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper escapes. ?></td>
+						<td><?php echo esc_html( $care_setting_label ); ?></td>
 						<td>
 							<?php echo '' !== $source_label ? esc_html( $source_label ) : '—'; ?>
 							<?php if ( $is_website_channel ) : ?>
@@ -278,6 +295,7 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 				<th scope="col"><?php echo esc_html__( 'Workflow Stage', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Priority', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+				<th scope="col"><?php echo esc_html__( 'Care Setting', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Source', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Assigned To', 'jm-referral-system' ); ?></th>
 				<th scope="col"><?php echo esc_html__( 'Created Date', 'jm-referral-system' ); ?></th>

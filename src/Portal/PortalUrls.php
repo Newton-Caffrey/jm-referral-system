@@ -102,6 +102,75 @@ class PortalUrls
         return self::referral_path($referral_id, 'visits/' . max(0, $visit_id) . '/review');
     }
 
+    public static function homes(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/homes/');
+    }
+
+    public static function home_view(int $home_id): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/homes/' . max(0, $home_id) . '/');
+    }
+
+    public static function home_new(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/homes/new/');
+    }
+
+    public static function home_edit(int $home_id): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/homes/' . max(0, $home_id) . '/edit/');
+    }
+
+    public static function bedroom_new(int $home_id): string
+    {
+        return home_url(
+            '/' . PortalSettings::base_path()
+            . '/homes/' . max(0, $home_id)
+            . '/bedrooms/new/'
+        );
+    }
+
+    public static function bedroom_edit(int $home_id, int $bedroom_id): string
+    {
+        return home_url(
+            '/' . PortalSettings::base_path()
+            . '/homes/' . max(0, $home_id)
+            . '/bedrooms/' . max(0, $bedroom_id)
+            . '/edit/'
+        );
+    }
+
+    public static function occupancy(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/occupancy/');
+    }
+
+    public static function occupancy_place(array $args = []): string
+    {
+        $url = home_url('/' . PortalSettings::base_path() . '/occupancy/place/');
+
+        return [] === $args ? $url : add_query_arg($args, $url);
+    }
+
+    public static function occupancy_transfer(int $occupancy_id): string
+    {
+        return home_url(
+            '/' . PortalSettings::base_path()
+            . '/occupancy/' . max(0, $occupancy_id)
+            . '/transfer/'
+        );
+    }
+
+    public static function occupancy_end(int $occupancy_id): string
+    {
+        return home_url(
+            '/' . PortalSettings::base_path()
+            . '/occupancy/' . max(0, $occupancy_id)
+            . '/end/'
+        );
+    }
+
     /**
      * @param array<string, scalar> $args
      */

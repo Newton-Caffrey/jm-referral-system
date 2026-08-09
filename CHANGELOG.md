@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to the JM Referral System will be documented in this file.
 
@@ -9,28 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Phase 1.1E: User Acceptance Testing package under `docs/uat/` (plan, role matrix, fictional data setup, 10 scenarios, 64 test cases, defect log, sign-off) — documentation only; `uat-evidence/` gitignored
-- Phase 1.1D: staff portal UX polish — reusable partials (`notice`, `empty-state`, `section-header`, `client-summary`, `kpi-card`), grouped sidebar navigation with icons and section labels, dashboard welcome header/KPI cards/renamed schedule sections, referral view client-summary header + quick actions + activity timeline, button loading states, and refined tablet/mobile breakpoints — presentation-only, no changes to routes, permissions, or business logic
-- Phase 1.1C: staff portal clinical operations — care-plan review, medications, care team, schedules (+ generate), visits (create/edit/execute/MAR), manager visit review
-- Focused portal clinical handlers under `JMReferral\Portal\Clinical` with `ClinicalDispatcher` (shared admin `attempt_*` pipelines)
-- Portal rewrite version `1.1.2` (clinical routes + `jmrs_portal_entity` query var)
-- Phase 1.1A: staff portal referral editing via shared `ReferralEditController::attempt_update()` → `ReferralService::update()` (`/staff-portal/referrals/{id}/edit/`)
-- Phase 7.2: developer documentation under `docs/developer/` (architecture, schema, permissions, workflows, portal/public, services, DI, history)
-- Portal archive scope control (Active / Archived / All), portal archive/restore actions via `ReferralRetentionService`, and dashboard row actions
-- Portal Assessment and Care Plan editing routes (`/assessment/`, `/care-plan/`) reusing existing assessment/care-plan services
+### Changed
+
+### Fixed
+
+## [1.2.0] - 2026-08-09
+
+Product release for **Supported Living** and related staff-portal clinical/UX work delivered after v1.0.0. Plugin version `1.2.0`. Database schema `2.21.0`.
+
+### Added
+
+#### Supported Living
+
+- Homes and bedrooms foundation (`jmrs_homes` / `jmrs_bedrooms`) with capacity = active bedrooms
+- Occupancy and vacancy management (`jmrs_occupancies`): place, transfer, end placement, history
+- Care Setting (`supported_living` / `own_home` / Not Specified) with Client's Own Home support
+- Home operational dashboard (residents, bedroom board, upcoming visits, operational attention)
+- Service-location resolution for current care delivery context
+- Historical visit-location snapshots on execution (frozen; transfers do not rewrite history)
+- Own-home address management on authorised referral edit
+- Supported Living reporting on existing WP Admin Reports: current snapshot, vacancy report, placement movements, visit analytics by care-delivery context
+
+#### Staff portal & channels (post-1.0)
+
+- Staff portal clinical operations (care-plan review, medications, care team, schedules/generate, visits/execute/MAR, manager review)
+- Portal referral editing via shared update pipeline
+- Portal UX polish (partials, navigation, dashboard KPIs, mobile breakpoints)
+- Public referral wizard theme isolation and visual parity hardening
+- UAT packages under `docs/uat/` (v1.1 portal package + Supported Living v1.2 master checklist)
 
 ### Changed
 
-- Phase 1.1F: theme isolation for public referral wizard (`.jmrs-public-referral`) and staff portal (`.jmrs-portal`) — scoped component reset, explicit typography/form normalisation, portal theme stylesheet dequeue (admin-bar retained), WP admin-bar sticky offsets, late public asset enqueue + existing `filemtime` versions; presentation-only
-- Phase 1.1F.1 hotfix: restore approved public wizard visuals; preserve `[hidden]` for step actions; defer public referral emails to `shutdown` so SMTP cannot hang the receipt redirect; strengthen submit loading reset / final-step guards
-- Phase 1.1F.2: strict visual parity — restore pre-1.1F approved design metrics for public wizard + portal; keep isolation/`[hidden]`/admin-bar offsets; lock shared Segoe UI font stack (CSS only)
-- Phase 1.1F.3: screenshot-driven parity — portal Results/page-title weights + horizontal-only table rules; public removes portal Segoe lock and lightens heading/label/button weights (exact public font-family pending screenshot re-attach)
-- Phase 1.1F.3 typography correction: public Manrope + measured title/label metrics; portal Referrals `1.5rem/400` and Results `1.932rem/400` from staging computed styles
-- Portal rewrite version `1.1.2` (clinical operations routes; auto-flush when version mismatches)
-- Portal referral view section headers with capability-aware clinical actions; Schedules section; dashboard visit Execute/Review links stay on portal
-- Portal action button styles (`.jmrs-button`) with explicit link/visited/hover/focus colours to fix primary Edit contrast
-- Portal clinical sections rendered as readable summary cards with contextual Edit Assessment / Edit Care Plan actions
-- Admin clinical controllers expose reusable `attempt_*` / channel-namespaced form state for portal + admin
+- Product version aligned to `1.2.0` (`jm-referral-system.php` / `JMRS_VERSION`)
+- Portal rewrite versions `1.1.2` → `1.2.0` → `1.2.1` for homes/occupancy routes (auto-flush when mismatched)
+- Reports filters clarified (Report Period / Vacancy Home / Visit Analytics) with Reset Filters
+- Phase 2H release preparation: master UAT, release checklist gate, packaging/docs alignment
+
+### Fixed
+
+- Phase 2D composition-root / dependency-wiring activation regression (occupancy services available after activate)
+- Referrer grid long-email layout wrapping on portal referral view
+- Public wizard hang/visibility hotfixes (email deferred to `shutdown`; `[hidden]` step actions preserved)
+
+### Schema
+
+- DB `2.18.0` homes/bedrooms → `2.19.0` occupancies → `2.20.0` care_setting → `2.21.0` visit service-location snapshot columns
+
+See `docs/SUPPORTED_LIVING.md`, `docs/RELEASE_NOTES_v1.2.0.md`, and `docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`.
 
 ## [1.0.0] - 2026-08-05
 
@@ -38,19 +63,19 @@ First production release of the JM Referral System. Plugin version `1.0.0`. Data
 
 ### Added
 
-#### Phase 7.1 — release package
+#### Phase 7.1 â€” release package
 
 - User/ops docs: installation, administrator, staff, public referral, security, backup/recovery, troubleshooting, FAQ, release notes
 - `LICENSE` (placeholder pending final licence), `CONTRIBUTING.md`, root `SECURITY.md`
 - Professional README rewrite; packaging guidance
 
-#### Phase 6.x — channels
+#### Phase 6.x â€” channels
 
-- Phase 6.2A: staff frontend portal foundation (`/staff-portal/` by default) — auth, shell, capability nav, dashboard, referral list/view
-- Portal settings (enable, branding, base path, support contacts, optional wp-admin redirect) under Settings → Staff Portal
+- Phase 6.2A: staff frontend portal foundation (`/staff-portal/` by default) â€” auth, shell, capability nav, dashboard, referral list/view
+- Portal settings (enable, branding, base path, support contacts, optional wp-admin redirect) under Settings â†’ Staff Portal
 - Portal referral view read-only field parity with admin
 - `docs/STAFF_PORTAL.md`
-- Phase 6.1B: multi-step public referral wizard (Welcome → About You → Person → Care Needs → Documents → Review)
+- Phase 6.1B: multi-step public referral wizard (Welcome â†’ About You â†’ Person â†’ Care Needs â†’ Documents â†’ Review)
 - Public branding settings (company name, heading, intro, contact, primary colour, success next-steps) via `PublicBranding`
 - Wizard progress indicator, review summary cards with Edit, optional analytics CustomEvents (step number only)
 - Phase 6.1A: public referral intake shortcode `[jmrs_public_referral_form]`
@@ -59,7 +84,7 @@ First production release of the JM Referral System. Plugin version `1.0.0`. Data
 - Ops + referrer confirmation email templates for website submissions
 - `docs/PUBLIC_REFERRAL_INTAKE.md`
 
-#### Phases 1–5.6 — core
+#### Phases 1â€“5.6 â€” core
 
 - Phase 5.6: `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md`
 - Phase 5.5: shared admin CSS/JS (`assets/css/admin.css`, `assets/js/admin.js`) on all plugin screens
@@ -70,17 +95,17 @@ First production release of the JM Referral System. Plugin version `1.0.0`. Data
 - Phase 5.4.2B: chunked referral CSV export (500-row chunks)
 - Composite performance indexes (DB `2.16.0`)
 - Phase 5.4.2A: referral list pagination (20/50/100) with filter-preserving links
-- Phase 5.4.1 performance & scalability audit (`docs/PERFORMANCE_AUDIT.md`) — analysis only
+- Phase 5.4.1 performance & scalability audit (`docs/PERFORMANCE_AUDIT.md`) â€” analysis only
 - Phase 5.3 data retention: archive / restore / safe permanent delete (`ReferralRetentionService`)
 - Referral columns `archived_at`, `archived_by`, `archive_reason` (DB `2.15.0`)
 - Capabilities `jmrs_archive_referrals` and `jmrs_restore_referrals` (WP Admin, JM Admin, Referral Manager)
 - Referral list Active / Archived / All filter (default Active)
-- Settings → Data Integrity Check (counts only)
+- Settings â†’ Data Integrity Check (counts only)
 - `docs/DATA_RETENTION_POLICY.md`
 - Uninstall opt-in data wipe via `JMRS_DELETE_DATA_ON_UNINSTALL`
 - Private referral document storage under `uploads/jmrs-private/` (Phase 5.2.1)
 - Document table columns: `storage_type`, `relative_path`, `stored_name`, `checksum_sha256` (DB `2.14.0`)
-- Settings → Private Document Migration batch tool (copies legacy Media Library files; does not delete originals)
+- Settings â†’ Private Document Migration batch tool (copies legacy Media Library files; does not delete originals)
 - Apache `.htaccess` / `index.php` / `index.html` protection files for the private directory
 - `EmailTemplateResolver` for canonical email templates (Phase 5.2.2)
 - `CsvExportHelper` for CSV formula-injection protection (Phase 5.2.2)
@@ -95,7 +120,7 @@ First production release of the JM Referral System. Plugin version `1.0.0`. Data
 - Referral View / list / CSV export surface website channel and public fields
 - CSV export includes referral source and public-intake columns
 - Phase 5.6: product version locked to `1.0.0`; schema tracked independently (`2.17.0` after public intake)
-- Consistent notice wording (`… successfully.` / `Please fix the following errors:`)
+- Consistent notice wording (`â€¦ successfully.` / `Please fix the following errors:`)
 - Standardized primary/secondary/danger buttons, confirms (`data-jmrs-confirm`), and double-submit busy labels
 - Priority/status/archive/alert badges and improved empty states on list, view, and alerts
 - Referral View GET no longer generates visit tasks (create/generate paths only)
@@ -122,7 +147,7 @@ First production release of the JM Referral System. Plugin version `1.0.0`. Data
 ### Fixed
 
 - Public form submit hang: preserve submitter and defer disable so native POST proceeds
-- Portal medication and related view fields use admin array keys (`dosage`, `medication_status`, `visit_status`, …)
+- Portal medication and related view fields use admin array keys (`dosage`, `medication_status`, `visit_status`, â€¦)
 - Phase 5.6: notes on archived referrals require `can_mutate_referral` (archive read-only alignment)
 - Phase 5.5 double-submit guard: preserve clicked submit button name/value via hidden input before disabling (fixes Update Referral and other named submit actions)
 - Removed unused `MedicationAdministrationController` stub and dead `get_dashboard_alerts()` wrapper
@@ -146,9 +171,9 @@ Milestone release covering the foundation, security, and clinical operations del
 
 ### Added
 
-- Plugin architecture with Composer PSR-4 autoloading (`JMReferral\` → `src/`)
+- Plugin architecture with Composer PSR-4 autoloading (`JMReferral\` â†’ `src/`)
 - Versioned database migration system (`Migrator`, `Tables`, `jmrs_db_version`)
-- Repository → Service → Controller → Template layering with dependency injection
+- Repository â†’ Service â†’ Controller â†’ Template layering with dependency injection
 - Referral CRUD with unique referral numbering
 - Client intake fields and preferred contact methods
 - Referral assignment and reassignment
@@ -200,7 +225,7 @@ Milestone release covering the foundation, security, and clinical operations del
 
 ### Changed
 
-- Care pathway flow standardised as Referral → Assessment → Care Plan → Care Team → Schedule → Visits
+- Care pathway flow standardised as Referral â†’ Assessment â†’ Care Plan â†’ Care Team â†’ Schedule â†’ Visits
 - Schedule `days_of_week` storage normalised to a JSON array of lowercase weekday keys (for example `["monday","wednesday","friday"]`), with backward-compatible decoding of legacy comma-separated values and ISO weekday numbers
 - `days_of_week` column widened to `VARCHAR(191)` to support full JSON weekday arrays
 - Care visits table extended with nullable schedule source fields: `schedule_id`, `schedule_occurrence_date`, `generation_key`
