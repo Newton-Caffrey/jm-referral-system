@@ -65,6 +65,7 @@ class Roles
                     Capabilities::VIEW_HOMES,
                     Capabilities::MANAGE_HOMES,
                     Capabilities::MANAGE_OCCUPANCIES,
+                    Capabilities::OVERRIDE_PIPELINE_STAGE,
                 ],
             ],
             self::CARE_COORDINATOR => [

@@ -124,6 +124,61 @@ class ReferralActivityService
         $this->log($referral_id, 'workflow_stage_changed', $description);
     }
 
+    public function log_pipeline_started(int $referral_id, string $stage_label): void
+    {
+        $description = sprintf(
+            /* translators: %s: pipeline stage label */
+            __('Referral entered %s.', 'jm-referral-system'),
+            $stage_label
+        );
+
+        $this->log($referral_id, 'pipeline_started', $description);
+    }
+
+    public function log_pipeline_stage_changed(int $referral_id, string $from_label, string $to_label): void
+    {
+        $description = sprintf(
+            /* translators: 1: previous pipeline stage, 2: new pipeline stage */
+            __('Pipeline moved from %1$s to %2$s.', 'jm-referral-system'),
+            $from_label,
+            $to_label
+        );
+
+        $this->log($referral_id, 'pipeline_stage_changed', $description);
+    }
+
+    public function log_pipeline_stage_overridden(int $referral_id, string $from_label, string $to_label): void
+    {
+        $description = sprintf(
+            /* translators: 1: previous pipeline stage, 2: new pipeline stage */
+            __('Pipeline stage overridden from %1$s to %2$s.', 'jm-referral-system'),
+            $from_label,
+            $to_label
+        );
+
+        $this->log($referral_id, 'pipeline_stage_overridden', $description);
+    }
+
+    public function log_interest_expressed(int $referral_id, string $method): void
+    {
+        $description = match ($method) {
+            'email' => __('Interest expressed to the referrer by email.', 'jm-referral-system'),
+            'phone' => __('Interest response recorded by phone.', 'jm-referral-system'),
+            default => __('Interest response recorded through another communication channel.', 'jm-referral-system'),
+        };
+
+        $this->log($referral_id, 'interest_expressed', $description);
+    }
+
+    public function log_interest_email_failed(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'interest_email_failed',
+            __('Interest email could not be sent. Pipeline was not advanced.', 'jm-referral-system')
+        );
+    }
+
     /**
      * Logs that an internal note was added.
      */
@@ -171,6 +226,138 @@ class ReferralActivityService
             $referral_id,
             'assessment_updated',
             __('Assessment updated', 'jm-referral-system')
+        );
+    }
+
+    public function log_assessment_scheduled(int $referral_id, string $scheduled_at = ''): void
+    {
+        $description = __('Assessment scheduled.', 'jm-referral-system');
+        $scheduled_at = trim($scheduled_at);
+        if ('' !== $scheduled_at) {
+            $display = (string) mysql2date(
+                (string) get_option('date_format') . ' ' . (string) get_option('time_format'),
+                $scheduled_at
+            );
+            if ('' !== $display) {
+                $description = sprintf(
+                    /* translators: %s: scheduled date/time */
+                    __('Assessment scheduled for %s.', 'jm-referral-system'),
+                    $display
+                );
+            }
+        }
+
+        $this->log($referral_id, 'assessment_scheduled', $description);
+    }
+
+    public function log_assessment_rescheduled(int $referral_id, string $scheduled_at = ''): void
+    {
+        $description = __('Assessment rescheduled.', 'jm-referral-system');
+        $scheduled_at = trim($scheduled_at);
+        if ('' !== $scheduled_at) {
+            $display = (string) mysql2date(
+                (string) get_option('date_format') . ' ' . (string) get_option('time_format'),
+                $scheduled_at
+            );
+            if ('' !== $display) {
+                $description = sprintf(
+                    /* translators: %s: scheduled date/time */
+                    __('Assessment rescheduled for %s.', 'jm-referral-system'),
+                    $display
+                );
+            }
+        }
+
+        $this->log($referral_id, 'assessment_rescheduled', $description);
+    }
+
+    public function log_assessment_needs_rescheduling(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'assessment_needs_rescheduling',
+            __('Assessment requires rescheduling.', 'jm-referral-system')
+        );
+    }
+
+    public function log_assessment_completed(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'assessment_completed',
+            __('Assessment completed.', 'jm-referral-system')
+        );
+    }
+
+    public function log_package_cost_prepared(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'package_cost_prepared',
+            __('Package Cost prepared.', 'jm-referral-system')
+        );
+    }
+
+    public function log_package_cost_updated(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'package_cost_updated',
+            __('Package Cost updated.', 'jm-referral-system')
+        );
+    }
+
+    public function log_package_cost_sent(int $referral_id, string $method = ''): void
+    {
+        $description = 'email' === $method
+            ? __('Package Cost emailed to the Local Authority.', 'jm-referral-system')
+            : __('Package Cost submitted to the Local Authority.', 'jm-referral-system');
+
+        $this->log($referral_id, 'package_cost_sent', $description);
+    }
+
+    public function log_package_cost_email_failed(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'package_cost_email_failed',
+            __('Package Cost email could not be sent.', 'jm-referral-system')
+        );
+    }
+
+    public function log_la_decision_approved(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'la_decision_approved',
+            __('Local Authority approval recorded.', 'jm-referral-system')
+        );
+    }
+
+    public function log_la_decision_declined(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'la_decision_declined',
+            __('Local Authority decision recorded as declined.', 'jm-referral-system')
+        );
+    }
+
+    public function log_referral_not_proceeding(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'referral_not_proceeding',
+            __('Referral marked as not proceeding.', 'jm-referral-system')
+        );
+    }
+
+    public function log_care_commenced(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'care_commenced',
+            __('Care commencement recorded.', 'jm-referral-system')
         );
     }
 

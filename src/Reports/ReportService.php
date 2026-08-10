@@ -4,11 +4,15 @@ namespace JMReferral\Reports;
 
 use DateTimeImmutable;
 use JMReferral\Alerts\OperationalAlertService;
+use JMReferral\Assessment\ReferralAssessmentService;
 use JMReferral\Homes\OccupancyRepository;
 use JMReferral\Homes\OccupancyService;
+use JMReferral\LaDecision\LaDecision;
 use JMReferral\Medication\MedicationAdministrationService;
+use JMReferral\PackageCost\PackageCost;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Pipeline\PipelineStage;
 use JMReferral\Referral\CareSetting;
 use JMReferral\Users\UserProvider;
 use JMReferral\Visits\CareVisitService;
@@ -25,6 +29,7 @@ class ReportService
     public const SECTION_SUPPORTED_LIVING = 'supported_living_snapshot';
     public const SECTION_VACANCY = 'supported_living_vacancies';
     public const SECTION_PLACEMENT_MOVEMENTS = 'placement_movements';
+    public const SECTION_ACQUISITION = 'acquisition_pipeline';
 
     /** UI detail cap; CSV uses the uncapped export query. */
     public const PLACEMENT_MOVEMENTS_UI_LIMIT = 100;
@@ -34,7 +39,8 @@ class ReportService
         private AccessPolicy $access_policy,
         private OperationalAlertService $alert_service,
         private UserProvider $user_provider,
-        private OccupancyRepository $occupancy_repository
+        private OccupancyRepository $occupancy_repository,
+        private AcquisitionReportRepository $acquisition_report_repository
     ) {
     }
 
@@ -90,6 +96,8 @@ class ReportService
      *     kpis: array<string, int|float|null>,
      *     supported_living: array<string, mixed>,
      *     vacancy: array<string, mixed>,
+     *     placement_movements: array<string, mixed>,
+     *     acquisition: array<string, mixed>,
      *     visit_filters: array<string, mixed>,
      *     sections: array<int, array<string, mixed>>,
      *     errors: array<string, string>
@@ -110,6 +118,7 @@ class ReportService
                 'supported_living'    => $this->empty_supported_living_snapshot(),
                 'vacancy'             => $this->empty_vacancy_report($home),
                 'placement_movements' => $this->empty_placement_movements(),
+                'acquisition'         => $this->empty_acquisition_report(),
                 'visit_filters'       => $this->empty_visit_filters(),
                 'sections'            => [],
                 'errors'              => $parsed['errors'],
@@ -148,6 +157,7 @@ class ReportService
         $supported_living    = $this->build_supported_living_snapshot($access);
         $vacancy             = $this->build_vacancy_report($supported_living, $home);
         $placement_movements = $this->build_placement_movements($start, $end, $access);
+        $acquisition         = $this->build_acquisition_report($start, $end, $access);
 
         $delivery_summary = $this->report_repository->count_visits_by_delivery_context_in_range(
             $start,
@@ -177,9 +187,11 @@ class ReportService
             'supported_living'    => $supported_living,
             'vacancy'             => $vacancy,
             'placement_movements' => $placement_movements,
+            'acquisition'         => $acquisition,
             'visit_filters'       => $visit_filters,
             'sections'            => array_merge(
                 [
+                    $this->build_acquisition_section($acquisition),
                     $this->build_supported_living_section($supported_living),
                     $this->build_vacancy_section($vacancy),
                     $this->build_placement_movements_section($placement_movements),
@@ -689,6 +701,8 @@ class ReportService
             'care_delivery_setting'                  => ['type' => 'doughnut'],
             'occupancy_by_home'                      => ['type' => 'bar'],
             'placement_movements_chart'              => ['type' => 'bar'],
+            'acquisition_funnel_chart'               => ['type' => 'bar'],
+            'acquisition_outcomes_chart'             => ['type' => 'doughnut'],
             'referrals_by_month'                     => ['type' => 'line'],
             'referrals_by_service_type'              => ['type' => 'bar'],
             'referrals_by_workflow_stage'            => ['type' => 'doughnut'],
@@ -1834,5 +1848,434 @@ class ReportService
                 $detail,
             ],
         ];
+    }
+
+    /**
+     * Acquisition Pipeline report for referrals received in the selected period.
+     *
+     * @return array<string, mixed>
+     */
+    public function build_acquisition_report(string $start, string $end, ?int $access): array
+    {
+        $cohort = $this->acquisition_report_repository->count_cohort($start, $end, $access);
+        $funnel = $this->acquisition_report_repository->get_funnel_counts($start, $end, $access);
+        $outcomes = $this->acquisition_report_repository->get_outcome_counts($start, $end, $access);
+        $active_stages = $this->acquisition_report_repository->get_active_stage_distribution($start, $end, $access);
+        $assessment = $this->acquisition_report_repository->get_assessment_outcome_counts($start, $end, $access);
+        $package = $this->acquisition_report_repository->get_package_cost_summary($start, $end, $access);
+        $funding = $this->acquisition_report_repository->get_funding_summary($start, $end, $access);
+
+        $received = (int) ($funnel['received'] ?? 0);
+
+        $funnel_rows = [
+            [
+                'key'         => 'received',
+                'label'       => __('Referrals Received', 'jm-referral-system'),
+                'count'       => $received,
+                'pct_of_received' => $this->pct_of($received, $received),
+                'branch'      => false,
+            ],
+            [
+                'key'         => 'interest_expressed',
+                'label'       => __('Interest Expressed', 'jm-referral-system'),
+                'count'       => (int) ($funnel['interest_expressed'] ?? 0),
+                'pct_of_received' => $this->pct_of((int) ($funnel['interest_expressed'] ?? 0), $received),
+                'branch'      => false,
+            ],
+            [
+                'key'         => 'assessments_completed',
+                'label'       => __('Assessments Completed', 'jm-referral-system'),
+                'count'       => (int) ($funnel['assessments_completed'] ?? 0),
+                'pct_of_received' => $this->pct_of((int) ($funnel['assessments_completed'] ?? 0), $received),
+                'branch'      => false,
+            ],
+            [
+                'key'         => 'package_costs_sent',
+                'label'       => __('Package Costs Sent', 'jm-referral-system'),
+                'count'       => (int) ($funnel['package_costs_sent'] ?? 0),
+                'pct_of_received' => $this->pct_of((int) ($funnel['package_costs_sent'] ?? 0), $received),
+                'branch'      => false,
+            ],
+            [
+                'key'         => 'la_approved',
+                'label'       => __('Local Authority Approved', 'jm-referral-system'),
+                'count'       => (int) ($funnel['la_approved'] ?? 0),
+                'pct_of_received' => $this->pct_of((int) ($funnel['la_approved'] ?? 0), $received),
+                'branch'      => false,
+            ],
+            [
+                'key'         => 'care_commenced',
+                'label'       => __('Care Commenced', 'jm-referral-system'),
+                'count'       => (int) ($funnel['care_commenced'] ?? 0),
+                'pct_of_received' => $this->pct_of((int) ($funnel['care_commenced'] ?? 0), $received),
+                'branch'      => false,
+            ],
+            [
+                'key'         => 'la_declined',
+                'label'       => __('Local Authority Declined', 'jm-referral-system'),
+                'count'       => (int) ($funnel['la_declined'] ?? 0),
+                'pct_of_received' => $this->pct_of((int) ($funnel['la_declined'] ?? 0), $received),
+                'branch'      => true,
+            ],
+            [
+                'key'         => 'not_proceeding',
+                'label'       => __('Not Proceeding', 'jm-referral-system'),
+                'count'       => (int) ($funnel['not_proceeding'] ?? 0),
+                'pct_of_received' => $this->pct_of((int) ($funnel['not_proceeding'] ?? 0), $received),
+                'branch'      => true,
+            ],
+            [
+                'key'         => 'still_active',
+                'label'       => __('Still in Active Acquisition', 'jm-referral-system'),
+                'count'       => (int) ($funnel['still_active'] ?? 0),
+                'pct_of_received' => $this->pct_of((int) ($funnel['still_active'] ?? 0), $received),
+                'branch'      => true,
+            ],
+        ];
+
+        $timing = [
+            'received_to_interest' => array_merge(
+                ['label' => __('Received → Interest Expressed', 'jm-referral-system')],
+                AcquisitionTimingStats::summarize(
+                    $this->acquisition_report_repository->get_received_to_interest_seconds($start, $end, $access)
+                )
+            ),
+            'package_sent_to_la_decision' => array_merge(
+                [
+                    'label' => __('Package Cost Sent → LA Decision', 'jm-referral-system'),
+                    'note'  => __(
+                        'Includes external Local Authority response time. Not JM processing time.',
+                        'jm-referral-system'
+                    ),
+                ],
+                AcquisitionTimingStats::summarize(
+                    $this->acquisition_report_repository->get_package_sent_to_decision_seconds($start, $end, $access)
+                )
+            ),
+            'approval_to_commencement' => array_merge(
+                ['label' => __('LA Approval → Care Commenced', 'jm-referral-system')],
+                AcquisitionTimingStats::summarize(
+                    $this->acquisition_report_repository->get_approval_to_commencement_seconds($start, $end, $access)
+                )
+            ),
+            'received_to_commencement' => array_merge(
+                ['label' => __('Referral Received → Care Commenced', 'jm-referral-system')],
+                AcquisitionTimingStats::summarize(
+                    $this->acquisition_report_repository->get_received_to_commencement_seconds($start, $end, $access)
+                )
+            ),
+        ];
+
+        $stage_duration_rows = [];
+        $stage_seconds = $this->acquisition_report_repository->get_completed_stage_duration_seconds($start, $end, $access);
+        foreach ($stage_seconds as $slug => $seconds_list) {
+            $stats = AcquisitionTimingStats::summarize($seconds_list);
+            $stage_duration_rows[] = [
+                'slug'  => $slug,
+                'label' => PipelineStage::label($slug),
+                'median_label' => $stats['median_label'],
+                'average_label' => $stats['average_label'],
+                'count' => $stats['count'],
+                'available' => $stats['available'],
+            ];
+        }
+
+        $export_rows = $this->format_acquisition_export_rows(
+            $this->acquisition_report_repository->list_acquisition_export_rows($start, $end, $access)
+        );
+
+        return [
+            'cohort_label' => __('Referral Cohort: Received During Selected Period', 'jm-referral-system'),
+            'cohort_note'  => __(
+                'Metrics follow referrals created in the selected date range that entered the structured Phase 3 pipeline (stage-history created). Later milestones still count for that cohort. Legacy referrals — including those later override-moved onto a canonical stage — are counted separately and do not enter conversion denominators. Recent cohorts may still contain referrals progressing through the pipeline.',
+                'jm-referral-system'
+            ),
+            'archive_note' => __(
+                'Historical reporting includes archived referrals. Archiving retains outcomes; it does not remove them from acquisition history.',
+                'jm-referral-system'
+            ),
+            'received_total'     => (int) ($cohort['received_total'] ?? 0),
+            'received_canonical' => (int) ($cohort['received_canonical'] ?? 0),
+            'received_legacy'    => (int) ($cohort['received_legacy'] ?? 0),
+            'funnel'             => $funnel_rows,
+            'outcomes'           => [
+                [
+                    'key'   => 'care_commenced',
+                    'label' => __('Care Commenced', 'jm-referral-system'),
+                    'count' => (int) ($outcomes['care_commenced'] ?? 0),
+                ],
+                [
+                    'key'   => 'declined',
+                    'label' => __('Declined', 'jm-referral-system'),
+                    'count' => (int) ($outcomes['declined'] ?? 0),
+                ],
+                [
+                    'key'   => 'not_proceeding',
+                    'label' => __('Not Proceeding', 'jm-referral-system'),
+                    'count' => (int) ($outcomes['not_proceeding'] ?? 0),
+                ],
+                [
+                    'key'   => 'still_active',
+                    'label' => __('Still Active', 'jm-referral-system'),
+                    'count' => (int) ($outcomes['still_active'] ?? 0),
+                ],
+            ],
+            'active_stages'   => $active_stages,
+            'timing'          => $timing,
+            'stage_durations' => $stage_duration_rows,
+            'stage_duration_note' => __(
+                'Stage durations use consecutive pipeline stage-history transitions for the cohort. Only completed transitions are measured.',
+                'jm-referral-system'
+            ),
+            'assessments'     => [
+                'suitable' => (int) ($assessment['suitable'] ?? 0),
+                'suitable_with_conditions' => (int) ($assessment['suitable_with_conditions'] ?? 0),
+                'not_suitable' => (int) ($assessment['not_suitable'] ?? 0),
+                'pending' => (int) ($assessment['pending'] ?? 0),
+            ],
+            'package_costs'   => [
+                'prepared' => (int) ($package['prepared'] ?? 0),
+                'sent' => (int) ($package['sent'] ?? 0),
+                'total_proposed' => $package['total_proposed'] ?? null,
+                'average_proposed' => $package['average_proposed'] ?? null,
+                'proposed_count' => (int) ($package['proposed_count'] ?? 0),
+                'currency' => PackageCost::CURRENCY_GBP,
+                'value_note' => __(
+                    'Proposed Package Value uses the current (latest) Package Cost record only. Not revenue received.',
+                    'jm-referral-system'
+                ),
+            ],
+            'funding'         => [
+                'yes' => (int) ($funding['yes'] ?? 0),
+                'no' => (int) ($funding['no'] ?? 0),
+                'not_recorded' => (int) ($funding['not_recorded'] ?? 0),
+                'note' => __(
+                    'Funding confirmation is independent of Local Authority approval.',
+                    'jm-referral-system'
+                ),
+            ],
+            'export_rows'     => $export_rows,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function empty_acquisition_report(): array
+    {
+        return [
+            'cohort_label'       => __('Referral Cohort: Received During Selected Period', 'jm-referral-system'),
+            'cohort_note'        => '',
+            'archive_note'       => '',
+            'received_total'     => 0,
+            'received_canonical' => 0,
+            'received_legacy'    => 0,
+            'funnel'             => [],
+            'outcomes'           => [],
+            'active_stages'      => [],
+            'timing'             => [],
+            'stage_durations'    => [],
+            'stage_duration_note'=> '',
+            'assessments'        => [
+                'suitable' => 0,
+                'suitable_with_conditions' => 0,
+                'not_suitable' => 0,
+                'pending' => 0,
+            ],
+            'package_costs'      => [
+                'prepared' => 0,
+                'sent' => 0,
+                'total_proposed' => null,
+                'average_proposed' => null,
+                'proposed_count' => 0,
+                'currency' => PackageCost::CURRENCY_GBP,
+                'value_note' => '',
+            ],
+            'funding'            => [
+                'yes' => 0,
+                'no' => 0,
+                'not_recorded' => 0,
+                'note' => '',
+            ],
+            'export_rows'        => [],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $acquisition
+     * @return array<string, mixed>
+     */
+    private function build_acquisition_section(array $acquisition): array
+    {
+        $funnel_pairs = [];
+        foreach (is_array($acquisition['funnel'] ?? null) ? $acquisition['funnel'] : [] as $row) {
+            if (! empty($row['branch'])) {
+                continue;
+            }
+            $funnel_pairs[(string) ($row['label'] ?? '')] = (int) ($row['count'] ?? 0);
+        }
+        $funnel_chart = $this->build_dataset('acquisition_funnel_chart', __('Acquisition Funnel', 'jm-referral-system'), $funnel_pairs);
+
+        $outcome_pairs = [];
+        foreach (is_array($acquisition['outcomes'] ?? null) ? $acquisition['outcomes'] : [] as $row) {
+            $outcome_pairs[(string) ($row['label'] ?? '')] = (int) ($row['count'] ?? 0);
+        }
+        $outcome_chart = $this->build_dataset('acquisition_outcomes_chart', __('Acquisition Outcomes', 'jm-referral-system'), $outcome_pairs);
+
+        return [
+            'id'                     => self::SECTION_ACQUISITION,
+            'title'                  => __('Acquisition Pipeline', 'jm-referral-system'),
+            'note'                   => (string) ($acquisition['cohort_label'] ?? ''),
+            'notes'                  => array_filter([
+                (string) ($acquisition['cohort_note'] ?? ''),
+                (string) ($acquisition['archive_note'] ?? ''),
+            ]),
+            'export_filename_prefix' => 'acquisition-pipeline',
+            'datasets'               => [
+                $funnel_chart,
+                $outcome_chart,
+            ],
+        ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<int, string|int|float>>
+     */
+    private function format_acquisition_export_rows(array $rows): array
+    {
+        $owner_ids = [];
+        foreach ($rows as $row) {
+            $uid = absint($row['assigned_to'] ?? 0);
+            if ($uid > 0) {
+                $owner_ids[$uid] = $uid;
+            }
+        }
+        $owner_names = $this->user_provider->get_display_names_by_ids(array_values($owner_ids));
+
+        $formatted = [];
+        foreach ($rows as $row) {
+            $is_structured = 1 === (int) ($row['is_structured_phase3'] ?? 0);
+            $stage_slug    = (string) ($row['stage_slug'] ?? '');
+            $owner_id      = absint($row['assigned_to'] ?? 0);
+
+            $assessment_outcome = (string) ($row['assessment_outcome'] ?? '');
+            $assessment_label   = '';
+            if ('' !== $assessment_outcome) {
+                $assessment_label = ReferralAssessmentService::outcome_labels()[$assessment_outcome]
+                    ?? $assessment_outcome;
+            }
+
+            $pc_status = (string) ($row['package_cost_status'] ?? '');
+            $pc_label  = '' !== $pc_status
+                ? (PackageCost::status_labels()[$pc_status] ?? $pc_status)
+                : '';
+
+            $la_decision = (string) ($row['la_decision'] ?? '');
+            $la_label    = '' !== $la_decision
+                ? (LaDecision::decision_labels()[$la_decision] ?? $la_decision)
+                : '';
+
+            $funding_raw = $row['funding_confirmed'] ?? null;
+            $funding_label = '';
+            if ($is_structured && '' !== $la_decision && LaDecision::DECISION_APPROVED === $la_decision) {
+                $funding_label = LaDecision::funding_confirmed_label(
+                    null === $funding_raw || '' === $funding_raw ? null : (int) $funding_raw
+                );
+            }
+
+            $care_setting = (string) ($row['care_setting'] ?? '');
+            $care_label   = '' !== $care_setting
+                ? (CareSetting::options()[$care_setting] ?? $care_setting)
+                : __('Not specified', 'jm-referral-system');
+
+            // Current operational stage (may be canonical even for legacy override cases).
+            $current_stage_label = '';
+            if (PipelineStage::is_canonical($stage_slug)) {
+                $current_stage_label = PipelineStage::label($stage_slug);
+            } elseif ('' !== (string) ($row['stage_name'] ?? '')) {
+                $current_stage_label = (string) $row['stage_name'];
+            } else {
+                $current_stage_label = __('Legacy / Pre-Pipeline', 'jm-referral-system');
+            }
+
+            $formatted[] = [
+                (string) ($row['referral_number'] ?? ''),
+                (string) ($row['client_name'] ?? ''),
+                (string) ($row['created_at'] ?? ''),
+                $this->humanize_priority((string) ($row['priority'] ?? '')),
+                $owner_id > 0 ? (string) ($owner_names[$owner_id] ?? ('#' . $owner_id)) : '',
+                $current_stage_label,
+                $this->humanize_referral_status((string) ($row['status'] ?? '')),
+                $is_structured ? (string) ($row['interest_expressed_at'] ?? '') : '',
+                $is_structured ? $assessment_label : '',
+                $is_structured ? $pc_label : '',
+                $is_structured ? (string) ($row['package_cost_sent_at'] ?? '') : '',
+                $is_structured && null !== ($row['package_total'] ?? null) && '' !== (string) ($row['package_total'] ?? '')
+                    ? (string) ($row['package_total'] ?? '')
+                    : '',
+                $is_structured ? $la_label : '',
+                $is_structured ? (string) ($row['la_decision_at'] ?? '') : '',
+                $funding_label,
+                $is_structured ? $care_label : '',
+                $is_structured ? (string) ($row['care_commenced_at'] ?? '') : '',
+                $this->acquisition_outcome_label($is_structured, $stage_slug, (string) ($row['care_commenced_at'] ?? '')),
+            ];
+        }
+
+        return $formatted;
+    }
+
+    private function acquisition_outcome_label(bool $is_structured, string $stage_slug, string $care_commenced_at): string
+    {
+        if (! $is_structured) {
+            return __('Legacy / Pre-Pipeline', 'jm-referral-system');
+        }
+
+        if (
+            ('' !== $care_commenced_at && '0000-00-00 00:00:00' !== $care_commenced_at)
+            || PipelineStage::CARE_COMMENCED === $stage_slug
+        ) {
+            return __('Care Commenced', 'jm-referral-system');
+        }
+        if (PipelineStage::DECLINED === $stage_slug) {
+            return __('Declined', 'jm-referral-system');
+        }
+        if (PipelineStage::NOT_PROCEEDING === $stage_slug) {
+            return __('Not Proceeding', 'jm-referral-system');
+        }
+
+        return __('Still Active', 'jm-referral-system');
+    }
+
+    private function humanize_referral_status(string $status): string
+    {
+        return match ($status) {
+            'new' => __('New', 'jm-referral-system'),
+            'in_progress' => __('In Progress', 'jm-referral-system'),
+            'completed' => __('Completed', 'jm-referral-system'),
+            'cancelled' => __('Cancelled', 'jm-referral-system'),
+            default => $status,
+        };
+    }
+
+    private function humanize_priority(string $priority): string
+    {
+        return match ($priority) {
+            'low' => __('Low', 'jm-referral-system'),
+            'medium' => __('Medium', 'jm-referral-system'),
+            'high' => __('High', 'jm-referral-system'),
+            'urgent' => __('Urgent', 'jm-referral-system'),
+            default => $priority,
+        };
+    }
+
+    private function pct_of(int $part, int $whole): ?float
+    {
+        if ($whole <= 0) {
+            return null;
+        }
+
+        return round(($part / $whole) * 100, 1);
     }
 }

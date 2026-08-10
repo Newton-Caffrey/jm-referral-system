@@ -5,6 +5,7 @@ namespace JMReferral\Referral;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Homes\OccupancyRepository;
+use JMReferral\Pipeline\ReferralPipelineService;
 use JMReferral\Services\ServiceTypeService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Workflow\WorkflowStageService;
@@ -35,7 +36,8 @@ class ReferralEditController
         private ServiceTypeService $service_type_service,
         private WorkflowStageService $workflow_stage_service,
         private AccessPolicy $access_policy,
-        private OccupancyRepository $occupancy_repository
+        private OccupancyRepository $occupancy_repository,
+        private ReferralPipelineService $pipeline_service
     ) {
     }
 
@@ -77,6 +79,8 @@ class ReferralEditController
         $assignable_users = $form_options['assignable_users'];
         $service_types    = $form_options['service_types'];
         $workflow_stages  = $form_options['workflow_stages'];
+        $pipeline_locked  = ! empty($form_options['pipeline_locked']);
+        $pipeline_stage_label = (string) ($form_options['pipeline_stage_label'] ?? '');
 
         include JMRS_PLUGIN_PATH . 'templates/referrals/edit.php';
     }
@@ -229,6 +233,7 @@ class ReferralEditController
     public function map_referral_to_form_data(array $referral): array
     {
         return [
+            'id'                       => (string) absint($referral['id'] ?? 0),
             'client_name'              => (string) ($referral['client_name'] ?? ''),
             'client_email'             => (string) ($referral['client_email'] ?? ''),
             'client_phone'             => (string) ($referral['client_phone'] ?? ''),
@@ -251,6 +256,7 @@ class ReferralEditController
             'address_line_2'           => (string) ($referral['address_line_2'] ?? ''),
             'city'                     => (string) ($referral['city'] ?? ''),
             'postcode'                 => (string) ($referral['postcode'] ?? ''),
+            'archived_at'              => (string) ($referral['archived_at'] ?? ''),
         ];
     }
 
@@ -261,19 +267,42 @@ class ReferralEditController
      * @return array{
      *     assignable_users: array<int, array{id: int, display_name: string}>,
      *     service_types: array<int, array<string, mixed>>,
-     *     workflow_stages: array<int, array<string, mixed>>
+     *     workflow_stages: array<int, array<string, mixed>>,
+     *     pipeline_locked: bool,
+     *     pipeline_stage_label: string
      * }
      */
     public function get_form_options(array $data): array
     {
+        $stage_id = absint($data['workflow_stage_id'] ?? 0);
+        $referral = [
+            'workflow_stage_id' => $stage_id,
+            'assigned_to'       => absint($data['assigned_to'] ?? 0),
+            'archived_at'       => $data['archived_at'] ?? null,
+        ];
+
+        // Prefer full referral when available for accurate pipeline detection.
+        $referral_id = absint($data['id'] ?? 0);
+        if ($referral_id > 0) {
+            $found = $this->repository->find($referral_id);
+            if (is_array($found)) {
+                $referral = $found;
+            }
+        }
+
+        $pipeline_locked = $this->pipeline_service->is_referral_on_pipeline($referral);
+        $panel           = $this->pipeline_service->get_panel_data($referral);
+
         return [
-            'assignable_users' => $this->user_provider->get_assignable_users(),
-            'service_types'    => $this->service_type_service->get_options_for_referral(
+            'assignable_users'     => $this->user_provider->get_assignable_users(),
+            'service_types'        => $this->service_type_service->get_options_for_referral(
                 absint($data['service_type_id'] ?? 0)
             ),
-            'workflow_stages'  => $this->workflow_stage_service->get_options_for_referral(
-                absint($data['workflow_stage_id'] ?? 0)
-            ),
+            'workflow_stages'      => $pipeline_locked
+                ? []
+                : $this->workflow_stage_service->get_legacy_options_for_referral($stage_id),
+            'pipeline_locked'      => $pipeline_locked,
+            'pipeline_stage_label' => (string) ($panel['stage_label'] ?? ''),
         ];
     }
 

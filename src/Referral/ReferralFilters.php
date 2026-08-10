@@ -3,6 +3,7 @@
 namespace JMReferral\Referral;
 
 use JMReferral\Permissions\AccessPolicy;
+use JMReferral\Pipeline\PipelineStage;
 use JMReferral\Users\UserProvider;
 
 class ReferralFilters
@@ -51,7 +52,8 @@ class ReferralFilters
      *     priority: string,
      *     assigned_to: int,
      *     archive_scope: string,
-     *     care_setting: string
+     *     care_setting: string,
+     *     pipeline_stage: string
      * }
      */
     public function from_request(): array
@@ -85,14 +87,20 @@ class ReferralFilters
         }
 
         $assigned_to = 0;
+        $unassigned  = false;
 
         if (! $this->access_policy->should_scope_to_assigned()) {
-            $assigned_to = isset($_GET['jmrs_assigned_to'])
-                ? absint($_GET['jmrs_assigned_to'])
-                : 0;
+            $assigned_raw = isset($_GET['jmrs_assigned_to'])
+                ? sanitize_text_field(wp_unslash($_GET['jmrs_assigned_to']))
+                : '';
 
-            if ($assigned_to > 0 && ! $this->user_provider->is_assignable($assigned_to)) {
-                $assigned_to = 0;
+            if ('unassigned' === $assigned_raw) {
+                $unassigned = true;
+            } else {
+                $assigned_to = absint($assigned_raw);
+                if ($assigned_to > 0 && ! $this->user_provider->is_assignable($assigned_to)) {
+                    $assigned_to = 0;
+                }
             }
         }
 
@@ -107,13 +115,26 @@ class ReferralFilters
             $care_setting = '';
         }
 
+        $pipeline_stage = isset($_GET['jmrs_pipeline_stage'])
+            ? sanitize_key(wp_unslash($_GET['jmrs_pipeline_stage']))
+            : '';
+
+        if ('' !== $pipeline_stage
+            && PipelineStage::FILTER_LEGACY !== $pipeline_stage
+            && ! PipelineStage::is_canonical($pipeline_stage)
+        ) {
+            $pipeline_stage = '';
+        }
+
         return [
-            'search'         => $search,
-            'status'         => $status,
-            'priority'       => $priority,
-            'assigned_to'    => $assigned_to,
-            'archive_scope'  => $archive_scope,
-            'care_setting'   => $care_setting,
+            'search'          => $search,
+            'status'          => $status,
+            'priority'        => $priority,
+            'assigned_to'     => $assigned_to,
+            'unassigned'      => $unassigned,
+            'archive_scope'   => $archive_scope,
+            'care_setting'    => $care_setting,
+            'pipeline_stage'  => $pipeline_stage,
         ];
     }
 
@@ -152,7 +173,8 @@ class ReferralFilters
      *     priority?: string,
      *     assigned_to?: int,
      *     archive_scope?: string,
-     *     care_setting?: string
+     *     care_setting?: string,
+     *     pipeline_stage?: string
      * } $filters
      * @return array<string, scalar>
      */
@@ -174,12 +196,18 @@ class ReferralFilters
             $args['jmrs_priority'] = (string) $filters['priority'];
         }
 
-        if (! empty($filters['assigned_to'])) {
+        if (! empty($filters['unassigned'])) {
+            $args['jmrs_assigned_to'] = 'unassigned';
+        } elseif (! empty($filters['assigned_to'])) {
             $args['jmrs_assigned_to'] = absint($filters['assigned_to']);
         }
 
         if (! empty($filters['care_setting'])) {
             $args['jmrs_care_setting'] = (string) $filters['care_setting'];
+        }
+
+        if (! empty($filters['pipeline_stage'])) {
+            $args['jmrs_pipeline_stage'] = (string) $filters['pipeline_stage'];
         }
 
         $archive_scope = (string) ($filters['archive_scope'] ?? 'active');

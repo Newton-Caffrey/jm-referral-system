@@ -145,6 +145,7 @@ Build a secure, scalable, and user-friendly healthcare referral and care managem
 - [x] Phase 2G.4: Visit analytics by care delivery context (existing Visit reports; snapshot vs current; no DB migration)
 - [x] Phase 2G.5: Reporting polish, export consistency & UAT (no DB migration)
 - [x] Phase 2H: Full Supported Living UAT & release preparation (product `1.2.0`; DB `2.21.0`)
+- [x] Phase 3 (3B–3I): Referral Acquisition Pipeline through Acquisition Reporting (product `1.3.0`; DB `2.28.0`)
 - [ ] Post-2H: structured movement From/To metadata / occupancy trend (future)
 
 ### Version 1.0.0 Production Package ✅
@@ -237,12 +238,13 @@ Planned themes (not committed scope):
 | Phase 7.1 — Production release package | Docs, version alignment, packaging, checklist | ✅ Complete |
 | Phase 7.2 — Developer documentation | Architecture, schema, permissions, DI, history | ✅ Complete |
 | Version 1.1 | Portal workflows + UX (shipped with 1.2.0 package) | ✅ Complete (bundled in 1.2.0) |
-| Product Phase 2 / v1.2 | Supported Living (homes → occupancy → care setting → home dashboard → service location → reporting → UAT) | ✅ Phase 2H release prep (DB `2.21.0`) |
+| Product Phase 2 / v1.2 | Supported Living (homes → occupancy → care setting → home dashboard → service location → reporting → UAT) | ✅ Shipped in `1.2.0` (DB `2.21.0`) |
+| Product Phase 3 / v1.3 | Referral Acquisition Pipeline → Dashboard → Acquisition Reporting | ✅ Shipped in `1.3.0` (DB `2.28.0`) |
 | Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Absorbed into 1.1+ / backlog |
 
-**Current shipped release:** plugin `1.2.0` · DB `2.21.0` · see `docs/RELEASE_NOTES_v1.2.0.md`.
-**UAT:** `docs/uat/UAT_SUPPORTED_LIVING_V1_2.md` · checklist `docs/RELEASE_CHECKLIST.md`.
+**Current shipped release:** plugin `1.3.0` · DB `2.28.0` · see `docs/RELEASE_NOTES_v1.3.0.md`.
+**UAT:** `docs/uat/UAT_PHASE_3.md` · checklist `docs/RELEASE_CHECKLIST.md`.
 
-**Next versions:** Post-1.2 backlog (structured movement From/To metadata, occupancy trend chart, automated tests) — see sections above and `docs/SUPPORTED_LIVING.md`.
+**Next versions:** Post-1.3 backlog (structured movement From/To metadata, occupancy trend chart, automated tests, remaining portal gaps) — see sections above and `docs/SUPPORTED_LIVING.md`.
 
 See `CHANGELOG.md` for release detail and `README.md` for current system documentation.

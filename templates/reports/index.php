@@ -8,6 +8,7 @@
  * @var array<string, mixed> $supported_living
  * @var array<string, mixed> $vacancy
  * @var array<string, mixed> $placement_movements
+ * @var array<string, mixed> $acquisition
  * @var array<string, mixed> $visit_filters
  * @var array<string, string> $range_labels
  * @var string $filter_range
@@ -32,6 +33,7 @@ $kpis                = is_array( $kpis ?? null ) ? $kpis : array();
 $supported_living    = is_array( $supported_living ?? null ) ? $supported_living : array();
 $vacancy             = is_array( $vacancy ?? null ) ? $vacancy : array();
 $placement_movements = is_array( $placement_movements ?? null ) ? $placement_movements : array();
+$acquisition         = is_array( $acquisition ?? null ) ? $acquisition : array();
 $visit_filters       = is_array( $visit_filters ?? null ) ? $visit_filters : array();
 $range_labels        = is_array( $range_labels ?? null ) ? $range_labels : array();
 $filter_range        = (string) ( $filter_range ?? 'this_month' );
@@ -114,9 +116,14 @@ $sl_active_homes = absint( $supported_living['active_homes'] ?? 0 );
 
 $sl_section         = null;
 $movements_section  = null;
+$acquisition_section = null;
 $remaining_sections = array();
 foreach ( $sections as $candidate_section ) {
 	$candidate_id = (string) ( $candidate_section['id'] ?? '' );
+	if ( 'acquisition_pipeline' === $candidate_id ) {
+		$acquisition_section = $candidate_section;
+		continue;
+	}
 	if ( 'supported_living_snapshot' === $candidate_id ) {
 		$sl_section = $candidate_section;
 		continue;
@@ -130,7 +137,8 @@ foreach ( $sections as $candidate_section ) {
 	}
 	$remaining_sections[] = $candidate_section;
 }
-$sl_section_csv = (string) ( $section_export_urls['supported_living_snapshot'] ?? '' );
+$sl_section_csv          = (string) ( $section_export_urls['supported_living_snapshot'] ?? '' );
+$acquisition_section_csv = (string) ( $section_export_urls['acquisition_pipeline'] ?? '' );
 ?>
 <div class="wrap jmrs-reports-wrap">
 	<h1><?php echo esc_html__( 'Reports', 'jm-referral-system' ); ?></h1>
@@ -334,6 +342,10 @@ $sl_section_csv = (string) ( $section_export_urls['supported_living_snapshot'] ?
 			?>
 		</p>
 	<?php endif; ?>
+
+	<?php
+	include JMRS_PLUGIN_PATH . 'templates/reports/partials/acquisition.php';
+	?>
 
 	<section class="jmrs-report-section jmrs-report-section--snapshot" id="jmrs-supported-living-snapshot">
 		<div class="jmrs-report-section-header">

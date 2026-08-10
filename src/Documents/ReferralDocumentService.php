@@ -417,6 +417,55 @@ class ReferralDocumentService
     }
 
     /**
+     * Resolves an absolute readable filesystem path for server-side attachment use.
+     *
+     * Callers must already enforce business authorization. This does not replace
+     * HTTP download authorization (prepare_download).
+     *
+     * @return array{path: string, original_name: string, mime_type: string}|null
+     */
+    public function resolve_attachment_path_for_referral(int $document_id, int $referral_id): ?array
+    {
+        if ($document_id <= 0 || $referral_id <= 0) {
+            return null;
+        }
+
+        $document = $this->document_repository->find($document_id);
+        if (null === $document) {
+            return null;
+        }
+
+        if (absint($document['referral_id'] ?? 0) !== $referral_id) {
+            return null;
+        }
+
+        $referral = $this->referral_repository->find($referral_id);
+        if (null === $referral) {
+            return null;
+        }
+
+        $storage_type = (string) ($document['storage_type'] ?? PrivateDocumentStorage::STORAGE_LEGACY);
+        $resolved = PrivateDocumentStorage::STORAGE_PRIVATE === $storage_type
+            ? $this->prepare_private_download($document, $referral)
+            : $this->prepare_legacy_download($document, $referral);
+
+        if (isset($resolved['errors']) || empty($resolved['file_path'])) {
+            return null;
+        }
+
+        $path = (string) $resolved['file_path'];
+        if (! is_file($path) || ! is_readable($path)) {
+            return null;
+        }
+
+        return [
+            'path'          => $path,
+            'original_name' => (string) ($document['original_name'] ?? basename($path)),
+            'mime_type'     => (string) ($document['mime_type'] ?? ''),
+        ];
+    }
+
+    /**
      * Returns counts for the Settings migration UI.
      *
      * @return array{legacy: int, private: int}

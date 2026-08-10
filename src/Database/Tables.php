@@ -55,6 +55,16 @@ class Tables
     }
 
     /**
+     * Returns the referral pipeline stage history table name with the WordPress prefix.
+     */
+    public static function referral_stage_history_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_stage_history';
+    }
+
+    /**
      * Returns the referral documents table name with the WordPress prefix.
      */
     public static function referral_documents_table(): string
@@ -195,6 +205,26 @@ class Tables
     }
 
     /**
+     * Package cost submission records table.
+     */
+    public static function referral_package_costs_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_package_costs';
+    }
+
+    /**
+     * Local Authority / funding decision records table.
+     */
+    public static function referral_la_decisions_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_la_decisions';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -210,6 +240,7 @@ class Tables
         self::create_referral_notes_table($charset);
         self::create_service_types_table($charset);
         self::create_workflow_stages_table($charset);
+        self::create_referral_stage_history_table($charset);
         self::create_referral_documents_table($charset);
         self::create_referral_assessments_table($charset);
         self::create_referral_care_plans_table($charset);
@@ -224,6 +255,8 @@ class Tables
         self::create_homes_table($charset);
         self::create_bedrooms_table($charset);
         self::create_occupancies_table($charset);
+        self::create_referral_package_costs_table($charset);
+        self::create_referral_la_decisions_table($charset);
     }
 
     /**
@@ -270,6 +303,16 @@ class Tables
             archived_by BIGINT UNSIGNED NULL,
             archive_reason TEXT NULL,
             care_setting VARCHAR(50) NULL,
+            workflow_stage_entered_at DATETIME NULL,
+            next_action_due_at DATETIME NULL,
+            interest_expressed_at DATETIME NULL,
+            interest_expressed_by BIGINT UNSIGNED NULL,
+            interest_response_method VARCHAR(30) NULL,
+            interest_response_recipient VARCHAR(190) NULL,
+            interest_email_status VARCHAR(30) NULL,
+            interest_email_sent_at DATETIME NULL,
+            care_commenced_at DATETIME NULL,
+            care_commenced_by BIGINT UNSIGNED NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -284,6 +327,9 @@ class Tables
             KEY archived_by (archived_by),
             KEY care_setting (care_setting),
             KEY created_at (created_at),
+            KEY workflow_stage_entered_at (workflow_stage_entered_at),
+            KEY next_action_due_at (next_action_due_at),
+            KEY interest_expressed_at (interest_expressed_at),
             KEY archived_at_status (archived_at, status),
             KEY status_priority (status, priority),
             KEY assigned_to_archived_at (assigned_to, archived_at)
@@ -375,12 +421,44 @@ class Tables
             description TEXT NULL,
             stage_order INT NOT NULL DEFAULT 0,
             status VARCHAR(50) DEFAULT 'active',
+            is_system TINYINT(1) NOT NULL DEFAULT 0,
+            is_pipeline_stage TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             UNIQUE KEY slug (slug),
             KEY status (status),
-            KEY stage_order (stage_order)
+            KEY stage_order (stage_order),
+            KEY is_pipeline_stage (is_pipeline_stage),
+            KEY is_system (is_system)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the referral pipeline stage history table.
+     */
+    private static function create_referral_stage_history_table(string $charset): void
+    {
+        $table = self::referral_stage_history_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            from_stage_id BIGINT UNSIGNED NULL,
+            from_stage_slug VARCHAR(100) NULL,
+            to_stage_id BIGINT UNSIGNED NOT NULL,
+            to_stage_slug VARCHAR(100) NOT NULL,
+            changed_by BIGINT UNSIGNED NULL,
+            change_type VARCHAR(50) NOT NULL,
+            reason VARCHAR(255) NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY to_stage_id (to_stage_id),
+            KEY created_at (created_at),
+            KEY referral_id_created_at (referral_id, created_at)
         ) {$charset};";
 
         dbDelta($sql);
@@ -447,12 +525,21 @@ class Tables
             visit_frequency VARCHAR(100) NULL,
             visit_duration VARCHAR(100) NULL,
             preferred_visit_times LONGTEXT NULL,
+            scheduled_at DATETIME NULL,
+            assessment_location_type VARCHAR(40) NULL,
+            assessment_location_name VARCHAR(190) NULL,
+            assessment_location_address TEXT NULL,
+            assessment_contact_name VARCHAR(190) NULL,
+            assessment_contact_phone VARCHAR(50) NULL,
+            assessment_contact_email VARCHAR(190) NULL,
+            scheduling_notes TEXT NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
             PRIMARY KEY  (id),
             UNIQUE KEY referral_id (referral_id),
             KEY assessor_user_id (assessor_user_id),
-            KEY outcome (outcome)
+            KEY outcome (outcome),
+            KEY scheduled_at (scheduled_at)
         ) {$charset};";
 
         dbDelta($sql);
@@ -877,6 +964,73 @@ class Tables
             KEY referral_id (referral_id),
             KEY bedroom_id (bedroom_id),
             KEY home_id (home_id)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates the package cost submission records table.
+     */
+    private static function create_referral_package_costs_table(string $charset): void
+    {
+        $table = self::referral_package_costs_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            document_id BIGINT UNSIGNED NULL,
+            package_total DECIMAL(12,2) NULL,
+            currency VARCHAR(3) NOT NULL DEFAULT 'GBP',
+            prepared_at DATETIME NULL,
+            prepared_by BIGINT UNSIGNED NULL,
+            sent_at DATETIME NULL,
+            sent_by BIGINT UNSIGNED NULL,
+            send_method VARCHAR(30) NULL,
+            recipient VARCHAR(190) NULL,
+            submission_reference VARCHAR(190) NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'draft',
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY document_id (document_id),
+            KEY status (status),
+            KEY referral_id_status (referral_id, status),
+            KEY prepared_at (prepared_at),
+            KEY sent_at (sent_at)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Creates or updates Local Authority decision records table.
+     */
+    private static function create_referral_la_decisions_table(string $charset): void
+    {
+        $table = self::referral_la_decisions_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            package_cost_id BIGINT UNSIGNED NULL,
+            decision VARCHAR(30) NOT NULL,
+            decision_at DATETIME NOT NULL,
+            recorded_by BIGINT UNSIGNED NULL,
+            funding_confirmed TINYINT(1) NULL,
+            funding_reference VARCHAR(190) NULL,
+            decision_reference VARCHAR(190) NULL,
+            reason_code VARCHAR(50) NULL,
+            notes VARCHAR(500) NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY package_cost_id (package_cost_id),
+            KEY decision (decision),
+            KEY referral_id_decision (referral_id, decision),
+            KEY decision_at (decision_at)
         ) {$charset};";
 
         dbDelta($sql);

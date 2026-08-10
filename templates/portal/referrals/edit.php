@@ -28,6 +28,8 @@ $referral         = is_array( $referral ?? null ) ? $referral : array();
 $assignable_users = is_array( $assignable_users ?? null ) ? $assignable_users : array();
 $service_types    = is_array( $service_types ?? null ) ? $service_types : array();
 $workflow_stages  = is_array( $workflow_stages ?? null ) ? $workflow_stages : array();
+$pipeline_locked  = ! empty( $pipeline_locked );
+$pipeline_stage_label = isset( $pipeline_stage_label ) ? (string) $pipeline_stage_label : '';
 $form_action      = (string) ( $form_action ?? '' );
 $cancel_url       = (string) ( $cancel_url ?? '' );
 $can_assign       = ! empty( $can_assign );
@@ -153,6 +155,11 @@ $field_error = static function ( array $errors, string $key ): void {
 			</div>
 			<div class="jmrs-portal-field">
 				<label for="jmrs_workflow_stage_id"><?php echo esc_html__( 'Workflow Stage', 'jm-referral-system' ); ?></label>
+				<?php if ( $pipeline_locked ) : ?>
+					<input type="hidden" name="jmrs_workflow_stage_id" value="<?php echo esc_attr( $workflow_stage_id ); ?>" />
+					<p><strong><?php echo esc_html( '' !== $pipeline_stage_label ? $pipeline_stage_label : $workflow_stage_id ); ?></strong></p>
+					<p class="description"><?php echo esc_html__( 'This referral is on the acquisition pipeline. Use Override on the referral view (Manager/Admin) to change stage.', 'jm-referral-system' ); ?></p>
+				<?php else : ?>
 				<select name="jmrs_workflow_stage_id" id="jmrs_workflow_stage_id" required>
 					<option value="0"><?php echo esc_html__( 'Select stage…', 'jm-referral-system' ); ?></option>
 					<?php foreach ( $workflow_stages as $workflow_stage ) : ?>
@@ -161,7 +168,9 @@ $field_error = static function ( array $errors, string $key ): void {
 						</option>
 					<?php endforeach; ?>
 				</select>
+				<p class="description"><?php echo esc_html__( 'Legacy/custom stages only.', 'jm-referral-system' ); ?></p>
 				<?php $field_error( $errors, 'workflow_stage_id' ); ?>
+				<?php endif; ?>
 			</div>
 			<div class="jmrs-portal-field">
 				<label for="jmrs_priority"><?php echo esc_html__( 'Priority', 'jm-referral-system' ); ?></label>

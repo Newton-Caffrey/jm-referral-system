@@ -1,9 +1,10 @@
-# Installation Guide — JM Referral System v1.2.0
+# Installation Guide — JM Referral System v1.3.0
 
 Professional installation and go-live guide for WordPress hosts.
 
-**Product version:** 1.2.0
-**Database schema:** 2.21.0
+**Product version:** 1.3.0
+**Database schema:** 2.28.0
+**Portal rewrite:** 1.2.1
 
 ---
 
@@ -50,7 +51,7 @@ Disk space: allow for database growth plus `wp-content/uploads/jmrs-private/` (p
 
 ### What activation does
 
-- Runs database migrations (`jmrs_db_version` → `2.21.0`)
+- Runs database migrations (`jmrs_db_version` → `2.28.0`)
 - Registers JM roles and grants Administrator capabilities
 - Ensures private document storage is ready
 - Flushes rewrite rules once (staff portal routes when enabled later)

@@ -16,6 +16,15 @@ use JMReferral\Documents\ReferralDocumentController;
 use JMReferral\Documents\ReferralDocumentRepository;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Pipeline\InterestResponseService;
+use JMReferral\Pipeline\ReferralPipelineService;
+use JMReferral\Assessment\AssessmentSchedulingService;
+use JMReferral\PackageCost\PackageCostService;
+use JMReferral\LaDecision\LocalAuthorityDecisionService;
+use JMReferral\Pipeline\NonProceedingReason;
+use JMReferral\Pipeline\ReferralNonProceedingService;
+use JMReferral\Transition\CareCommencementService;
+use JMReferral\Transition\TransitionPlanningService;
 use JMReferral\Scheduling\ScheduleController;
 use JMReferral\Scheduling\ScheduleGenerationService;
 use JMReferral\Scheduling\ScheduleService;
@@ -62,7 +71,15 @@ class ReferralViewController
         private VisitTaskService $visit_task_service,
         private MedicationService $medication_service,
         private MedicationAdministrationService $medication_administration_service,
-        private ReferralRetentionService $retention_service
+        private ReferralRetentionService $retention_service,
+        private ReferralPipelineService $pipeline_service,
+        private InterestResponseService $interest_response_service,
+        private AssessmentSchedulingService $assessment_scheduling_service,
+        private PackageCostService $package_cost_service,
+        private LocalAuthorityDecisionService $la_decision_service,
+        private ReferralNonProceedingService $non_proceeding_service,
+        private TransitionPlanningService $transition_planning_service,
+        private CareCommencementService $care_commencement_service
     ) {
     }
 
@@ -72,6 +89,16 @@ class ReferralViewController
     public function register(): void
     {
         add_action('admin_init', [$this, 'handle_stage_change']);
+        add_action('admin_init', [$this, 'handle_pipeline_override']);
+        add_action('admin_init', [$this, 'handle_express_interest']);
+        add_action('admin_init', [$this, 'handle_schedule_assessment']);
+        add_action('admin_init', [$this, 'handle_reschedule_assessment']);
+        add_action('admin_init', [$this, 'handle_assessment_needs_rescheduling']);
+        add_action('admin_init', [$this, 'handle_prepare_package_cost']);
+        add_action('admin_init', [$this, 'handle_send_package_cost']);
+        add_action('admin_init', [$this, 'handle_record_la_decision']);
+        add_action('admin_init', [$this, 'handle_mark_not_proceeding']);
+        add_action('admin_init', [$this, 'handle_confirm_care_commenced']);
         add_action('admin_notices', [$this, 'render_notices']);
     }
 
@@ -131,7 +158,55 @@ class ReferralViewController
             }
         }
 
-        $workflow_stages = $this->workflow_stage_service->get_options_for_referral($workflow_stage_id);
+        $pipeline_panel  = $this->pipeline_service->get_panel_data($referral);
+        $interest_form   = $this->interest_response_service->get_form_context($referral);
+        $expressed_by_id = absint($referral['interest_expressed_by'] ?? 0);
+        $interest_milestone = $this->interest_response_service->get_milestone_display(
+            $referral,
+            $expressed_by_id > 0 ? $this->user_provider->get_display_name($expressed_by_id) : ''
+        );
+        $assessment_for_scheduling = $this->assessment_repository->find_by_referral($referral_id);
+        $scheduling_panel = $this->assessment_scheduling_service->get_panel_context(
+            $referral,
+            $assessment_for_scheduling
+        );
+        $package_cost_panel = $this->package_cost_service->get_panel_context($referral);
+        if (! empty($pipeline_panel['is_pipeline'])
+            && 'package_cost_required' === (string) ($pipeline_panel['stage_slug'] ?? '')
+        ) {
+            $pipeline_panel['next_action'] = $this->package_cost_service->refined_next_action($referral);
+        }
+        $la_decision_panel = $this->la_decision_service->get_panel_context($referral);
+        $suggested_np = '';
+        if (! empty($scheduling_panel['is_not_suitable'])
+            || 'assessment_review_required' === (string) ($pipeline_panel['stage_slug'] ?? '')
+        ) {
+            $suggested_np = NonProceedingReason::JM_NOT_SUITABLE;
+        }
+        $non_proceeding_panel = $this->non_proceeding_service->get_panel_context($referral, $suggested_np);
+        $transition_panel = $this->transition_planning_service->get_panel_context($referral, 'admin');
+        $scheduling_errors = [];
+        $force_reschedule_form = false;
+        if (isset($_GET['jmrs_schedule_error']) && 'validation' === sanitize_key(wp_unslash($_GET['jmrs_schedule_error']))) {
+            $force_reschedule_form = isset($_GET['jmrs_reschedule']) && '1' === sanitize_text_field(wp_unslash($_GET['jmrs_reschedule']));
+        }
+        $package_cost_errors = [];
+        $show_prepare_form = isset($_GET['jmrs_pc_prepare']) && '1' === sanitize_text_field(wp_unslash($_GET['jmrs_pc_prepare']));
+        $show_send_form = isset($_GET['jmrs_pc_send']) && '1' === sanitize_text_field(wp_unslash($_GET['jmrs_pc_send']));
+        $la_decision_errors = [];
+        $show_la_decision_form = isset($_GET['jmrs_la_decide']) && '1' === sanitize_text_field(wp_unslash($_GET['jmrs_la_decide']));
+        $show_non_proceeding_form = isset($_GET['jmrs_np_form']) && '1' === sanitize_text_field(wp_unslash($_GET['jmrs_np_form']));
+        $transition_errors = [];
+        $show_commence_form = isset($_GET['jmrs_commence']) && '1' === sanitize_text_field(wp_unslash($_GET['jmrs_commence']));
+        if (isset($_GET['jmrs_care_commenced']) && '0' === sanitize_text_field(wp_unslash($_GET['jmrs_care_commenced']))) {
+            $show_commence_form = true;
+            $error_key = isset($_GET['jmrs_care_commenced_error'])
+                ? sanitize_key(wp_unslash($_GET['jmrs_care_commenced_error']))
+                : 'failed';
+            $transition_errors[] = $this->care_commencement_error_message($error_key);
+        }        $workflow_stages = ! empty($pipeline_panel['is_pipeline'])
+            ? []
+            : $this->workflow_stage_service->get_legacy_options_for_referral($workflow_stage_id);
 
         $notes_total   = $this->note_repository->count_by_referral_id($referral_id);
         $notes         = [];
@@ -760,12 +835,744 @@ class ReferralViewController
     }
 
     /**
+     * Handles Express Interest from the admin referral view.
+     */
+    public function handle_express_interest(): void
+    {
+        if (! isset($_POST['jmrs_express_interest'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+
+        check_admin_referer('jmrs_express_interest_' . $referral_id, 'jmrs_express_interest_nonce');
+
+        $referral = $this->repository->find($referral_id);
+
+        if (null === $referral || ! $this->access_policy->can_express_interest($referral)) {
+            wp_die(esc_html__('You do not have permission to express interest on this referral.', 'jm-referral-system'));
+        }
+
+        $result = $this->interest_response_service->express(
+            $referral_id,
+            [
+                'method'     => isset($_POST['jmrs_interest_method'])
+                    ? sanitize_key(wp_unslash($_POST['jmrs_interest_method']))
+                    : '',
+                'confirmed'  => ! empty($_POST['jmrs_interest_confirmed']),
+                'other_note' => isset($_POST['jmrs_interest_other_note'])
+                    ? sanitize_text_field(wp_unslash($_POST['jmrs_interest_other_note']))
+                    : '',
+            ]
+        );
+
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+
+        if (! empty($result['ok'])) {
+            $args['jmrs_interest'] = '1';
+        } else {
+            $args['jmrs_interest'] = '0';
+            $args['jmrs_interest_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * Handles Schedule Assessment from the admin referral view.
+     */
+    public function handle_schedule_assessment(): void
+    {
+        if (! isset($_POST['jmrs_schedule_assessment'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+        check_admin_referer('jmrs_schedule_assessment_' . $referral_id, 'jmrs_schedule_assessment_nonce');
+
+        $referral = $this->repository->find($referral_id);
+        if (null === $referral || ! $this->access_policy->can_schedule_assessment($referral)) {
+            wp_die(esc_html__('You do not have permission to schedule an assessment for this referral.', 'jm-referral-system'));
+        }
+
+        $result = $this->assessment_scheduling_service->schedule($referral_id, $this->scheduling_input_from_post());
+        $this->redirect_after_scheduling($referral_id, $result, 'schedule');
+    }
+
+    /**
+     * Handles Reschedule Assessment from the admin referral view.
+     */
+    public function handle_reschedule_assessment(): void
+    {
+        if (! isset($_POST['jmrs_reschedule_assessment'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+        check_admin_referer('jmrs_reschedule_assessment_' . $referral_id, 'jmrs_reschedule_assessment_nonce');
+
+        $referral = $this->repository->find($referral_id);
+        if (null === $referral || ! $this->access_policy->can_schedule_assessment($referral)) {
+            wp_die(esc_html__('You do not have permission to reschedule this assessment.', 'jm-referral-system'));
+        }
+
+        $result = $this->assessment_scheduling_service->reschedule($referral_id, $this->scheduling_input_from_post());
+        $this->redirect_after_scheduling($referral_id, $result, 'reschedule');
+    }
+
+    /**
+     * Handles Mark as Needs Rescheduling from the admin referral view.
+     */
+    public function handle_assessment_needs_rescheduling(): void
+    {
+        if (! isset($_POST['jmrs_assessment_needs_rescheduling'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+        check_admin_referer('jmrs_assessment_needs_rescheduling_' . $referral_id, 'jmrs_assessment_needs_rescheduling_nonce');
+
+        $referral = $this->repository->find($referral_id);
+        if (null === $referral || ! $this->access_policy->can_schedule_assessment($referral)) {
+            wp_die(esc_html__('You do not have permission to update this assessment appointment.', 'jm-referral-system'));
+        }
+
+        $reason = isset($_POST['jmrs_needs_reschedule_reason'])
+            ? sanitize_text_field(wp_unslash($_POST['jmrs_needs_reschedule_reason']))
+            : '';
+
+        $result = $this->assessment_scheduling_service->mark_needs_rescheduling($referral_id, $reason);
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+        if (! empty($result['ok'])) {
+            $args['jmrs_needs_reschedule'] = '1';
+        } else {
+            $args['jmrs_needs_reschedule'] = '0';
+            $args['jmrs_schedule_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function scheduling_input_from_post(): array
+    {
+        return [
+            'scheduled_date'              => isset($_POST['jmrs_scheduled_date'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_scheduled_date']))
+                : '',
+            'scheduled_time'              => isset($_POST['jmrs_scheduled_time'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_scheduled_time']))
+                : '',
+            'assessor_user_id'            => isset($_POST['jmrs_assessor_user_id'])
+                ? absint($_POST['jmrs_assessor_user_id'])
+                : 0,
+            'assessment_location_type'    => isset($_POST['jmrs_assessment_location_type'])
+                ? sanitize_key(wp_unslash($_POST['jmrs_assessment_location_type']))
+                : '',
+            'assessment_location_name'    => isset($_POST['jmrs_assessment_location_name'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_assessment_location_name']))
+                : '',
+            'assessment_location_address' => isset($_POST['jmrs_assessment_location_address'])
+                ? sanitize_textarea_field(wp_unslash($_POST['jmrs_assessment_location_address']))
+                : '',
+            'assessment_contact_name'     => isset($_POST['jmrs_assessment_contact_name'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_assessment_contact_name']))
+                : '',
+            'assessment_contact_phone'    => isset($_POST['jmrs_assessment_contact_phone'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_assessment_contact_phone']))
+                : '',
+            'assessment_contact_email'    => isset($_POST['jmrs_assessment_contact_email'])
+                ? sanitize_email(wp_unslash($_POST['jmrs_assessment_contact_email']))
+                : '',
+            'scheduling_notes'            => isset($_POST['jmrs_scheduling_notes'])
+                ? sanitize_textarea_field(wp_unslash($_POST['jmrs_scheduling_notes']))
+                : '',
+        ];
+    }
+
+    /**
+     * @param array{ok?: bool, error?: string, message?: string} $result
+     */
+    private function redirect_after_scheduling(int $referral_id, array $result, string $action): void
+    {
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+
+        if (! empty($result['ok'])) {
+            $args['jmrs_schedule'] = 'schedule' === $action ? '1' : 'rescheduled';
+        } else {
+            $args['jmrs_schedule'] = '0';
+            $args['jmrs_schedule_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
+            if ('reschedule' === $action) {
+                $args['jmrs_reschedule'] = '1';
+            }
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * Handles Package Cost prepare/update from the admin referral view.
+     */
+    public function handle_prepare_package_cost(): void
+    {
+        if (! isset($_POST['jmrs_prepare_package_cost'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+        check_admin_referer('jmrs_prepare_package_cost_' . $referral_id, 'jmrs_prepare_package_cost_nonce');
+
+        $referral = $this->repository->find($referral_id);
+        if (null === $referral || ! $this->access_policy->can_manage_package_cost($referral)) {
+            wp_die(esc_html__('You do not have permission to prepare a Package Cost for this referral.', 'jm-referral-system'));
+        }
+
+        $file = isset($_FILES['jmrs_package_cost_document']) && is_array($_FILES['jmrs_package_cost_document'])
+            ? $_FILES['jmrs_package_cost_document']
+            : null;
+
+        $result = $this->package_cost_service->prepare(
+            $referral_id,
+            [
+                'package_total' => isset($_POST['jmrs_package_total'])
+                    ? sanitize_text_field(wp_unslash($_POST['jmrs_package_total']))
+                    : '',
+            ],
+            $file
+        );
+
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+        if (! empty($result['ok'])) {
+            $args['jmrs_package_cost'] = 'prepared';
+        } else {
+            $args['jmrs_package_cost'] = '0';
+            $args['jmrs_package_cost_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
+            $args['jmrs_pc_prepare'] = '1';
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * Handles Package Cost send/record from the admin referral view.
+     */
+    public function handle_send_package_cost(): void
+    {
+        if (! isset($_POST['jmrs_send_package_cost'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+        check_admin_referer('jmrs_send_package_cost_' . $referral_id, 'jmrs_send_package_cost_nonce');
+
+        $referral = $this->repository->find($referral_id);
+        if (null === $referral || ! $this->access_policy->can_manage_package_cost($referral)) {
+            wp_die(esc_html__('You do not have permission to submit a Package Cost for this referral.', 'jm-referral-system'));
+        }
+
+        $result = $this->package_cost_service->record_sent(
+            $referral_id,
+            [
+                'send_method'           => isset($_POST['jmrs_package_send_method'])
+                    ? sanitize_key(wp_unslash($_POST['jmrs_package_send_method']))
+                    : '',
+                'recipient'             => isset($_POST['jmrs_package_recipient'])
+                    ? sanitize_text_field(wp_unslash($_POST['jmrs_package_recipient']))
+                    : '',
+                'submission_reference'  => isset($_POST['jmrs_package_submission_reference'])
+                    ? sanitize_text_field(wp_unslash($_POST['jmrs_package_submission_reference']))
+                    : '',
+                'confirmed'             => ! empty($_POST['jmrs_package_sent_confirmed']),
+            ]
+        );
+
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+        if (! empty($result['ok'])) {
+            $args['jmrs_package_cost'] = ('email' === (string) ($result['method'] ?? ''))
+                ? 'emailed'
+                : 'sent';
+        } else {
+            $args['jmrs_package_cost'] = '0';
+            $args['jmrs_package_cost_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
+            $args['jmrs_pc_send'] = '1';
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * Handles Confirm Care Commenced from the admin referral view.
+     */
+    public function handle_confirm_care_commenced(): void
+    {
+        if (! isset($_POST['jmrs_confirm_care_commenced'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+        check_admin_referer('jmrs_confirm_care_commenced_' . $referral_id, 'jmrs_confirm_care_commenced_nonce');
+
+        $referral = $this->repository->find($referral_id);
+        if (null === $referral || ! $this->access_policy->can_commence_care($referral)) {
+            wp_die(esc_html__('You do not have permission to confirm care commencement for this referral.', 'jm-referral-system'));
+        }
+
+        $result = $this->care_commencement_service->commence(
+            $referral_id,
+            $this->care_commencement_input_from_request()
+        );
+
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+        if (! empty($result['ok'])) {
+            $args['jmrs_care_commenced'] = '1';
+        } else {
+            $args['jmrs_care_commenced'] = '0';
+            $args['jmrs_care_commenced_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
+            $args['jmrs_commence'] = '1';
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function care_commencement_input_from_request(): array
+    {
+        return [
+            'care_commenced_at'   => isset($_POST['jmrs_care_commenced_at'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_care_commenced_at']))
+                : '',
+            'funding_acknowledge' => ! empty($_POST['jmrs_funding_acknowledge']),
+        ];
+    }
+
+    private function care_commencement_error_message(string $error): string
+    {
+        return match ($error) {
+            'already_commenced' => __('Care commencement has already been recorded for this referral.', 'jm-referral-system'),
+            'funding_ack_required' => __('Please acknowledge that funding is not confirmed before commencing care.', 'jm-referral-system'),
+            'move_in_future' => __('Care commencement cannot be earlier than the Supported Living move-in date.', 'jm-referral-system'),
+            'wrong_stage' => __('Care commencement is only available during Transition Planning.', 'jm-referral-system'),
+            'blocked' => __('Care commencement requirements are not met yet.', 'jm-referral-system'),
+            'validation' => __('Please enter a valid care commencement date and time.', 'jm-referral-system'),
+            'in_progress' => __('Care commencement is already being recorded. Please wait a moment.', 'jm-referral-system'),
+            default => __('Unable to confirm care commencement.', 'jm-referral-system'),
+        };
+    }
+
+    /**
+     * Handles Local Authority decision recording from the admin referral view.
+     */
+    public function handle_record_la_decision(): void
+    {
+        if (! isset($_POST['jmrs_record_la_decision'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+        check_admin_referer('jmrs_record_la_decision_' . $referral_id, 'jmrs_record_la_decision_nonce');
+
+        $referral = $this->repository->find($referral_id);
+        if (null === $referral || ! $this->access_policy->can_record_la_decision($referral)) {
+            wp_die(esc_html__('You do not have permission to record a Local Authority decision for this referral.', 'jm-referral-system'));
+        }
+
+        $result = $this->la_decision_service->record(
+            $referral_id,
+            $this->la_decision_input_from_request()
+        );
+
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+        if (! empty($result['ok'])) {
+            $args['jmrs_la_decision'] = sanitize_key((string) ($result['decision'] ?? 'recorded'));
+        } else {
+            $args['jmrs_la_decision'] = '0';
+            $args['jmrs_la_decision_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
+            $args['jmrs_la_decide'] = '1';
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * Handles Mark as Not Proceeding from the admin referral view.
+     */
+    public function handle_mark_not_proceeding(): void
+    {
+        if (! isset($_POST['jmrs_mark_not_proceeding'])) {
+            return;
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+        check_admin_referer('jmrs_mark_not_proceeding_' . $referral_id, 'jmrs_mark_not_proceeding_nonce');
+
+        $referral = $this->repository->find($referral_id);
+        if (null === $referral || ! $this->access_policy->can_mark_not_proceeding($referral)) {
+            wp_die(esc_html__('You do not have permission to mark this referral as not proceeding.', 'jm-referral-system'));
+        }
+
+        $result = $this->non_proceeding_service->mark(
+            $referral_id,
+            [
+                'reason_code' => isset($_POST['jmrs_np_reason'])
+                    ? sanitize_key(wp_unslash($_POST['jmrs_np_reason']))
+                    : '',
+            ]
+        );
+
+        $args = [
+            'page'        => 'jm-referrals-view',
+            'referral_id' => $referral_id,
+        ];
+        if (! empty($result['ok'])) {
+            $args['jmrs_not_proceeding'] = '1';
+        } else {
+            $args['jmrs_not_proceeding'] = '0';
+            $args['jmrs_np_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
+            $args['jmrs_np_form'] = '1';
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function la_decision_input_from_request(): array
+    {
+        $decision = isset($_POST['jmrs_la_decision'])
+            ? sanitize_key(wp_unslash($_POST['jmrs_la_decision']))
+            : '';
+
+        $reason = '';
+        $decision_reference = '';
+        if ('declined' === $decision) {
+            $reason = isset($_POST['jmrs_la_declined_reason'])
+                ? sanitize_key(wp_unslash($_POST['jmrs_la_declined_reason']))
+                : '';
+            $decision_reference = isset($_POST['jmrs_la_declined_reference'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_la_declined_reference']))
+                : '';
+        } elseif ('not_proceeding' === $decision) {
+            $reason = isset($_POST['jmrs_la_np_reason'])
+                ? sanitize_key(wp_unslash($_POST['jmrs_la_np_reason']))
+                : '';
+        } else {
+            $decision_reference = isset($_POST['jmrs_la_decision_reference'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_la_decision_reference']))
+                : '';
+        }
+
+        return [
+            'decision'           => $decision,
+            'decision_at'        => isset($_POST['jmrs_la_decision_at'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_la_decision_at']))
+                : '',
+            'funding_confirmed'  => isset($_POST['jmrs_la_funding_confirmed'])
+                ? sanitize_key(wp_unslash($_POST['jmrs_la_funding_confirmed']))
+                : 'not_recorded',
+            'funding_reference'  => isset($_POST['jmrs_la_funding_reference'])
+                ? sanitize_text_field(wp_unslash($_POST['jmrs_la_funding_reference']))
+                : '',
+            'decision_reference' => $decision_reference,
+            'reason_code'        => $reason,
+            'notes'              => isset($_POST['jmrs_la_notes'])
+                ? sanitize_textarea_field(wp_unslash($_POST['jmrs_la_notes']))
+                : '',
+        ];
+    }
+
+    /**
+     * Handles explicit pipeline stage override (Manager/Admin).
+     */
+    public function handle_pipeline_override(): void
+    {
+        if (! isset($_POST['jmrs_override_pipeline_stage'])) {
+            return;
+        }
+
+        if (! Capabilities::current_user_can(Capabilities::OVERRIDE_PIPELINE_STAGE)) {
+            wp_die(esc_html__('You do not have permission to override pipeline stages.', 'jm-referral-system'));
+        }
+
+        $referral_id = isset($_POST['jmrs_referral_id']) ? absint($_POST['jmrs_referral_id']) : 0;
+
+        check_admin_referer('jmrs_override_pipeline_stage_' . $referral_id, 'jmrs_override_pipeline_stage_nonce');
+
+        $referral = $this->repository->find($referral_id);
+
+        if (null === $referral || ! $this->access_policy->can_mutate_referral($referral)) {
+            wp_die(esc_html__('You do not have permission to edit this referral.', 'jm-referral-system'));
+        }
+
+        $to_slug = isset($_POST['jmrs_pipeline_target_slug'])
+            ? sanitize_key(wp_unslash($_POST['jmrs_pipeline_target_slug']))
+            : '';
+        $reason  = isset($_POST['jmrs_pipeline_override_reason'])
+            ? sanitize_text_field(wp_unslash($_POST['jmrs_pipeline_override_reason']))
+            : '';
+
+        $result  = $this->pipeline_service->override($referral_id, $to_slug, $reason);
+        $success = ! empty($result['ok']);
+
+        wp_safe_redirect(
+            add_query_arg(
+                [
+                    'page'                  => 'jm-referrals-view',
+                    'referral_id'           => $referral_id,
+                    'jmrs_pipeline_override'=> $success ? '1' : '0',
+                    'jmrs_pipeline_error'   => $success ? '' : sanitize_key((string) ($result['error'] ?? 'failed')),
+                ],
+                admin_url('admin.php')
+            )
+        );
+        exit;
+    }
+
+    /**
      * Renders stage-update notices on the view screen.
      */
     public function render_notices(): void
     {
         if (! $this->is_view_screen()) {
             return;
+        }
+
+        if (isset($_GET['jmrs_interest'])) {
+            $ok = sanitize_text_field(wp_unslash($_GET['jmrs_interest']));
+            if ('1' === $ok) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Interest response recorded. Next action: Schedule assessment.', 'jm-referral-system');
+                echo '</p></div>';
+            } else {
+                $error = isset($_GET['jmrs_interest_error'])
+                    ? sanitize_key(wp_unslash($_GET['jmrs_interest_error']))
+                    : '';
+                $message = __('Unable to record interest response.', 'jm-referral-system');
+                if ('email_failed' === $error) {
+                    $message = __('The interest email could not be sent. The referral was not advanced. Please retry or use phone/other.', 'jm-referral-system');
+                } elseif ('already_recorded' === $error) {
+                    $message = __('Interest has already been recorded for this referral.', 'jm-referral-system');
+                } elseif ('confirmation_required' === $error) {
+                    $message = __('Please confirm that JM Healthcare’s interest has been communicated to the referrer.', 'jm-referral-system');
+                } elseif ('email_unavailable' === $error) {
+                    $message = __('No valid referrer email is available. Please use phone or another communication method.', 'jm-referral-system');
+                } elseif ('wrong_stage' === $error) {
+                    $message = __('Express Interest is only available when the pipeline stage is Interest Response Required.', 'jm-referral-system');
+                }
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html($message);
+                echo '</p></div>';
+            }
+        }
+
+        if (isset($_GET['jmrs_schedule'])) {
+            $ok = sanitize_text_field(wp_unslash($_GET['jmrs_schedule']));
+            if ('1' === $ok) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Assessment scheduled. Next action: Complete assessment.', 'jm-referral-system');
+                echo '</p></div>';
+            } elseif ('rescheduled' === $ok) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Assessment appointment updated.', 'jm-referral-system');
+                echo '</p></div>';
+            } else {
+                $error = isset($_GET['jmrs_schedule_error'])
+                    ? sanitize_key(wp_unslash($_GET['jmrs_schedule_error']))
+                    : '';
+                $message = __('Unable to save the assessment appointment.', 'jm-referral-system');
+                if ('wrong_stage' === $error) {
+                    $message = __('That scheduling action is not available for the current pipeline stage.', 'jm-referral-system');
+                } elseif ('validation' === $error) {
+                    $message = __('Please correct the scheduling form and try again.', 'jm-referral-system');
+                }
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html($message);
+                echo '</p></div>';
+            }
+        }
+
+        if (isset($_GET['jmrs_needs_reschedule'])) {
+            $ok = sanitize_text_field(wp_unslash($_GET['jmrs_needs_reschedule']));
+            if ('1' === $ok) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Assessment marked as needing rescheduling. Next action: Schedule assessment.', 'jm-referral-system');
+                echo '</p></div>';
+            } else {
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html__('Unable to mark the assessment as needing rescheduling.', 'jm-referral-system');
+                echo '</p></div>';
+            }
+        }
+
+        if (isset($_GET['jmrs_package_cost'])) {
+            $status = sanitize_key(wp_unslash($_GET['jmrs_package_cost']));
+            if ('prepared' === $status) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Package Cost prepared. Next action: Send package cost to Local Authority.', 'jm-referral-system');
+                echo '</p></div>';
+            } elseif ('emailed' === $status) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Package Cost emailed. Next action: Await / follow up Local Authority decision.', 'jm-referral-system');
+                echo '</p></div>';
+            } elseif ('sent' === $status) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Package Cost submission recorded. Next action: Await / follow up Local Authority decision.', 'jm-referral-system');
+                echo '</p></div>';
+            } else {
+                $error = isset($_GET['jmrs_package_cost_error'])
+                    ? sanitize_key(wp_unslash($_GET['jmrs_package_cost_error']))
+                    : '';
+                $message = __('Unable to save Package Cost.', 'jm-referral-system');
+                if ('confirmation_required' === $error) {
+                    $message = __('Please confirm that the Package Cost has been submitted to the Local Authority.', 'jm-referral-system');
+                } elseif ('already_sent' === $error) {
+                    $message = __('This Package Cost has already been sent.', 'jm-referral-system');
+                } elseif ('validation' === $error) {
+                    $message = __('Please correct the Package Cost form and try again.', 'jm-referral-system');
+                } elseif ('email_failed' === $error) {
+                    $message = __('Package Cost email could not be sent. The referral has not been advanced. Please try again.', 'jm-referral-system');
+                } elseif ('email_unavailable' === $error) {
+                    $message = __('No valid referrer email is available. Use Secure Portal or Other, or update the referral contact details.', 'jm-referral-system');
+                } elseif ('attachment_missing' === $error || 'attachment_unreadable' === $error) {
+                    $message = __('The Package Cost document could not be attached. The email was not sent and the referral was not advanced.', 'jm-referral-system');
+                } elseif ('in_progress' === $error) {
+                    $message = __('A Package Cost send is already in progress. Please wait a moment.', 'jm-referral-system');
+                } elseif ('wrong_stage' === $error) {
+                    $message = __('Package Cost email is only available when the pipeline stage is Package Cost to Prepare.', 'jm-referral-system');
+                }
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html($message);
+                echo '</p></div>';
+            }
+        }
+
+        if (isset($_GET['jmrs_la_decision'])) {
+            $status = sanitize_key(wp_unslash($_GET['jmrs_la_decision']));
+            if ('approved' === $status) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Local Authority approval recorded. Next action: Plan transition and commence care.', 'jm-referral-system');
+                echo '</p></div>';
+            } elseif ('declined' === $status) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Local Authority decision recorded as declined.', 'jm-referral-system');
+                echo '</p></div>';
+            } elseif ('not_proceeding' === $status) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Referral marked as not proceeding.', 'jm-referral-system');
+                echo '</p></div>';
+            } elseif ('0' === $status) {
+                $error = isset($_GET['jmrs_la_decision_error'])
+                    ? sanitize_key(wp_unslash($_GET['jmrs_la_decision_error']))
+                    : '';
+                $message = __('Unable to record Local Authority decision.', 'jm-referral-system');
+                if ('already_recorded' === $error) {
+                    $message = __('A Local Authority decision has already been recorded for this referral.', 'jm-referral-system');
+                } elseif ('validation' === $error || 'invalid_decision' === $error) {
+                    $message = __('Please correct the decision form and try again.', 'jm-referral-system');
+                } elseif ('package_cost_required' === $error) {
+                    $message = __('A sent Package Cost is required before recording a Local Authority decision.', 'jm-referral-system');
+                } elseif ('in_progress' === $error) {
+                    $message = __('A Local Authority decision is already being recorded. Please wait a moment.', 'jm-referral-system');
+                }
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html($message);
+                echo '</p></div>';
+            }
+        }
+
+        if (isset($_GET['jmrs_not_proceeding'])) {
+            $ok = sanitize_text_field(wp_unslash($_GET['jmrs_not_proceeding']));
+            if ('1' === $ok) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Referral marked as not proceeding.', 'jm-referral-system');
+                echo '</p></div>';
+            } else {
+                $error = isset($_GET['jmrs_np_error'])
+                    ? sanitize_key(wp_unslash($_GET['jmrs_np_error']))
+                    : '';
+                $message = __('Unable to mark referral as not proceeding.', 'jm-referral-system');
+                if ('validation' === $error) {
+                    $message = __('Please select a valid reason.', 'jm-referral-system');
+                } elseif ('already_closed' === $error) {
+                    $message = __('This referral is already marked as not proceeding.', 'jm-referral-system');
+                } elseif ('use_la_decision' === $error) {
+                    $message = __('Use Record Local Authority Decision to mark this referral as not proceeding.', 'jm-referral-system');
+                }
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html($message);
+                echo '</p></div>';
+            }
+        }
+
+        if (isset($_GET['jmrs_care_commenced'])) {
+            $ok = sanitize_text_field(wp_unslash($_GET['jmrs_care_commenced']));
+            if ('1' === $ok) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Care commencement recorded. Acquisition pipeline complete — care operations continue on this record.', 'jm-referral-system');
+                echo '</p></div>';
+            } else {
+                $error = isset($_GET['jmrs_care_commenced_error'])
+                    ? sanitize_key(wp_unslash($_GET['jmrs_care_commenced_error']))
+                    : '';
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html($this->care_commencement_error_message($error));
+                echo '</p></div>';
+            }
+        }
+
+        if (isset($_GET['jmrs_pipeline_override'])) {
+            $ok = sanitize_text_field(wp_unslash($_GET['jmrs_pipeline_override']));
+            if ('1' === $ok) {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo esc_html__('Pipeline stage overridden successfully.', 'jm-referral-system');
+                echo '</p></div>';
+            } else {
+                $error = isset($_GET['jmrs_pipeline_error'])
+                    ? sanitize_key(wp_unslash($_GET['jmrs_pipeline_error']))
+                    : '';
+                $message = __('Unable to override the pipeline stage.', 'jm-referral-system');
+                if ('reason_required' === $error) {
+                    $message = __('Override reason is required.', 'jm-referral-system');
+                } elseif ('invalid_target' === $error || 'target_stage_missing' === $error) {
+                    $message = __('Please select a valid canonical pipeline stage.', 'jm-referral-system');
+                }
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo esc_html($message);
+                echo '</p></div>';
+            }
         }
 
         if (! isset($_GET['jmrs_stage_updated'])) {

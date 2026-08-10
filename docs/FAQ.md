@@ -1,4 +1,4 @@
-# FAQ — JM Referral System v1.2.0
+# FAQ — JM Referral System v1.3.0
 
 ---
 
@@ -16,11 +16,14 @@ A: No. Leave it off until portal UAT passes (downloads, AJAX, exports).
 **Q: Can I delete all plugin data on uninstall?**
 A: Only if you set `JMRS_DELETE_DATA_ON_UNINSTALL` to `true` in `wp-config.php` on a disposable site after backups.
 
-**Q: Why is DB version `2.21.0` while the product is `1.2.0`?**
-A: Product semver and schema version are independent. Schema bumps only when tables/columns change.
+**Q: Why is DB version `2.28.0` while the product is `1.3.0`?**
+A: Product semver and schema version are independent. Schema bumps only when tables/columns change. Product `1.3.0` ships schema `2.28.0` (acquisition pipeline).
+
+**Q: Can I upgrade directly from v1.2.0 (DB `2.21.0`)?**
+A: Yes. One migrate pass applies additive steps through `2.28.0`. Legacy referrals are not remapped; no migration emails.
 
 **Q: Is there a REST API or mobile app?**
-A: Not in v1.2. See roadmap for later phases.
+A: Not in v1.3. See roadmap for later phases.
 
 ---
 

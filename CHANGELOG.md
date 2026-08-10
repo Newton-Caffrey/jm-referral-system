@@ -13,6 +13,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.3.0] - 2026-08-11
+
+Product release for the **Referral Acquisition Pipeline** (Phase 3) on top of Supported Living v1.2.0. Plugin version `1.3.0`. Database schema `2.28.0`. Portal rewrite `1.2.1`.
+
+### Added
+
+#### Referral Acquisition Pipeline
+
+- Canonical acquisition pipeline stages: Interest Response Required → Assessment to Schedule → Assessment Scheduled → Assessment Outcome Review (where required) → Package Cost to Prepare → Awaiting Local Authority Decision → Transition Planning → Placement / Care Commenced, plus terminal Declined and Not Proceeding
+- Structured stage history (`jmrs_referral_stage_history`) with `created` / `transition` / `override` change types
+- Express Interest with structured milestone timestamps and referrer/LA confirmation email
+- Assessment scheduling (schedule / reschedule / needs rescheduling) and assessment completion
+- Assessment Outcome Review path for not-suitable outcomes
+- Package Cost preparation (document + proposed total GBP)
+- Package Cost email send with current private-document attachment (temporary mail copy + cleanup)
+- Local Authority Decision recording (Approved / Declined / Not Proceeding) with funding confirmation distinct from approval
+- Mark Not Proceeding from eligible acquisition stages
+- Transition Planning with Supported Living placement integration and Own Home readiness
+- Explicit Confirm Care Commencement (`care_commenced_at` / `care_commenced_by`) — not inferred from occupancy, visits, or schedules
+- Pipeline Dashboard & Needs Attention (operational queue)
+- Optional Internal Pipeline Targets (blank defaults; not hard-coded SLAs)
+- Acquisition Pipeline reporting on existing WP Admin Reports (referral cohort by `created_at`, funnel/outcomes, timing medians, assessment/package/funding summaries, stage durations, structured Phase 3 identity via history `created`)
+- Acquisition CSV export (commercial/ops columns; capability + nonce)
+
+#### Integration
+
+- Continues to use existing Supported Living homes/bedrooms/occupancies, Own Home care setting, care plans, care teams, schedules, visits, and MAR after care commencement
+
+### Changed
+
+- Product version `1.2.0` → `1.3.0` (`jm-referral-system.php` / `JMRS_VERSION`)
+- Database schema `2.21.0` → `2.28.0` via additive migrations (direct upgrade from production v1.2.0 supported)
+- Portal rewrite remains `1.2.1` (no flush required for this release)
+
+### Fixed
+
+- Acquisition cohort identity uses structured pipeline-start history (`change_type=created`), so legacy referrals override-moved onto a canonical stage are not mixed into Phase 3 conversion denominators
+
+### Schema
+
+- DB `2.22.0` pipeline foundation → `2.23.0` interest milestones → `2.24.0` assessment scheduling → `2.25.0` package costs → `2.26.0` LA decisions → `2.27.0` assessment review stage → `2.28.0` care commencement columns
+
+Upgrade from released v1.2.0 (DB `2.21.0`) applies all steps in one activation/migrate pass. Legacy referrals are not remapped; no fake milestones or migration emails.
+
+See `docs/RELEASE_NOTES_v1.3.0.md`, `docs/uat/UAT_PHASE_3.md`, `docs/developer/WORKFLOWS.md`, and `docs/PACKAGING.md`.
+
 ## [1.2.0] - 2026-08-09
 
 Product release for **Supported Living** and related staff-portal clinical/UX work delivered after v1.0.0. Plugin version `1.2.0`. Database schema `2.21.0`.

@@ -1,4 +1,4 @@
-# Known Limitations — JM Referral System v1.2.0
+# Known Limitations — JM Referral System v1.3.0
 
 Genuine remaining limitations. Do not treat this as a full backlog.
 
@@ -48,7 +48,7 @@ Genuine remaining limitations. Do not treat this as a full backlog.
 | No client or family portal | Staff admin + optional staff portal only |
 | Staff portal clinical ops in portal (1.1C) | Day-to-day clinical workflows available; notes uploads / reports / alerts pages still wp-admin |
 | Staff portal disabled by default | Enable in Settings → Staff Portal; test before enabling wp-admin redirect |
-| v1.2.0 needs UAT sign-off | Use `docs/uat/UAT_SUPPORTED_LIVING_V1_2.md` + release checklist; evidence stays outside Git (`uat-evidence/`) |
+| v1.3.0 needs Phase 3 UAT sign-off | Use `docs/uat/UAT_PHASE_3.md` + release checklist; evidence stays outside Git (`uat-evidence/`) |
 | Public intake wizard has no save-and-resume | Values live in the DOM for the session; refresh clears unsaved input |
 | Public intake: no CAPTCHA / tracking portal | Honeypot + rate limit + timing only; see `docs/PUBLIC_REFERRAL_INTAKE.md` |
 | Consent checkboxes are operational evidence | Not a full legal consent-management product |

@@ -187,11 +187,46 @@ class Plugin
         $document_service = $this->document_service;
 
         $assessment_repository = new ReferralAssessmentRepository();
-        $assessment_service    = new ReferralAssessmentService(
+
+        $email_service        = new EmailNotificationService();
+        $notification_service = new NotificationService($email_service, $this->user_provider);
+        $workflow_stage_repository_for_pipeline = new WorkflowStageRepository();
+        $pipeline_history_repository            = new \JMReferral\Pipeline\ReferralStageHistoryRepository();
+        $pipeline_service                       = new \JMReferral\Pipeline\ReferralPipelineService(
+            $repository,
+            $workflow_stage_repository_for_pipeline,
+            $pipeline_history_repository,
+            $activity_service,
+            $this->access_policy,
+            $this->user_provider
+        );
+
+        $assessment_service = new ReferralAssessmentService(
             $assessment_repository,
             $repository,
             $activity_service,
-            $this->access_policy
+            $this->access_policy,
+            $pipeline_service
+        );
+        $assessment_scheduling_service = new \JMReferral\Assessment\AssessmentSchedulingService(
+            $repository,
+            $assessment_repository,
+            $pipeline_service,
+            $activity_service,
+            $this->access_policy,
+            $this->user_provider
+        );
+        $package_cost_repository = new \JMReferral\PackageCost\PackageCostRepository();
+        $package_cost_service    = new \JMReferral\PackageCost\PackageCostService(
+            $repository,
+            $package_cost_repository,
+            $document_service,
+            $document_repository,
+            $pipeline_service,
+            $activity_service,
+            $this->access_policy,
+            $this->user_provider,
+            $notification_service
         );
 
         $care_plan_repository         = new ReferralCarePlanRepository();
@@ -309,8 +344,14 @@ class Plugin
         $this->workflow_stage_service    = new WorkflowStageService($workflow_stage_repository, $repository);
         $this->workflow_stage_controller = new WorkflowStageController($this->workflow_stage_service);
 
-        $email_service        = new EmailNotificationService();
-        $notification_service = new NotificationService($email_service, $this->user_provider);
+        // Reuse pipeline created earlier (assessment completion + interest response).
+        $interest_response_service = new \JMReferral\Pipeline\InterestResponseService(
+            $repository,
+            $pipeline_service,
+            $notification_service,
+            $activity_service,
+            $this->access_policy
+        );
         $this->service        = new ReferralService(
             $repository,
             $number_generator,
@@ -320,7 +361,72 @@ class Plugin
             $this->service_type_service,
             $this->workflow_stage_service,
             $this->access_policy,
-            $occupancy_repository
+            $occupancy_repository,
+            $pipeline_service
+        );
+        $la_decision_repository = new \JMReferral\LaDecision\LaDecisionRepository();
+        $la_decision_service    = new \JMReferral\LaDecision\LocalAuthorityDecisionService(
+            $repository,
+            $this->service,
+            $la_decision_repository,
+            $package_cost_repository,
+            $pipeline_service,
+            $activity_service,
+            $this->access_policy,
+            $this->user_provider
+        );
+        $non_proceeding_service = new \JMReferral\Pipeline\ReferralNonProceedingService(
+            $repository,
+            $this->service,
+            $pipeline_service,
+            $pipeline_history_repository,
+            $activity_service,
+            $this->access_policy,
+            $this->user_provider
+        );
+
+        $retention_service = new ReferralRetentionService(
+            $repository,
+            new ReferralDependencyRepository(),
+            $activity_service,
+            $this->access_policy
+        );
+
+        $care_team_repository_for_transition = new CareTeamRepository();
+        $schedule_repository_for_transition  = new ScheduleRepository();
+        $service_location_resolver = $this->service_location_resolver;
+        if (! $service_location_resolver instanceof ServiceLocationResolver) {
+            throw new \RuntimeException('ServiceLocationResolver was not initialised before transition services.');
+        }
+        $transition_planning_service = new \JMReferral\Transition\TransitionPlanningService(
+            $pipeline_service,
+            $la_decision_repository,
+            $occupancy_repository,
+            $home_repository,
+            $bedroom_repository,
+            $care_plan_repository,
+            $care_team_repository_for_transition,
+            $schedule_repository_for_transition,
+            $service_location_resolver,
+            $this->access_policy,
+            $this->user_provider,
+            $retention_service
+        );
+        $care_commencement_service = new \JMReferral\Transition\CareCommencementService(
+            $repository,
+            $this->service,
+            $pipeline_service,
+            $la_decision_repository,
+            $occupancy_repository,
+            $transition_planning_service,
+            $activity_service,
+            $this->access_policy
+        );
+        $pipeline_attention_service = new \JMReferral\Pipeline\PipelineAttentionService(
+            $repository,
+            $package_cost_repository,
+            $this->access_policy,
+            $this->user_provider
         );
 
         $public_referral_service = new PublicReferralService(
@@ -358,13 +464,6 @@ class Plugin
             $this->access_policy
         );
 
-        $retention_service = new ReferralRetentionService(
-            $repository,
-            new ReferralDependencyRepository(),
-            $activity_service,
-            $this->access_policy
-        );
-
         $this->edit_controller = new ReferralEditController(
             $this->service,
             $validator,
@@ -373,7 +472,8 @@ class Plugin
             $this->service_type_service,
             $this->workflow_stage_service,
             $this->access_policy,
-            $occupancy_repository
+            $occupancy_repository,
+            $pipeline_service
         );
 
         $assessment_controller = new ReferralAssessmentController(
@@ -417,7 +517,15 @@ class Plugin
             $visit_task_service,
             $this->medication_service,
             $this->medication_administration_service,
-            $retention_service
+            $retention_service,
+            $pipeline_service,
+            $interest_response_service,
+            $assessment_scheduling_service,
+            $package_cost_service,
+            $la_decision_service,
+            $non_proceeding_service,
+            $transition_planning_service,
+            $care_commencement_service
         );
 
         $document_controller = new ReferralDocumentController(
@@ -479,7 +587,16 @@ class Plugin
             $care_plan_controller,
             $visit_task_service,
             $care_plan_review_service,
-            $occupancy_repository
+            $occupancy_repository,
+            $pipeline_service,
+            $interest_response_service,
+            $assessment_scheduling_service,
+            $package_cost_service,
+            $la_decision_service,
+            $non_proceeding_service,
+            $transition_planning_service,
+            $care_commencement_service,
+            $pipeline_attention_service
         );
 
         $create_controller->register();
@@ -517,7 +634,16 @@ class Plugin
         ReferralCarePlanController $care_plan_controller,
         VisitTaskService $visit_task_service,
         ReferralCarePlanReviewService $care_plan_review_service,
-        OccupancyRepository $occupancy_repository
+        OccupancyRepository $occupancy_repository,
+        \JMReferral\Pipeline\ReferralPipelineService $pipeline_service,
+        \JMReferral\Pipeline\InterestResponseService $interest_response_service,
+        \JMReferral\Assessment\AssessmentSchedulingService $assessment_scheduling_service,
+        \JMReferral\PackageCost\PackageCostService $package_cost_service,
+        \JMReferral\LaDecision\LocalAuthorityDecisionService $la_decision_service,
+        \JMReferral\Pipeline\ReferralNonProceedingService $non_proceeding_service,
+        \JMReferral\Transition\TransitionPlanningService $transition_planning_service,
+        \JMReferral\Transition\CareCommencementService $care_commencement_service,
+        \JMReferral\Pipeline\PipelineAttentionService $pipeline_attention_service
     ): void {
         $operational_alert_service = new OperationalAlertService(
             $repository,
@@ -558,7 +684,16 @@ class Plugin
             new PortalRetentionHandler($retention_service),
             $assessment_controller,
             $care_plan_controller,
-            $care_plan_review_service
+            $care_plan_review_service,
+            $pipeline_service,
+            $interest_response_service,
+            $assessment_scheduling_service,
+            $package_cost_service,
+            $la_decision_service,
+            $non_proceeding_service,
+            $transition_planning_service,
+            $care_commencement_service,
+            $pipeline_attention_service
         );
 
         $clinical_access = new ClinicalAccess(

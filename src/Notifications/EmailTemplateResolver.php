@@ -20,6 +20,8 @@ class EmailTemplateResolver
         'status-changed',
         'public-referral-received',
         'public-referral-confirmation',
+        'interest-expressed',
+        'package-cost-sent',
     ];
 
     /**

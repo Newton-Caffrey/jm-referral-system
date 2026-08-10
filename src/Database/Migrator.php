@@ -11,7 +11,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.21.0';
+    public const DB_VERSION = '2.28.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -168,6 +168,101 @@ class Migrator
         if (version_compare($from_version, '2.21.0', '<')) {
             // Nullable service-location snapshot columns on care_visits via Tables::create() / dbDelta.
             // No backfill — historical rows remain NULL until execution writes a snapshot.
+        }
+
+        if (version_compare($from_version, '2.22.0', '<')) {
+            // Pipeline foundation: stage flags, referral timing columns, stage history table via Tables::create().
+            // Idempotent canonical pipeline stage upsert by slug. No remapping of existing referrals.
+            self::ensure_canonical_pipeline_stages();
+            Capabilities::grant_to_administrators();
+            Roles::register();
+        }
+
+        if (version_compare($from_version, '2.23.0', '<')) {
+            // Interest response milestone columns on referrals via Tables::create() / dbDelta. No backfill.
+        }
+
+        if (version_compare($from_version, '2.24.0', '<')) {
+            // Assessment appointment scheduling columns on jmrs_referral_assessments via Tables::create() / dbDelta.
+            // No backfill — existing assessments keep NULL scheduling fields.
+        }
+
+        if (version_compare($from_version, '2.25.0', '<')) {
+            // Package cost submission table jmrs_referral_package_costs via Tables::create() / dbDelta. No backfill.
+        }
+
+        if (version_compare($from_version, '2.26.0', '<')) {
+            // Local Authority decision table jmrs_referral_la_decisions via Tables::create() / dbDelta. No backfill.
+        }
+
+        if (version_compare($from_version, '2.27.0', '<')) {
+            // Canonical stage assessment_review_required via ensure_canonical_pipeline_stages(). No referral remapping.
+            self::ensure_canonical_pipeline_stages();
+        }
+
+        if (version_compare($from_version, '2.28.0', '<')) {
+            // care_commenced_at / care_commenced_by on jmrs_referrals via Tables::create() / dbDelta. No backfill.
+        }
+    }
+
+    /**
+     * Inserts missing canonical acquisition pipeline stages by slug and hardens flags.
+     *
+     * Idempotent. Preserves existing stage IDs. Does not delete or remaps legacy stages.
+     */
+    private static function ensure_canonical_pipeline_stages(): void
+    {
+        global $wpdb;
+
+        $table = Tables::workflow_stages_table();
+        $now   = current_time('mysql');
+
+        foreach (\JMReferral\Pipeline\PipelineStage::seed_rows() as $row) {
+            $slug  = (string) $row['slug'];
+            $name  = (string) $row['name'];
+            $order = (int) $row['order'];
+
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+            $existing_id = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
+                    $slug
+                )
+            );
+
+            if ($existing_id > 0) {
+                $wpdb->update(
+                    $table,
+                    [
+                        'name'              => $name,
+                        'stage_order'       => $order,
+                        'status'            => 'active',
+                        'is_system'         => 1,
+                        'is_pipeline_stage' => 1,
+                        'updated_at'        => $now,
+                    ],
+                    ['id' => $existing_id],
+                    ['%s', '%d', '%s', '%d', '%d', '%s'],
+                    ['%d']
+                );
+                continue;
+            }
+
+            $wpdb->insert(
+                $table,
+                [
+                    'name'              => $name,
+                    'slug'              => $slug,
+                    'description'       => null,
+                    'stage_order'       => $order,
+                    'status'            => 'active',
+                    'is_system'         => 1,
+                    'is_pipeline_stage' => 1,
+                    'created_at'        => $now,
+                    'updated_at'        => $now,
+                ],
+                ['%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%s']
+            );
         }
     }
 

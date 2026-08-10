@@ -13,6 +13,27 @@ $referral                   = is_array( $referral ?? null ) ? $referral : array(
 $assigned_to_name           = (string) ( $assigned_to_name ?? '' );
 $service_name               = (string) ( $service_name ?? '' );
 $workflow_stage_name        = (string) ( $workflow_stage_name ?? '' );
+$pipeline_panel             = is_array( $pipeline_panel ?? null ) ? $pipeline_panel : array();
+$interest_form              = is_array( $interest_form ?? null ) ? $interest_form : array();
+$interest_milestone         = is_array( $interest_milestone ?? null ) ? $interest_milestone : null;
+$scheduling_panel           = is_array( $scheduling_panel ?? null ) ? $scheduling_panel : array();
+$scheduling_errors          = is_array( $scheduling_errors ?? null ) ? $scheduling_errors : array();
+$force_reschedule_form      = ! empty( $force_reschedule_form );
+$package_cost_panel         = is_array( $package_cost_panel ?? null ) ? $package_cost_panel : array();
+$package_cost_errors        = is_array( $package_cost_errors ?? null ) ? $package_cost_errors : array();
+$show_prepare_form          = ! empty( $show_prepare_form );
+$show_send_form             = ! empty( $show_send_form );
+$pipeline_override_notice   = is_array( $pipeline_override_notice ?? null ) ? $pipeline_override_notice : null;
+$interest_notice            = is_array( $interest_notice ?? null ) ? $interest_notice : null;
+$scheduling_notice          = is_array( $scheduling_notice ?? null ) ? $scheduling_notice : null;
+$package_cost_notice        = is_array( $package_cost_notice ?? null ) ? $package_cost_notice : null;
+$la_decision_panel          = is_array( $la_decision_panel ?? null ) ? $la_decision_panel : array();
+$la_decision_errors         = is_array( $la_decision_errors ?? null ) ? $la_decision_errors : array();
+$show_la_decision_form      = ! empty( $show_la_decision_form );
+$la_decision_notice         = is_array( $la_decision_notice ?? null ) ? $la_decision_notice : null;
+$non_proceeding_panel       = is_array( $non_proceeding_panel ?? null ) ? $non_proceeding_panel : array();
+$show_non_proceeding_form   = ! empty( $show_non_proceeding_form );
+$non_proceeding_notice      = is_array( $non_proceeding_notice ?? null ) ? $non_proceeding_notice : null;
 $is_archived                = ! empty( $is_archived );
 $archived_at                = (string) ( $archived_at ?? '' );
 $archive_reason             = (string) ( $archive_reason ?? '' );
@@ -177,6 +198,109 @@ $jmrs_partials_path = JMRS_PLUGIN_PATH . 'templates/portal/partials/';
 		</form>
 	<?php endif; ?>
 </div>
+
+<?php if ( is_array( $pipeline_override_notice ) && ! empty( $pipeline_override_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $pipeline_override_notice['type'] ?? 'info' ) ); ?>">
+		<?php echo esc_html( (string) $pipeline_override_notice['message'] ); ?>
+	</div>
+<?php endif; ?>
+
+<?php if ( is_array( $interest_notice ) && ! empty( $interest_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $interest_notice['type'] ?? 'info' ) ); ?>">
+		<?php echo esc_html( (string) $interest_notice['message'] ); ?>
+	</div>
+<?php endif; ?>
+
+<?php if ( is_array( $scheduling_notice ) && ! empty( $scheduling_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $scheduling_notice['type'] ?? 'info' ) ); ?>">
+		<?php echo esc_html( (string) $scheduling_notice['message'] ); ?>
+	</div>
+<?php endif; ?>
+
+<?php if ( is_array( $package_cost_notice ) && ! empty( $package_cost_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $package_cost_notice['type'] ?? 'info' ) ); ?>">
+		<?php echo esc_html( (string) $package_cost_notice['message'] ); ?>
+	</div>
+<?php endif; ?>
+
+<?php if ( is_array( $la_decision_notice ) && ! empty( $la_decision_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $la_decision_notice['type'] ?? 'info' ) ); ?>">
+		<?php echo esc_html( (string) $la_decision_notice['message'] ); ?>
+	</div>
+<?php endif; ?>
+
+<?php if ( is_array( $non_proceeding_notice ) && ! empty( $non_proceeding_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $non_proceeding_notice['type'] ?? 'info' ) ); ?>">
+		<?php echo esc_html( (string) $non_proceeding_notice['message'] ); ?>
+	</div>
+<?php endif; ?>
+
+<?php if ( is_array( $care_commenced_notice ) && ! empty( $care_commenced_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $care_commenced_notice['type'] ?? 'info' ) ); ?>">
+		<?php echo esc_html( (string) $care_commenced_notice['message'] ); ?>
+	</div>
+<?php endif; ?>
+
+<?php
+$context              = 'portal';
+$override_form_action = '';
+include JMRS_PLUGIN_PATH . 'templates/referrals/partials/pipeline-panel.php';
+?>
+
+<?php
+if ( ! empty( $interest_form['can_express'] ) ) {
+	$form_action = '';
+	include JMRS_PLUGIN_PATH . 'templates/referrals/partials/express-interest.php';
+}
+?>
+
+<?php
+if ( ! empty( $scheduling_panel['can_schedule'] )
+	|| ! empty( $scheduling_panel['can_reschedule'] )
+	|| ! empty( $scheduling_panel['has_appointment'] )
+) {
+	$form_action = '';
+	$context     = 'portal';
+	include JMRS_PLUGIN_PATH . 'templates/referrals/partials/assessment-scheduling.php';
+}
+?>
+
+<?php
+if ( ! empty( $package_cost_panel['show_panel'] ) ) {
+	$form_action = '';
+	$context     = 'portal';
+	include JMRS_PLUGIN_PATH . 'templates/referrals/partials/package-cost.php';
+}
+?>
+
+<?php
+if ( ! empty( $la_decision_panel['show_panel'] ) ) {
+	$form_action           = '';
+	$context               = 'portal';
+	$la_decision_errors    = is_array( $la_decision_errors ?? null ) ? $la_decision_errors : array();
+	$show_la_decision_form = ! empty( $show_la_decision_form );
+	include JMRS_PLUGIN_PATH . 'templates/referrals/partials/la-decision.php';
+}
+?>
+
+<?php
+if ( ! empty( $non_proceeding_panel['show_panel'] ) ) {
+	$form_action              = '';
+	$context                  = 'portal';
+	$show_non_proceeding_form = ! empty( $show_non_proceeding_form );
+	include JMRS_PLUGIN_PATH . 'templates/referrals/partials/non-proceeding.php';
+}
+?>
+
+<?php
+if ( ! empty( $transition_panel['show_panel'] ) ) {
+	$form_action        = '';
+	$context            = 'portal';
+	$transition_errors  = is_array( $transition_errors ?? null ) ? $transition_errors : array();
+	$show_commence_form = ! empty( $show_commence_form );
+	include JMRS_PLUGIN_PATH . 'templates/referrals/partials/transition-planning.php';
+}
+?>
 
 <section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-summary">
 	<h2 id="jmrs-portal-ref-summary" class="jmrs-portal-section__title"><?php echo esc_html__( 'Summary', 'jm-referral-system' ); ?></h2>

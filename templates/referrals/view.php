@@ -48,6 +48,7 @@ $assigned_to_name = isset( $assigned_to_name ) ? (string) $assigned_to_name : ''
 $service_name     = isset( $service_name ) ? (string) $service_name : '';
 $workflow_stage_name = isset( $workflow_stage_name ) ? (string) $workflow_stage_name : '';
 $workflow_stages  = is_array( $workflow_stages ?? null ) ? $workflow_stages : array();
+$pipeline_panel   = is_array( $pipeline_panel ?? null ) ? $pipeline_panel : array();
 $note_value       = isset( $note_value ) ? (string) $note_value : '';
 $note_errors      = is_array( $note_errors ?? null ) ? $note_errors : array();
 $documents        = is_array( $documents ?? null ) ? $documents : array();
@@ -257,6 +258,72 @@ $archived_display = '' !== $archived_at
 		<?php endif; ?>
 	</p>
 
+	<?php
+	$context = 'admin';
+	include JMRS_PLUGIN_PATH . 'templates/referrals/partials/pipeline-panel.php';
+	?>
+
+	<?php
+	if ( ! empty( $interest_form['can_express'] ) ) {
+		$form_action = '';
+		include JMRS_PLUGIN_PATH . 'templates/referrals/partials/express-interest.php';
+	}
+	?>
+
+	<?php
+	if ( ! empty( $scheduling_panel['can_schedule'] )
+		|| ! empty( $scheduling_panel['can_reschedule'] )
+		|| ! empty( $scheduling_panel['has_appointment'] )
+	) {
+		$form_action           = '';
+		$context               = 'admin';
+		$assessment_url        = '#jmrs-assessment';
+		$scheduling_errors     = is_array( $scheduling_errors ?? null ) ? $scheduling_errors : array();
+		$force_reschedule_form = ! empty( $force_reschedule_form );
+		include JMRS_PLUGIN_PATH . 'templates/referrals/partials/assessment-scheduling.php';
+	}
+	?>
+
+	<?php
+	if ( ! empty( $package_cost_panel['show_panel'] ) ) {
+		$form_action           = '';
+		$context               = 'admin';
+		$package_cost_errors   = is_array( $package_cost_errors ?? null ) ? $package_cost_errors : array();
+		$show_prepare_form     = ! empty( $show_prepare_form );
+		$show_send_form        = ! empty( $show_send_form );
+		include JMRS_PLUGIN_PATH . 'templates/referrals/partials/package-cost.php';
+	}
+	?>
+
+	<?php
+	if ( ! empty( $la_decision_panel['show_panel'] ) ) {
+		$form_action             = '';
+		$context                 = 'admin';
+		$la_decision_errors      = is_array( $la_decision_errors ?? null ) ? $la_decision_errors : array();
+		$show_la_decision_form   = ! empty( $show_la_decision_form );
+		include JMRS_PLUGIN_PATH . 'templates/referrals/partials/la-decision.php';
+	}
+	?>
+
+	<?php
+	if ( ! empty( $non_proceeding_panel['show_panel'] ) ) {
+		$form_action              = '';
+		$context                  = 'admin';
+		$show_non_proceeding_form = ! empty( $show_non_proceeding_form );
+		include JMRS_PLUGIN_PATH . 'templates/referrals/partials/non-proceeding.php';
+	}
+	?>
+
+	<?php
+	if ( ! empty( $transition_panel['show_panel'] ) ) {
+		$form_action        = '';
+		$context            = 'admin';
+		$transition_errors  = is_array( $transition_errors ?? null ) ? $transition_errors : array();
+		$show_commence_form = ! empty( $show_commence_form );
+		include JMRS_PLUGIN_PATH . 'templates/referrals/partials/transition-planning.php';
+	}
+	?>
+
 	<?php if ( $is_archived ) : ?>
 		<div class="notice notice-warning inline">
 			<p>
@@ -319,7 +386,10 @@ $archived_display = '' !== $archived_at
 			<tr>
 				<th scope="row"><?php echo esc_html__( 'Workflow Stage', 'jm-referral-system' ); ?></th>
 				<td>
-					<?php if ( $can_edit_referral ) : ?>
+					<?php if ( ! empty( $pipeline_panel['is_pipeline'] ) ) : ?>
+						<?php echo '' !== $workflow_stage_name ? esc_html( $workflow_stage_name ) : '—'; ?>
+						<p class="description"><?php echo esc_html__( 'Canonical pipeline stage. Use the Referral Pipeline panel for override; business actions will advance the stage in later phases.', 'jm-referral-system' ); ?></p>
+					<?php elseif ( $can_edit_referral && ! empty( $workflow_stages ) ) : ?>
 					<form method="post" action="" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 						<?php wp_nonce_field( 'jmrs_update_workflow_stage_' . $referral_id, 'jmrs_update_workflow_stage_nonce' ); ?>
 						<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
@@ -339,11 +409,9 @@ $archived_display = '' !== $archived_at
 						);
 						?>
 					</form>
+					<p class="description"><?php echo esc_html__( 'Legacy workflow stages only. Use Override Pipeline Stage to enter the acquisition pipeline.', 'jm-referral-system' ); ?></p>
 					<?php else : ?>
 						<?php echo '' !== $workflow_stage_name ? esc_html( $workflow_stage_name ) : '—'; ?>
-					<?php endif; ?>
-					<?php if ( '' === $workflow_stage_name && empty( $workflow_stages ) ) : ?>
-						—
 					<?php endif; ?>
 				</td>
 			</tr>
@@ -477,7 +545,7 @@ $archived_display = '' !== $archived_at
 		'recommendations' => __( 'Recommendations', 'jm-referral-system' ),
 	);
 	?>
-	<h2><?php echo esc_html( $assessment_heading ); ?></h2>
+	<h2 id="jmrs-assessment"><?php echo esc_html( $assessment_heading ); ?></h2>
 
 	<?php if ( ! $can_edit_assessment ) : ?>
 		<?php if ( null === $assessment ) : ?>

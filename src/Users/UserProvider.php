@@ -53,6 +53,52 @@ class UserProvider
     }
 
     /**
+     * Staff eligible to perform clinical assessments (EDIT_REFERRALS).
+     *
+     * @return array<int, array{id: int, display_name: string}>
+     */
+    public function get_assessment_eligible_users(): array
+    {
+        $users = get_users(
+            [
+                'capability' => Capabilities::EDIT_REFERRALS,
+                'orderby'    => 'display_name',
+                'order'      => 'ASC',
+                'fields'     => ['ID', 'display_name'],
+            ]
+        );
+
+        $eligible = [];
+
+        foreach ($users as $user) {
+            $eligible[] = [
+                'id'           => (int) $user->ID,
+                'display_name' => (string) $user->display_name,
+            ];
+        }
+
+        return $eligible;
+    }
+
+    /**
+     * Whether the given user may be selected as assessment assessor.
+     */
+    public function is_assessment_eligible(int $user_id): bool
+    {
+        if ($user_id <= 0) {
+            return false;
+        }
+
+        $user = get_userdata($user_id);
+
+        if (! $user instanceof \WP_User) {
+            return false;
+        }
+
+        return user_can($user, Capabilities::EDIT_REFERRALS);
+    }
+
+    /**
      * Returns a user's display name, or empty string when not found.
      */
     public function get_display_name(int $user_id): string

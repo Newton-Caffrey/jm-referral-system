@@ -1,41 +1,52 @@
 # Release Checklist — JM Referral System
 
-**Current target release:** `1.2.0`
-**Product version:** `1.2.0` (`jm-referral-system.php` / `JMRS_VERSION`)
-**Database schema:** `2.21.0` (`Migrator::DB_VERSION` / option `jmrs_db_version`)
+**Current target release:** `1.3.0`
+**Product version:** `1.3.0` (`jm-referral-system.php` / `JMRS_VERSION`)
+**Database schema:** `2.28.0` (`Migrator::DB_VERSION` / option `jmrs_db_version`)
 **Portal rewrite:** `1.2.1` (`PortalRouter::REWRITE_VERSION`)
-**Release notes:** `docs/RELEASE_NOTES_v1.2.0.md`
-**Supported Living UAT:** `docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`
+**Release notes:** `docs/RELEASE_NOTES_v1.3.0.md`
+**Phase 3 UAT:** `docs/uat/UAT_PHASE_3.md`
 
 Use this checklist before promoting a build to production. Tick items on staging with synthetic or anonymised data first. **Do not mark items passed unless manually confirmed.**
 
 ---
 
-## v1.2.0 — Supported Living release gate
+## v1.3.0 — Acquisition Pipeline release gate
 
-- [ ] Plugin header Version = `1.2.0`
-- [ ] `JMRS_VERSION` = `1.2.0`
-- [ ] README / CHANGELOG `[1.2.0]` / release notes agree on product `1.2.0`
-- [ ] DB version = `2.21.0` after activate/upgrade
+- [ ] Plugin header Version = `1.3.0`
+- [ ] `JMRS_VERSION` = `1.3.0`
+- [ ] README / CHANGELOG `[1.3.0]` / release notes agree on product `1.3.0`
+- [ ] DB version = `2.28.0` after activate/upgrade
+- [ ] Portal rewrite remains `1.2.1` (no unexpected flush requirement)
 - [ ] Activation succeeds (no fatal); roles/capabilities sync
-- [ ] Upgrade from previous working install succeeds; existing referrals/clinical data preserved
-- [ ] Tables present: `jmrs_homes`, `jmrs_bedrooms`, `jmrs_occupancies`; referral `care_setting`; visit snapshot columns
-- [ ] Supported Living master UAT passes (`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`)
-- [ ] Reporting UAT passes (`docs/uat/UAT_SUPPORTED_LIVING_REPORTING.md`)
-- [ ] Public referral regression passes
-- [ ] Role/capability tests pass (Admin/Manager/Coordinator vs Assessor/Support Worker)
-- [ ] CSV exports pass (snapshot / vacancy / movements / visit / full) with privacy constraints
-- [ ] Responsive checks pass (Homes, Dashboard, Vacancy, Placement, Visits, Reports)
-- [ ] No PHI in logs / activity dumps / management CSVs (addresses, diagnoses, meds, care-plan narrative)
+- [ ] **Direct upgrade from v1.2.0 / DB `2.21.0` → `2.28.0`** succeeds; existing referrals/clinical/SL data preserved
+- [ ] No legacy remapping; no fake stage history / Package Costs / LA decisions / commencement; no migration emails
+- [ ] Canonical pipeline stages unique (10 slugs); repeated activate does not duplicate
+- [ ] Phase 3 UAT passes (`docs/uat/UAT_PHASE_3.md`) including acquisition reporting cohort classification
+- [ ] Express Interest + Package Cost email regression passes (private attachment + cleanup)
+- [ ] Pipeline Dashboard / Needs Attention / Acquisition Reports + CSV access (Admin/Manager/Coordinator; Assessor/SW denied where expected)
+- [ ] Public referral + Supported Living / Own Home / care ops regression passes
 - [ ] Production backup taken before deployment (DB + `uploads` including `jmrs-private`)
 - [ ] Rollback package/version identified (previous ZIP + restore procedure)
+- [ ] Release ZIP root folder is exactly `jm-referral-system/` (not a versioned wrapper)
 - [ ] Release ZIP includes `vendor/`; excludes `.git`, `uat-evidence/`, IDE folders, `*.log`, `.env`, OS junk
+
+---
+
+## Historical — v1.2.0 Supported Living release gate
+
+Completed for production v1.2.0. Retained for reference.
+
+- [x] Plugin header Version = `1.2.0` (historical)
+- [x] DB version = `2.21.0` after activate/upgrade (historical)
+- [x] Supported Living master UAT (`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`)
+- [x] Reporting UAT (`docs/uat/UAT_SUPPORTED_LIVING_REPORTING.md`)
 
 ---
 
 ## Historical baseline (v1.0.0 packaging checks)
 
-The following sections originated with the v1.0.0 package and remain useful smoke checks. Prefer the **v1.2.0 gate** above for this release.
+The following sections originated with the v1.0.0 package and remain useful smoke checks. Prefer the **v1.3.0 gate** above for this release.
 
 **Original v1.0.0 references:** product `1.0.0`, schema `2.17.0`, `docs/RELEASE_NOTES_v1.0.0.md`
 
@@ -49,8 +60,8 @@ The following sections originated with the v1.0.0 package and remain useful smok
 - [ ] Confirm ZIP excludes `.git`, `node_modules`, OS junk, editor-only configs, `uat-evidence/`
 - [ ] Confirm SMTP / `wp_mail` works on the target host
 - [ ] Confirm PHP version meets requirements (8.0+, 8.1+ preferred)
-- [ ] Confirm product header / `JMRS_VERSION` / README / CHANGELOG all read `1.2.0`
-- [ ] Read `docs/KNOWN_LIMITATIONS.md` and `docs/RELEASE_NOTES_v1.2.0.md`
+- [ ] Confirm product header / `JMRS_VERSION` / README / CHANGELOG all read `1.3.0`
+- [ ] Read `docs/KNOWN_LIMITATIONS.md` and `docs/RELEASE_NOTES_v1.3.0.md`
 - [ ] After deploying CSS/JS changes: purge host/page/CDN caches so `filemtime` asset URLs are fetched fresh
 
 ---

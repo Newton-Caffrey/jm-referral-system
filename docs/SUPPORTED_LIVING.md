@@ -1,6 +1,6 @@
 # Supported Living — Homes, Bedrooms, Occupancy & Care Setting
 
-**Target product release:** v1.2.0  
+**Target product release:** v1.2.0 (Supported Living). Transition/care commencement integration continues in v1.3.0 (Phase 3).
 **Database schema tip:** `2.21.0`  
 **Phases:** 2B Homes & Bedrooms · 2C Occupancy & Placements · 2D Care Setting & Own-Home · 2E Home Operational Dashboard · 2F.1 Service Location Foundation · 2F.2 Service Location UI & Own-Home Address
 
@@ -22,6 +22,7 @@
 | Future visits | Snapshot columns stay NULL; never rewritten on transfer/placement/care-setting/address change |
 | Bedrooms | Never store `referral_id` / `client_id` |
 | Clinical modules | Shared for both care settings (no forked assessment/care plan/MAR/etc.) |
+| Acquisition vs care | Phase 3G: active occupancy is a **hard prerequisite** for Confirm Care Commenced on Supported Living, but placement alone does **not** advance pipeline to `care_commenced`. Ending/transfer later does **not** rewind acquisition. |
 
 ---
 
@@ -151,6 +152,8 @@ Transfers end the old row and create a new active row in the same transaction so
 | Place | Create active occupancy; log `placement_started` |
 | Transfer | End old (same-day allowed) + create new; log `placement_transferred` |
 | End / move out | Set status ended, move_out_date, ended_by/ended_at; log `placement_ended` |
+
+**Acquisition note (Phase 3G):** Place Resident does not change the acquisition pipeline. On `transition_planning`, Transition Planning shows placement readiness and authorised staff confirm care commencement separately. Future-dated `move_in_date` blocks commencement until that date.
 
 History is newest-first. Ended rows are not hard-deleted.
 

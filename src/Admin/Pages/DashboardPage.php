@@ -14,6 +14,7 @@ use JMReferral\Visits\VisitExecutionService;
 use JMReferral\Visits\VisitTaskService;
 use JMReferral\Alerts\OperationalAlertService;
 use JMReferral\Medication\MedicationAdministrationService;
+use JMReferral\Pipeline\PipelineAttentionService;
 use JMReferral\Reports\ReportService;
 
 class DashboardPage
@@ -30,7 +31,8 @@ class DashboardPage
         private VisitTaskService $visit_task_service,
         private OperationalAlertService $alert_service,
         private MedicationAdministrationService $medication_administration_service,
-        private ReportService $report_service
+        private ReportService $report_service,
+        private PipelineAttentionService $pipeline_attention_service
     ) {
     }
 
@@ -48,6 +50,10 @@ class DashboardPage
         $pipeline           = $dashboard['pipeline'] ?? [];
         $recent             = $dashboard['recent'];
         $scoped_to_assigned = ! empty($dashboard['scoped_to_assigned']);
+        $pipeline_dashboard = $this->pipeline_attention_service->get_dashboard_payload(
+            'admin',
+            $this->pipeline_attention_service->filters_from_request()
+        );
 
         $can_view_visits      = Capabilities::current_user_can(Capabilities::VIEW_VISITS);
         $visit_status_labels  = CareVisitService::status_labels();

@@ -310,6 +310,39 @@ class ReportExportController
             CsvExportHelper::put_row($output, []);
         }
 
+        $acquisition = is_array($result['acquisition'] ?? null) ? $result['acquisition'] : [];
+        if ([] !== $acquisition) {
+            CsvExportHelper::put_row($output, ['Acquisition Pipeline', 'Metric', 'Value']);
+            CsvExportHelper::put_row($output, [
+                'Acquisition Pipeline',
+                'Cohort',
+                (string) ($acquisition['cohort_label'] ?? 'Referral Cohort: Received During Selected Period'),
+            ]);
+            CsvExportHelper::put_row($output, [
+                'Acquisition Pipeline',
+                'Referrals Received (Canonical)',
+                (int) ($acquisition['received_canonical'] ?? 0),
+            ]);
+            CsvExportHelper::put_row($output, [
+                'Acquisition Pipeline',
+                'Legacy / Pre-Pipeline Referrals',
+                (int) ($acquisition['received_legacy'] ?? 0),
+            ]);
+            foreach (is_array($acquisition['funnel'] ?? null) ? $acquisition['funnel'] : [] as $row) {
+                $label = (string) ($row['label'] ?? '');
+                $count = (int) ($row['count'] ?? 0);
+                $pct   = $row['pct_of_received'] ?? null;
+                $value = null === $pct ? (string) $count : sprintf('%d (%s%%)', $count, (string) $pct);
+                CsvExportHelper::put_row($output, ['Acquisition Pipeline', $label, $value]);
+            }
+            CsvExportHelper::put_row($output, [
+                'Acquisition Pipeline',
+                'Note',
+                'Detail rows: Export Acquisition Pipeline Section CSV. Archived historical outcomes are retained.',
+            ]);
+            CsvExportHelper::put_row($output, []);
+        }
+
         $sections = is_array($result['sections'] ?? null) ? $result['sections'] : [];
         foreach ($sections as $section) {
             $section_id = (string) ($section['id'] ?? '');
@@ -317,6 +350,7 @@ class ReportExportController
             if (
                 ReportService::SECTION_VACANCY === $section_id
                 || ReportService::SECTION_PLACEMENT_MOVEMENTS === $section_id
+                || ReportService::SECTION_ACQUISITION === $section_id
             ) {
                 continue;
             }
@@ -382,6 +416,11 @@ class ReportExportController
 
         if (ReportService::SECTION_PLACEMENT_MOVEMENTS === $section_id) {
             $this->stream_placement_movements_section_csv($section, $result);
+            return;
+        }
+
+        if (ReportService::SECTION_ACQUISITION === $section_id) {
+            $this->stream_acquisition_section_csv($result, $start, $end);
             return;
         }
 
@@ -543,6 +582,48 @@ class ReportExportController
         $rows = is_array($detail['export']['rows'] ?? null) ? $detail['export']['rows'] : [];
 
         CsvExportHelper::put_row($output, $columns);
+        foreach ($rows as $row) {
+            CsvExportHelper::put_row($output, is_array($row) ? $row : []);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Acquisition Pipeline detail CSV (referral cohort rows).
+     *
+     * @param array<string, mixed> $result
+     */
+    private function stream_acquisition_section_csv(array $result, string $start, string $end): void
+    {
+        $filename = sprintf('jmrs-acquisition-pipeline-%s-to-%s.csv', $start, $end);
+        $output   = $this->open_csv($filename);
+
+        $acquisition = is_array($result['acquisition'] ?? null) ? $result['acquisition'] : [];
+        $rows        = is_array($acquisition['export_rows'] ?? null) ? $acquisition['export_rows'] : [];
+
+        CsvExportHelper::put_row($output, [
+            'Referral Number',
+            'Client Name',
+            'Referral Received',
+            'Priority',
+            'Owner',
+            'Current Pipeline Stage',
+            'Current Referral Status',
+            'Interest Expressed At',
+            'Assessment Outcome',
+            'Package Cost Status',
+            'Package Cost Sent At',
+            'Proposed Package Total',
+            'LA Decision',
+            'LA Decision At',
+            'Funding Confirmed',
+            'Care Setting',
+            'Care Commenced At',
+            'Acquisition Outcome',
+        ]);
+
         foreach ($rows as $row) {
             CsvExportHelper::put_row($output, is_array($row) ? $row : []);
         }

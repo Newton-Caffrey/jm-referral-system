@@ -118,18 +118,31 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Purpose:** CRUD; default stage; pipeline counts for dashboard.
 - **Deps:** `WorkflowStageRepository`, `ReferralRepository`
 
+### `TransitionPlanningService` / `CareCommencementService` (Phase 3G)
+- **Purpose:** Derive Transition Planning readiness from existing LA decision / occupancy / care plan / team / schedule state; explicitly record care commencement (`care_commenced_at`/`by`) and pipeline `transition_planning` → `care_commenced`.
+- **Deps:** Pipeline, LA decision repo, occupancy/home/bedroom repos, care plan/team/schedule repos, `ServiceLocationResolver`, `AccessPolicy`, activity, `ReferralService`
+- **Used by:** `ReferralViewController`, `PortalController`
+- **Notes:** Does not auto-commence on placement or visit. Does not modify `OccupancyService`.
+
+### `PipelineAttentionService` (Phase 3H)
+- **Purpose:** Pipeline overview counts, Needs Attention queue, Active Pipeline Queue; waiting-time and internal-target evaluation.
+- **Deps:** `ReferralRepository`, `PackageCostRepository`, `AccessPolicy`, `UserProvider`, `PipelineInternalTargets`
+- **Used by:** Portal dashboard, WP Admin `DashboardPage`
+- **Notes:** Read-only. No hard-coded SLA hours. Support Workers excluded from commercial pipeline surface.
+
 ---
 
 ## Notifications
 
 ### `NotificationService`
-- **Purpose:** Domain emails (created, assigned, status, public received/confirmation).
+- **Purpose:** Domain emails (created, assigned, status, public received/confirmation, interest expressed, package cost sent).
 - **Deps:** `EmailNotificationService`, `UserProvider`
+- **Notes:** `notify_package_cost_sent($referral, $to_email, $attachment_paths)` uses template `package-cost-sent` and passes optional filesystem attachments. Success = mailer accepted, not delivery proof.
 
 ### `EmailNotificationService`
 - **Purpose:** Render/send via `wp_mail` and template resolver.
 - **Deps:** optional `EmailTemplateResolver`
-
+- **API:** `send($to, $subject, $template, $vars = [], $attachments = [])`. Attachments are optional absolute readable server paths; empty array preserves pre-3E.1 behaviour. Request-supplied paths must never be passed.
 ---
 
 ## Alerts & reports
@@ -141,9 +154,13 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 
 ### `ReportService`
 - **Purpose:** Report payloads and dashboard summary shortcut; Phase 2G.1 Supported Living current-snapshot aggregates; Phase 2G.2 vacancy report; Phase 2G.3 placement movements; Phase 2G.4 visit care-delivery filters.
-- **Deps:** `ReportRepository`, AccessPolicy, `OperationalAlertService`, `UserProvider`, `OccupancyRepository`
+- **Deps:** `ReportRepository`, `AcquisitionReportRepository`, AccessPolicy, `OperationalAlertService`, `UserProvider`, `OccupancyRepository`
 - **Constructed in:** `Menu` (not `Plugin::registerReferralControllers`)
-- **Notes:** Estate KPIs reuse `OccupancyRepository::estate_summary()` / `OccupancyService::compute_metrics()`. Care-setting counts reuse Active Clients semantics (`archived_at IS NULL`, status not completed/cancelled). Snapshot metrics are not date-range filtered. Vacancy detail uses `ReportRepository::list_current_vacancies()` (one grouped query) and home filter `jmrs_report_home`; detailed vacancy requires `jmrs_view_reports` + `jmrs_view_homes`. Placement movements use `count_placement_movements_in_range` / `list_placement_movements_in_range` on `jmrs_referral_activity` (`activity.created_at`); assigned-to scope only (historical completed/archived events retained); home filter not applied. Visit care-delivery filters (`jmrs_visit_care_context` / `jmrs_visit_home`) use `VisitDeliveryContext` classification (snapshot for executed; current care setting/occupancy for open; Location Not Recorded for terminal without snapshot) and must not reuse vacancy `jmrs_report_home`. Phase 2G.5 polish: filter fieldsets, snapshot/period badges, empty states, CareSetting label alignment, responsive Reports CSS, UAT checklist.
+- **Notes:** Estate KPIs reuse `OccupancyRepository::estate_summary()` / `OccupancyService::compute_metrics()`. Care-setting counts reuse Active Clients semantics (`archived_at IS NULL`, status not completed/cancelled). Snapshot metrics are not date-range filtered. Vacancy detail uses `ReportRepository::list_current_vacancies()` (one grouped query) and home filter `jmrs_report_home`; detailed vacancy requires `jmrs_view_reports` + `jmrs_view_homes`. Placement movements use `count_placement_movements_in_range` / `list_placement_movements_in_range` on `jmrs_referral_activity` (`activity.created_at`); assigned-to scope only (historical completed/archived events retained); home filter not applied. Visit care-delivery filters (`jmrs_visit_care_context` / `jmrs_visit_home`) use `VisitDeliveryContext` classification (snapshot for executed; current care setting/occupancy for open; Location Not Recorded for terminal without snapshot) and must not reuse vacancy `jmrs_report_home`. Phase 2G.5 polish: filter fieldsets, snapshot/period badges, empty states, CareSetting label alignment, responsive Reports CSS, UAT checklist. **Phase 3I Acquisition Pipeline:** cohort by `DATE(created_at)`; structured Phase 3 identity via stage-history `change_type=created` (not current `is_pipeline_stage`); includes archived; timing from structured timestamps only; Package Cost / LA aggregates use latest-by-id; CSV section `acquisition_pipeline`.
+
+### `AcquisitionReportRepository`
+- **Purpose:** Aggregate SQL for Phase 3I acquisition cohort metrics (no capability checks).
+- **Used by:** `ReportService`
 
 ### `VisitDeliveryContext`
 - **Purpose:** Shared Visit report filter normalisation and SQL predicates for Phase 2G.4.

@@ -54,7 +54,11 @@ class ReferralAssessmentController
             $this->redirect_to_view($referral_id);
         }
 
-        $this->redirect_to_view($referral_id, ! empty($result['created']) ? 'created' : 'updated');
+        $this->redirect_to_view(
+            $referral_id,
+            ! empty($result['created']) ? 'created' : 'updated',
+            ! empty($result['pipeline_advanced'])
+        );
     }
 
     /**
@@ -126,12 +130,13 @@ class ReferralAssessmentController
         }
 
         return [
-            'success'   => true,
-            'data'      => $data,
-            'errors'    => [],
-            'created'   => ! empty($result['created']),
-            'not_found' => false,
-            'forbidden' => false,
+            'success'            => true,
+            'data'               => $data,
+            'errors'             => [],
+            'created'            => ! empty($result['created']),
+            'pipeline_advanced'  => ! empty($result['pipeline_advanced']),
+            'not_found'          => false,
+            'forbidden'          => false,
         ];
     }
 
@@ -162,11 +167,17 @@ class ReferralAssessmentController
                 echo '<div class="notice notice-success is-dismissible"><p>';
                 echo esc_html__('Assessment created successfully.', 'jm-referral-system');
                 echo '</p></div>';
-            } elseif ('updated' === $status) {
+            } else            if ('updated' === $status) {
                 echo '<div class="notice notice-success is-dismissible"><p>';
                 echo esc_html__('Assessment updated successfully.', 'jm-referral-system');
                 echo '</p></div>';
             }
+        }
+
+        if (isset($_GET['jmrs_assessment_pipeline']) && '1' === sanitize_text_field(wp_unslash($_GET['jmrs_assessment_pipeline']))) {
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html__('Assessment completed. Next action: Prepare and send package cost.', 'jm-referral-system');
+            echo '</p></div>';
         }
 
         $referral_id = isset($_GET['referral_id']) ? absint($_GET['referral_id']) : 0;
@@ -273,7 +284,7 @@ class ReferralAssessmentController
         );
     }
 
-    private function redirect_to_view(int $referral_id, string $saved = ''): void
+    private function redirect_to_view(int $referral_id, string $saved = '', bool $pipeline_advanced = false): void
     {
         $args = [
             'page'        => 'jm-referrals-view',
@@ -282,6 +293,10 @@ class ReferralAssessmentController
 
         if ('' !== $saved) {
             $args['jmrs_assessment_saved'] = $saved;
+        }
+
+        if ($pipeline_advanced) {
+            $args['jmrs_assessment_pipeline'] = '1';
         }
 
         wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));

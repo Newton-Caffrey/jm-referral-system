@@ -3,9 +3,12 @@
 namespace JMReferral\Workflow;
 
 use JMReferral\Database\Tables;
+use JMReferral\Pipeline\PipelineStage;
 
 class WorkflowStageRepository
 {
+    private const SELECT_COLUMNS = 'id, name, slug, description, stage_order, status, is_system, is_pipeline_stage, created_at, updated_at';
+
     /**
      * Inserts a workflow stage row.
      *
@@ -19,13 +22,15 @@ class WorkflowStageRepository
         $result = $wpdb->insert(
             Tables::workflow_stages_table(),
             [
-                'name'        => $data['name'],
-                'slug'        => $data['slug'],
-                'description' => $data['description'],
-                'stage_order' => $data['stage_order'],
-                'status'      => $data['status'],
-                'created_at'  => $data['created_at'],
-                'updated_at'  => $data['updated_at'],
+                'name'              => $data['name'],
+                'slug'              => $data['slug'],
+                'description'       => $data['description'],
+                'stage_order'       => $data['stage_order'],
+                'status'            => $data['status'],
+                'is_system'         => absint($data['is_system'] ?? 0),
+                'is_pipeline_stage' => absint($data['is_pipeline_stage'] ?? 0),
+                'created_at'        => $data['created_at'],
+                'updated_at'        => $data['updated_at'],
             ],
             [
                 '%s',
@@ -33,6 +38,8 @@ class WorkflowStageRepository
                 '%s',
                 '%d',
                 '%s',
+                '%d',
+                '%d',
                 '%s',
                 '%s',
             ]
@@ -58,25 +65,31 @@ class WorkflowStageRepository
             return false;
         }
 
+        $fields  = [
+            'name'        => $data['name'],
+            'slug'        => $data['slug'],
+            'description' => $data['description'],
+            'stage_order' => $data['stage_order'],
+            'status'      => $data['status'],
+            'updated_at'  => $data['updated_at'],
+        ];
+        $formats = ['%s', '%s', '%s', '%d', '%s', '%s'];
+
+        if (array_key_exists('is_system', $data)) {
+            $fields['is_system'] = absint($data['is_system']);
+            $formats[]           = '%d';
+        }
+
+        if (array_key_exists('is_pipeline_stage', $data)) {
+            $fields['is_pipeline_stage'] = absint($data['is_pipeline_stage']);
+            $formats[]                   = '%d';
+        }
+
         $result = $wpdb->update(
             Tables::workflow_stages_table(),
-            [
-                'name'        => $data['name'],
-                'slug'        => $data['slug'],
-                'description' => $data['description'],
-                'stage_order' => $data['stage_order'],
-                'status'      => $data['status'],
-                'updated_at'  => $data['updated_at'],
-            ],
+            $fields,
             ['id' => $id],
-            [
-                '%s',
-                '%s',
-                '%s',
-                '%d',
-                '%s',
-                '%s',
-            ],
+            $formats,
             ['%d']
         );
 
@@ -116,12 +129,13 @@ class WorkflowStageRepository
             return null;
         }
 
-        $table = Tables::workflow_stages_table();
+        $table   = Tables::workflow_stages_table();
+        $columns = self::SELECT_COLUMNS;
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/columns trusted.
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, name, slug, description, stage_order, status, created_at, updated_at
+                "SELECT {$columns}
                 FROM {$table}
                 WHERE id = %d",
                 $id
@@ -129,7 +143,7 @@ class WorkflowStageRepository
             ARRAY_A
         );
 
-        return is_array($row) ? $row : null;
+        return is_array($row) ? $this->normalize_row($row) : null;
     }
 
     /**
@@ -145,12 +159,13 @@ class WorkflowStageRepository
             return null;
         }
 
-        $table = Tables::workflow_stages_table();
+        $table   = Tables::workflow_stages_table();
+        $columns = self::SELECT_COLUMNS;
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/columns trusted.
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, name, slug, description, stage_order, status, created_at, updated_at
+                "SELECT {$columns}
                 FROM {$table}
                 WHERE slug = %s
                 LIMIT 1",
@@ -159,7 +174,7 @@ class WorkflowStageRepository
             ARRAY_A
         );
 
-        return is_array($row) ? $row : null;
+        return is_array($row) ? $this->normalize_row($row) : null;
     }
 
     /**
@@ -171,17 +186,22 @@ class WorkflowStageRepository
     {
         global $wpdb;
 
-        $table = Tables::workflow_stages_table();
+        $table   = Tables::workflow_stages_table();
+        $columns = self::SELECT_COLUMNS;
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/columns trusted.
         $results = $wpdb->get_results(
-            "SELECT id, name, slug, description, stage_order, status, created_at, updated_at
+            "SELECT {$columns}
             FROM {$table}
             ORDER BY stage_order ASC, name ASC, id ASC",
             ARRAY_A
         );
 
-        return is_array($results) ? $results : [];
+        if (! is_array($results)) {
+            return [];
+        }
+
+        return array_map([$this, 'normalize_row'], $results);
     }
 
     /**
@@ -193,12 +213,13 @@ class WorkflowStageRepository
     {
         global $wpdb;
 
-        $table = Tables::workflow_stages_table();
+        $table   = Tables::workflow_stages_table();
+        $columns = self::SELECT_COLUMNS;
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/columns trusted.
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT id, name, slug, description, stage_order, status, created_at, updated_at
+                "SELECT {$columns}
                 FROM {$table}
                 WHERE status = %s
                 ORDER BY stage_order ASC, name ASC, id ASC",
@@ -207,30 +228,85 @@ class WorkflowStageRepository
             ARRAY_A
         );
 
-        return is_array($results) ? $results : [];
+        if (! is_array($results)) {
+            return [];
+        }
+
+        return array_map([$this, 'normalize_row'], $results);
     }
 
     /**
-     * Returns the first active stage by stage_order (default "New Referral").
+     * Active non-pipeline (legacy/custom) stages for legacy referral editing.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_active_legacy(): array
+    {
+        $stages = [];
+
+        foreach ($this->find_active() as $stage) {
+            if (! empty($stage['is_pipeline_stage'])) {
+                continue;
+            }
+            $stages[] = $stage;
+        }
+
+        return $stages;
+    }
+
+    /**
+     * Canonical pipeline stage IDs (for filters).
+     *
+     * @return array<int, int>
+     */
+    public function get_pipeline_stage_ids(): array
+    {
+        $ids = [];
+
+        foreach ($this->all() as $stage) {
+            if (empty($stage['is_pipeline_stage'])) {
+                continue;
+            }
+            $slug = (string) ($stage['slug'] ?? '');
+            if (! PipelineStage::is_canonical($slug)) {
+                continue;
+            }
+            $id = (int) ($stage['id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Returns the first active stage by stage_order (prefers canonical default).
      *
      * @return array<string, mixed>|null
      */
     public function find_first_active(): ?array
     {
-        global $wpdb;
+        $default = $this->find_by_slug(PipelineStage::default_slug());
+        if (null !== $default && 'active' === ($default['status'] ?? '')) {
+            return $default;
+        }
 
-        $table = Tables::workflow_stages_table();
-
-        // Prefer the seeded New Referral slug when present.
+        // Legacy fallback for installs before pipeline seed.
         $by_slug = $this->find_by_slug('new-referral');
         if (null !== $by_slug && 'active' === ($by_slug['status'] ?? '')) {
             return $by_slug;
         }
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        global $wpdb;
+
+        $table   = Tables::workflow_stages_table();
+        $columns = self::SELECT_COLUMNS;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table/columns trusted.
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, name, slug, description, stage_order, status, created_at, updated_at
+                "SELECT {$columns}
                 FROM {$table}
                 WHERE status = %s
                 ORDER BY stage_order ASC, id ASC
@@ -240,7 +316,7 @@ class WorkflowStageRepository
             ARRAY_A
         );
 
-        return is_array($row) ? $row : null;
+        return is_array($row) ? $this->normalize_row($row) : null;
     }
 
     /**
@@ -287,5 +363,17 @@ class WorkflowStageRepository
         }
 
         return $map;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function normalize_row(array $row): array
+    {
+        $row['is_system']         = absint($row['is_system'] ?? 0);
+        $row['is_pipeline_stage'] = absint($row['is_pipeline_stage'] ?? 0);
+
+        return $row;
     }
 }

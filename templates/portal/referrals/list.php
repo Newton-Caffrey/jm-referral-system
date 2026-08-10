@@ -33,10 +33,12 @@ $priority_options    = is_array( $priority_options ?? null ) ? $priority_options
 $search        = (string) ( $filters['search'] ?? '' );
 $status        = (string) ( $filters['status'] ?? '' );
 $priority      = (string) ( $filters['priority'] ?? '' );
-$assigned_to   = absint( $filters['assigned_to'] ?? 0 );
+$assigned_to   = ! empty( $filters['unassigned'] ) ? 'unassigned' : (string) absint( $filters['assigned_to'] ?? 0 );
 $care_setting  = (string) ( $filters['care_setting'] ?? '' );
 $archive_scope = (string) ( $filters['archive_scope'] ?? ( $archive_scope ?? 'active' ) );
 $care_setting_options = is_array( $care_setting_options ?? null ) ? $care_setting_options : array();
+$pipeline_stage = (string) ( $filters['pipeline_stage'] ?? '' );
+$pipeline_stage_options = \JMReferral\Pipeline\PipelineStage::filter_options();
 
 $scope_labels = array(
 	'active'   => __( 'Active', 'jm-referral-system' ),
@@ -140,17 +142,27 @@ $current_scope_label = $scope_labels[ $archive_scope ] ?? $scope_labels['active'
 					<?php endforeach; ?>
 				</select>
 			</p>
+			<p>
+				<label for="jmrs_pipeline_stage"><?php echo esc_html__( 'Pipeline Stage', 'jm-referral-system' ); ?></label>
+				<select name="jmrs_pipeline_stage" id="jmrs_pipeline_stage">
+					<option value=""><?php echo esc_html__( 'All Pipeline Stages', 'jm-referral-system' ); ?></option>
+					<?php foreach ( $pipeline_stage_options as $value => $label ) : ?>
+						<option value="<?php echo esc_attr( (string) $value ); ?>" <?php selected( $pipeline_stage, (string) $value ); ?>><?php echo esc_html( (string) $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</p>
 			<?php if ( $can_filter_assignee ) : ?>
 				<p>
 					<label for="jmrs_assigned_to"><?php echo esc_html__( 'Assigned staff', 'jm-referral-system' ); ?></label>
 					<select name="jmrs_assigned_to" id="jmrs_assigned_to">
 						<option value="0"><?php echo esc_html__( 'All staff', 'jm-referral-system' ); ?></option>
+						<option value="unassigned" <?php selected( $assigned_to, 'unassigned' ); ?>><?php echo esc_html__( 'Unassigned', 'jm-referral-system' ); ?></option>
 						<?php foreach ( $assignable_users as $user_row ) : ?>
 							<?php
 							$uid   = absint( $user_row['id'] ?? 0 );
 							$uname = (string) ( $user_row['display_name'] ?? '' );
 							?>
-							<option value="<?php echo esc_attr( (string) $uid ); ?>" <?php selected( $assigned_to, $uid ); ?>><?php echo esc_html( $uname ); ?></option>
+							<option value="<?php echo esc_attr( (string) $uid ); ?>" <?php selected( $assigned_to, (string) $uid ); ?>><?php echo esc_html( $uname ); ?></option>
 						<?php endforeach; ?>
 					</select>
 				</p>

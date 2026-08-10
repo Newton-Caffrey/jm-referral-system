@@ -44,6 +44,7 @@ use JMReferral\Referral\ReferralRetentionService;
 use JMReferral\Referral\ReferralService;
 use JMReferral\Referral\ReferralValidator;
 use JMReferral\Referral\ReferralViewController;
+use JMReferral\Reports\AcquisitionReportRepository;
 use JMReferral\Reports\ReportController;
 use JMReferral\Reports\ReportExportController;
 use JMReferral\Reports\ReportRepository;
@@ -246,7 +247,8 @@ class Menu
             $access_policy,
             $operational_alert_service,
             $user_provider,
-            $occupancy_repository
+            $occupancy_repository,
+            new AcquisitionReportRepository()
         );
         $this->report_controller        = new ReportController($report_service);
         $this->report_export_controller = new ReportExportController($report_service);
@@ -323,7 +325,13 @@ class Menu
             $visit_task_service,
             $operational_alert_service,
             $medication_administration_service,
-            $report_service
+            $report_service,
+            new \JMReferral\Pipeline\PipelineAttentionService(
+                $repository,
+                new \JMReferral\PackageCost\PackageCostRepository(),
+                $access_policy,
+                $user_provider
+            )
         );
         $this->operational_alerts_page   = new OperationalAlertsPage($operational_alert_service);
         $this->referrals_page            = new ReferralsPage($list_controller);

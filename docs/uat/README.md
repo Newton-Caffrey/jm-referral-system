@@ -4,6 +4,7 @@ User Acceptance Testing materials for **JM Healthcare Referral Platform** / JM R
 
 | Document | Purpose |
 | --- | --- |
+| [UAT_PHASE_3.md](UAT_PHASE_3.md) | **Phase 3 final UAT** (acquisition pipeline → reporting, upgrade, regression) |
 | [UAT_SUPPORTED_LIVING_V1_2.md](UAT_SUPPORTED_LIVING_V1_2.md) | **Master Supported Living UAT for v1.2.0** (homes → visits → reporting) |
 | [UAT_SUPPORTED_LIVING_REPORTING.md](UAT_SUPPORTED_LIVING_REPORTING.md) | Reporting-focused Pass/Fail checklist (Phase 2G) |
 | [UAT_PLAN.md](UAT_PLAN.md) | Portal package plan (originally v1.1.0) |
@@ -31,4 +32,4 @@ uat-evidence/
 
 ## Rule
 
-**v1.2.0** production release requires completed Supported Living UAT (`UAT_SUPPORTED_LIVING_V1_2.md`) and the gate in `docs/RELEASE_CHECKLIST.md`, unless JM Project Owner formally documents an exception.
+**v1.3.0** production release requires completed Phase 3 UAT (`UAT_PHASE_3.md`) and the gate in `docs/RELEASE_CHECKLIST.md`, unless JM Project Owner formally documents an exception.

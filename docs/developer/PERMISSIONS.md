@@ -57,6 +57,7 @@ Role slugs are still used for:
 | `VIEW_HOMES` | `jmrs_view_homes` |
 | `MANAGE_HOMES` | `jmrs_manage_homes` |
 | `MANAGE_OCCUPANCIES` | `jmrs_manage_occupancies` |
+| `OVERRIDE_PIPELINE_STAGE` | `jmrs_override_pipeline_stage` |
 
 Helpers: `Capabilities::all()`, `grant_to_administrators()`, `revoke_from_administrators()`, `current_user_can()`.
 
@@ -72,25 +73,29 @@ All JMRS capabilities.
 
 ### `jmrs_referral_manager` — Referral Manager
 
-All except: `manage_service_types`, `manage_workflow_stages`, `manage_settings`. Includes supported living view + manage homes + manage occupancies.
+All except: `manage_service_types`, `manage_workflow_stages`, `manage_settings`. Includes supported living view + manage homes + manage occupancies, and **`override_pipeline_stage`**. May **Express Interest**.
 
 ### `jmrs_care_coordinator` — Care Coordinator
 
 Dashboard, view/create/edit/assign referrals, notes, documents, care plans (view/manage/review), visits (view/manage/execute), care team, schedules, alerts, reports, medications (view/manage/administer), supported living homes (view/manage), occupancies (manage).
 
-**No** delete, archive, restore, export, settings, service types, workflow stages.
+**May Express Interest** (commercial interest response) via `AccessPolicy::can_express_interest`. **May prepare/send Package Cost** via `can_manage_package_cost`. **May record Local Authority Decision** via `can_record_la_decision`. **May Mark as Not Proceeding** via `can_mark_not_proceeding`. **May Confirm Care Commenced** via `can_commence_care`. **May schedule/reschedule assessments** via `can_schedule_assessment`.
+
+**No** delete, archive, restore, export, settings, service types, workflow stages, **pipeline override**.
 
 ### `jmrs_assessor` — Assessor
 
 View/edit referrals, notes, docs, care plans (view/manage/review), view visits/team/schedules, view/manage medications, **view** supported living homes.
 
-**No** dashboard, create, delete, archive, assign, export, execute visits, manage team/schedules, alerts, reports, administer meds, manage homes/occupancies, settings.
+**May schedule/reschedule assessments** (legitimate business actions; does **not** gain `override_pipeline_stage`).
+
+**No** dashboard, create, delete, archive, assign, export, execute visits, manage team/schedules, alerts, reports, administer meds, manage homes/occupancies, settings, **pipeline override**, **Express Interest**, **Package Cost prepare/send**, **Local Authority Decision**, **Mark as Not Proceeding**, **Confirm Care Commenced**.
 
 ### `jmrs_support_worker` — Support Worker
 
 Dashboard, view referrals, notes, download docs, view care plans/visits/team/schedules/meds, execute visits, administer medications.
 
-**No** estate-wide home or occupancy capabilities.
+**No** estate-wide home or occupancy capabilities. **No** pipeline override. **No** Express Interest. **No** Package Cost. **No** Local Authority Decision. **No** Mark as Not Proceeding. **No** Confirm Care Commenced. **No** assessment scheduling.
 
 **Scoped** by AccessPolicy to assigned referrals.
 
@@ -120,6 +125,22 @@ Class: `JMReferral\Permissions\AccessPolicy`.
 | `can_edit_referral` | Requires `EDIT_REFERRALS`; same scope rule |
 | `is_referral_archived` | Non-empty `archived_at` |
 | `can_mutate_referral` | False if archived; else `can_edit_referral` |
+| `can_express_interest` | Requires mutate access **and** role is JM Administrator, Referral Manager, Care Coordinator, or WP admin. Assessor / Support Worker denied. Does **not** require `override_pipeline_stage`. |
+| `can_manage_package_cost` | Same commercial gate as `can_express_interest` (Admin / Manager / Coordinator / WP admin). Assessor / Support Worker denied. Does **not** require `override_pipeline_stage`. Covers prepare, automated Package Cost email, and Secure Portal/Other record-submit. |
+| `can_record_la_decision` | Same commercial gate as `can_express_interest`. Covers recording Approved / Declined / Not Proceeding. Does **not** require `override_pipeline_stage`. |
+| `can_mark_not_proceeding` | Same commercial gate. Generic Mark as Not Proceeding on allowed active stages (not `awaiting_la_decision`). Does **not** require `override_pipeline_stage`. |
+| `can_commence_care` | Same commercial gate. Confirm Care Commenced on `transition_planning` when hard prerequisites are met. Does **not** require `override_pipeline_stage` or `jmrs_manage_occupancies`. |
+
+### Pipeline Dashboard (Phase 3H)
+
+| Surface | Who |
+| --- | --- |
+| Referral Pipeline / Needs Attention / Active Pipeline Queue | JM Administrator, Referral Manager, Care Coordinator (unrestricted `VIEW_DASHBOARD` + `VIEW_REFERRALS`) |
+| Support Worker dashboard | Scoped care KPIs only — **no** acquisition pipeline commercial surface |
+| Assessor | No `VIEW_DASHBOARD` |
+
+Internal targets are configured under Settings → **Pipeline Internal Targets** (`jmrs_manage_settings`). Operational targets only — not contractual SLAs.
+| `can_schedule_assessment` | Same as `can_mutate_referral` (EDIT_REFERRALS + not archived + scope). Assessor allowed. Support Worker denied (no EDIT). Does **not** require `override_pipeline_stage`. |
 | `should_scope_to_assigned` | True for `jmrs_support_worker` without unrestricted access |
 | `get_assigned_user_constraint` | User ID when scoped; else `null` (used by list/dashboard queries) |
 

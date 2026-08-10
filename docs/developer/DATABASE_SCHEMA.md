@@ -1,6 +1,6 @@
 # Database Schema — JM Referral System
 
-Schema version: **`2.21.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
+Schema version: **`2.28.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
 DDL authority: `JMReferral\Database\Tables::create()` via WordPress `dbDelta`.
 
 All physical names are `{wpdb->prefix}jmrs_*`. Methods below are on `Tables`.
@@ -47,11 +47,11 @@ erDiagram
 | **PK** | `id` |
 | **FKs (logical)** | `service_type_id` → service types; `workflow_stage_id` → workflow stages; `assigned_to` / `archived_by` → WP users |
 
-**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps.
+**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **`care_start_date`** (preferred/requested intake date from referral form — **not** actual care commencement), **`workflow_stage_entered_at`**, **`next_action_due_at`** (Phase 3B pipeline timing; no SLA hardcoding), **interest response milestone (Phase 3C):** `interest_expressed_at`, `interest_expressed_by`, `interest_response_method` (`email` \| `phone` \| `other`), `interest_response_recipient`, `interest_email_status` (`sent` \| `failed` \| `not_applicable`), `interest_email_sent_at`, **care commencement milestone (Phase 3G):** `care_commenced_at`, `care_commenced_by` (actual recorded commencement — NULL until explicit Confirm Care Commenced; no backfill), **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps.
 
-**Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, `care_setting`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
+**Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, `care_setting`, `workflow_stage_entered_at`, `next_action_due_at`, `interest_expressed_at`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
 
-**Workflows:** Create (admin/public), edit (incl. care setting), assign, stage change, list/export/filter by care setting, archive/restore, portal view.
+**Workflows:** Create (admin/public → default canonical `interest_required`), edit (pipeline stages locked on generic form), assign, legacy stage change, pipeline override (Manager/Admin), **Express Interest** (`InterestResponseService`), **Transition Planning / Care Commencement** (`TransitionPlanningService` / `CareCommencementService`), list/export/filter by care setting + pipeline stage, archive/restore, portal view.
 
 ---
 
@@ -99,15 +99,33 @@ erDiagram
 
 ### `jmrs_workflow_stages` — `workflow_stages_table()`
 
-**Purpose:** Pathway stages for referrals.
+**Purpose:** Pathway stages for referrals (includes legacy stages and canonical acquisition pipeline stages).
 
 | | |
 | --- | --- |
 | **PK** | `id` |
 | **Unique** | `slug` |
 
-**Columns:** `name`, `slug`, `description`, `stage_order`, `status`, timestamps.
-Seeded by migrator when empty.
+**Columns:** `name`, `slug`, `description`, `stage_order`, `status`, **`is_system`**, **`is_pipeline_stage`**, timestamps.
+
+Canonical acquisition stages (Phase 3B) are seeded/upserted by slug with `is_system=1` and `is_pipeline_stage=1`. Legacy stages remain intact and are not remapped. System stages cannot be deleted or have their slug/name casually changed via admin UI.
+
+---
+
+### `jmrs_referral_stage_history` — `referral_stage_history_table()`
+
+**Purpose:** Structured acquisition pipeline stage history (queryable; slug snapshots preserved).
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **FK (logical)** | `referral_id`; optional `from_stage_id` / `to_stage_id`; `changed_by` → WP user |
+
+**Columns:** `from_stage_id`, `from_stage_slug`, `to_stage_id`, `to_stage_slug`, `changed_by`, `change_type` (`created` \| `transition` \| `override`), `reason`, `created_at`.
+
+**Indexes:** `referral_id`, `to_stage_id`, `created_at`, `referral_id_created_at`.
+
+Do not store clinical narrative here. Human timeline also logs concise `pipeline_*` actions in `jmrs_referral_activity`.
 
 ---
 
@@ -135,7 +153,45 @@ Seeded by migrator when empty.
 | **PK** | `id` |
 | **Unique** | `referral_id` |
 
-**Columns:** `assessor_user_id`, `assessment_date`, `outcome`, `next_review_date`, domain LONGTEXT/short fields (mobility, personal care, meds, home/safety, summary, etc.).
+**Clinical columns:** `assessor_user_id`, `assessment_date` (DATE — clinical assessment performed; **not** appointment time), `outcome` (`pending` \| `suitable` \| `suitable_with_conditions` \| `not_suitable`), `next_review_date`, domain LONGTEXT/short fields (mobility, personal care, meds, home/safety, summary, etc.).
+
+**Scheduling columns (Phase 3D):** `scheduled_at` (DATETIME), `assessment_location_type` (`hospital` \| `current_care_home` \| `own_home` \| `other`), `assessment_location_name`, `assessment_location_address`, `assessment_contact_name` / `_phone` / `_email`, `scheduling_notes`.
+
+**Completion:** `ReferralAssessmentService::is_completed_assessment()` — outcome present and not `pending`. Row existence alone is not completion.
+
+---
+
+### `jmrs_referral_package_costs` — `referral_package_costs_table()`
+
+**Purpose:** Package Cost submission milestone (commercial). One row is the current cycle head (`ORDER BY id DESC`); prior rows may be retained for future revisions.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Logical FKs** | `referral_id` → referrals; `document_id` → `jmrs_referral_documents`; `prepared_by` / `sent_by` → WP users |
+
+**Columns:** `package_total` DECIMAL(12,2) NULL, `currency` DEFAULT `GBP`, `prepared_at` / `prepared_by`, `sent_at` / `sent_by`, `send_method` (`email` \| `secure_portal` \| `other`), `recipient`, `submission_reference`, `status` (`draft` \| `prepared` \| `sent`), timestamps.
+
+**Indexes:** `referral_id`, `document_id`, `status`, `(referral_id, status)`, `prepared_at`, `sent_at`.
+
+**Rules:** Preparing does **not** advance pipeline and does **not** send email. Automated Email (3E.1) or confirmed Secure Portal/Other submission sets `status=sent` and advances `package_cost_required` → `awaiting_la_decision`. Sent rows are read-only in Phase 3E. Attachment for email is the current `document_id` from private storage only.
+
+---
+
+### `jmrs_referral_la_decisions` — `referral_la_decisions_table()`
+
+**Purpose:** Local Authority / funding outcome milestone (commercial). One current-cycle head (`ORDER BY id DESC`); architecture allows future reconsideration rows without a unique `referral_id` constraint.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Logical FKs** | `referral_id` → referrals; `package_cost_id` → `jmrs_referral_package_costs`; `recorded_by` → WP users |
+
+**Columns:** `decision` (`approved` \| `declined` \| `not_proceeding`), `decision_at`, `funding_confirmed` TINYINT NULL (`1`=yes, `0`=no, `NULL`=not recorded), `funding_reference`, `decision_reference`, `reason_code`, `notes` (max 500, operational only), timestamps.
+
+**Indexes:** `referral_id`, `package_cost_id`, `decision`, `(referral_id, decision)`, `decision_at`.
+
+**Rules:** Record only when stage = `awaiting_la_decision` and a **sent** Package Cost exists for the referral. Decisions are immutable in normal workflow. Pipeline transitions via `ReferralPipelineService` only (no direct `workflow_stage_id` writes).
 
 ---
 

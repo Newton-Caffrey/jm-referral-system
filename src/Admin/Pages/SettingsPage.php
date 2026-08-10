@@ -26,6 +26,7 @@ class SettingsPage
 
         $this->maybe_save_public_referral_settings();
         $this->maybe_save_staff_portal_settings();
+        $this->maybe_save_pipeline_internal_targets();
 
         $counts = [
             'legacy'  => 0,
@@ -49,6 +50,7 @@ class SettingsPage
 
         $this->render_public_referral_settings();
         $this->render_staff_portal_settings();
+        $this->render_pipeline_internal_targets();
 
         echo '<h2>' . esc_html__('Private Document Migration', 'jm-referral-system') . '</h2>';
 
@@ -466,6 +468,73 @@ class SettingsPage
             __('Save Staff Portal Settings', 'jm-referral-system'),
             'primary',
             'jmrs_save_staff_portal_settings',
+            false
+        );
+        echo '</form>';
+    }
+
+    private function maybe_save_pipeline_internal_targets(): void
+    {
+        if (! isset($_POST['jmrs_save_pipeline_internal_targets'])) {
+            return;
+        }
+
+        check_admin_referer('jmrs_save_pipeline_internal_targets', 'jmrs_pipeline_internal_targets_nonce');
+
+        $input = [];
+        foreach (\JMReferral\Pipeline\PipelineInternalTargets::configurable_stages() as $slug) {
+            $key = 'jmrs_target_' . $slug;
+            $input[$slug] = isset($_POST[$key])
+                ? sanitize_text_field(wp_unslash((string) $_POST[$key]))
+                : '';
+        }
+
+        \JMReferral\Pipeline\PipelineInternalTargets::update($input);
+
+        echo '<div class="notice notice-success is-dismissible"><p>';
+        echo esc_html__('Pipeline internal targets saved successfully.', 'jm-referral-system');
+        echo '</p></div>';
+    }
+
+    private function render_pipeline_internal_targets(): void
+    {
+        $targets = \JMReferral\Pipeline\PipelineInternalTargets::all();
+
+        echo '<h2>' . esc_html__('Pipeline Internal Targets', 'jm-referral-system') . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'Optional internal targets used to highlight referrals that have been waiting longer than expected. These are operational targets, not contractual SLAs.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+        echo '<p class="description">';
+        echo esc_html__(
+            'Leave a field blank (or zero) to disable the target for that stage. Changing targets recalculates dashboard attention immediately without rewriting referral records.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+
+        echo '<form method="post" action="' . esc_url(admin_url('admin.php?page=jm-referrals-settings')) . '">';
+        wp_nonce_field('jmrs_save_pipeline_internal_targets', 'jmrs_pipeline_internal_targets_nonce');
+
+        echo '<table class="form-table" role="presentation"><tbody>';
+
+        foreach (\JMReferral\Pipeline\PipelineInternalTargets::configurable_stages() as $slug) {
+            $hours = $targets[$slug] ?? null;
+            $field_id = 'jmrs_target_' . $slug;
+            $label = \JMReferral\Pipeline\PipelineStage::label($slug);
+            echo '<tr><th scope="row"><label for="' . esc_attr($field_id) . '">' . esc_html($label) . '</label></th><td>';
+            echo '<input type="number" class="small-text" min="0" max="' . esc_attr((string) \JMReferral\Pipeline\PipelineInternalTargets::MAX_HOURS) . '" step="1" name="' . esc_attr($field_id) . '" id="' . esc_attr($field_id) . '" value="' . esc_attr(null === $hours ? '' : (string) $hours) . '" /> ';
+            echo esc_html__('hours', 'jm-referral-system');
+            echo '</td></tr>';
+        }
+
+        echo '</tbody></table>';
+
+        submit_button(
+            __('Save Pipeline Internal Targets', 'jm-referral-system'),
+            'primary',
+            'jmrs_save_pipeline_internal_targets',
             false
         );
         echo '</form>';

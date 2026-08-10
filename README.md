@@ -1,6 +1,6 @@
 # JM Referral System
 
-**Version 1.2.0** · **Database schema 2.21.0**
+**Version 1.3.0** · **Database schema 2.28.0**
 
 A secure WordPress plugin for healthcare referral and domiciliary care management, built for **J&M Healthcare**.
 
@@ -8,7 +8,7 @@ A secure WordPress plugin for healthcare referral and domiciliary care managemen
 
 ## Overview
 
-JM Referral System takes a referral from website or admin intake through assessment, care planning, team assignment, scheduling, visit delivery, and medication administration — with role-based access, audit activity, private documents, optional staff portal access, and **Supported Living** homes/occupancy operations.
+JM Referral System takes a referral from website or admin intake through the **acquisition pipeline** (interest → assessment → package cost → LA decision → transition → care commencement), then assessment/care planning, team assignment, scheduling, visit delivery, and medication administration — with role-based access, audit activity, private documents, optional staff portal access, and **Supported Living** homes/occupancy operations.
 
 Architecture follows **Repository → Service → Controller → Template** with dependency wiring in `Plugin.php`, versioned schema migrations, and capability + AccessPolicy enforcement.
 
@@ -100,7 +100,8 @@ Report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md) and [`docs
 | [Administrator](docs/ADMINISTRATOR_GUIDE.md) | Full admin feature map |
 | [Staff user](docs/STAFF_USER_GUIDE.md) | Portal usage |
 | [Public referral](docs/PUBLIC_REFERRAL_GUIDE.md) | Website form |
-| [Release notes v1.2.0](docs/RELEASE_NOTES_v1.2.0.md) | Current release highlights |
+| [Release notes v1.3.0](docs/RELEASE_NOTES_v1.3.0.md) | Current release highlights |
+| [Release notes v1.2.0](docs/RELEASE_NOTES_v1.2.0.md) | Supported Living release |
 | [Release notes v1.0.0](docs/RELEASE_NOTES_v1.0.0.md) | First production package |
 | [Supported Living](docs/SUPPORTED_LIVING.md) | Homes, occupancy, service location, reporting |
 | [Packaging](docs/PACKAGING.md) | Production ZIP build rules |
@@ -108,11 +109,11 @@ Report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md) and [`docs
 | [Known limitations](docs/KNOWN_LIMITATIONS.md) | Honest constraints |
 | [Backup & recovery](docs/BACKUP_AND_RECOVERY.md) | Ops continuity |
 | [Release checklist](docs/RELEASE_CHECKLIST.md) | Pre-production gate |
-| [UAT package](docs/uat/README.md) | Acceptance tests (portal + Supported Living v1.2) |
+| [UAT package](docs/uat/README.md) | Acceptance tests (Phase 3 + Supported Living) |
 
 Additional technical docs: performance/production audits, retention policy, UI/a11y, portal/intake deep-dives under `docs/`.
 
-**v1.2.0 note:** Production promotion requires completed Supported Living UAT (`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`) and the release checklist gate. Evidence stays outside Git (`uat-evidence/`).
+**v1.3.0 note:** Production promotion requires completed Phase 3 UAT (`docs/uat/UAT_PHASE_3.md`) and the release checklist gate. Evidence stays outside Git (`uat-evidence/`).
 
 ### Developer documentation
 
@@ -153,7 +154,7 @@ Suggested archive root folder name: `jm-referral-system/`.
 
 ## Roadmap
 
-**Current release:** plugin `1.2.0` · DB `2.21.0` — see [`docs/RELEASE_NOTES_v1.2.0.md`](docs/RELEASE_NOTES_v1.2.0.md) and [`ROADMAP.md`](ROADMAP.md).
+**Current release:** plugin `1.3.0` · DB `2.28.0` — see [`docs/RELEASE_NOTES_v1.3.0.md`](docs/RELEASE_NOTES_v1.3.0.md) and [`ROADMAP.md`](ROADMAP.md).
 Supported Living UAT: [`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`](docs/uat/UAT_SUPPORTED_LIVING_V1_2.md).
 
 ---

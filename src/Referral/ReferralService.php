@@ -6,6 +6,7 @@ use JMReferral\Notifications\NotificationService;
 use JMReferral\Homes\OccupancyRepository;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Pipeline\ReferralPipelineService;
 use JMReferral\Services\ServiceTypeService;
 use JMReferral\Users\UserProvider;
 use JMReferral\Workflow\WorkflowStageService;
@@ -21,7 +22,8 @@ class ReferralService
         private ServiceTypeService $service_type_service,
         private WorkflowStageService $workflow_stage_service,
         private AccessPolicy $access_policy,
-        private OccupancyRepository $occupancy_repository
+        private OccupancyRepository $occupancy_repository,
+        private ReferralPipelineService $pipeline_service
     ) {
     }
 
@@ -48,8 +50,10 @@ class ReferralService
         $care_requirements        = (string) ($input['care_requirements'] ?? '');
         $service_type_id          = absint($input['service_type_id'] ?? 0);
         $service_required         = $this->resolve_service_required($service_type_id);
-        $default_stage            = $this->workflow_stage_service->get_default_stage();
-        $workflow_stage_id        = $default_stage ? absint($default_stage['id'] ?? 0) : 0;
+        $default_pipeline_stage = $this->pipeline_service->get_default_pipeline_stage();
+        $default_stage          = $default_pipeline_stage ?? $this->workflow_stage_service->get_default_stage();
+        $workflow_stage_id      = $default_stage ? absint($default_stage['id'] ?? 0) : 0;
+        $pipeline_default       = null !== $default_pipeline_stage && $workflow_stage_id > 0;
 
         if ('' === $status) {
             $status = 'new';
@@ -63,6 +67,8 @@ class ReferralService
             'service_required'         => $service_required,
             'service_type_id'          => $service_type_id > 0 ? $service_type_id : null,
             'workflow_stage_id'        => $workflow_stage_id > 0 ? $workflow_stage_id : null,
+            'workflow_stage_entered_at'=> ($pipeline_default && $workflow_stage_id > 0) ? $now : null,
+            'next_action_due_at'       => null,
             'referrer_name'            => ($input['referrer_name'] ?? '') !== '' ? $input['referrer_name'] : null,
             'referrer_email'           => ($input['referrer_email'] ?? '') !== '' ? $input['referrer_email'] : null,
             'priority'                 => $input['priority'],
@@ -98,6 +104,10 @@ class ReferralService
         }
 
         $this->activity_service->log_created($id);
+
+        if ($pipeline_default && $workflow_stage_id > 0) {
+            $this->pipeline_service->record_pipeline_started($id);
+        }
 
         if ($assigned_to > 0) {
             $display_name = $this->user_provider->get_display_name($assigned_to);
@@ -146,6 +156,21 @@ class ReferralService
         $assignment_changed    = ($old_assigned_to !== $new_assigned_to);
         $old_workflow_stage_id = absint($existing['workflow_stage_id'] ?? 0);
         $new_workflow_stage_id = absint($input['workflow_stage_id'] ?? 0);
+
+        // Canonical pipeline stages are not changed via generic edit forms.
+        if ($this->pipeline_service->is_referral_on_pipeline($existing)) {
+            $new_workflow_stage_id = $old_workflow_stage_id;
+        } elseif ($new_workflow_stage_id > 0) {
+            $target = $this->workflow_stage_service->find($new_workflow_stage_id);
+            if (null !== $target && $this->workflow_stage_service->is_pipeline_stage($target)) {
+                $new_workflow_stage_id = $old_workflow_stage_id;
+            } elseif (! $this->workflow_stage_service->is_selectable(
+                $new_workflow_stage_id,
+                $old_workflow_stage_id > 0 ? $old_workflow_stage_id : null
+            )) {
+                $new_workflow_stage_id = $old_workflow_stage_id;
+            }
+        }
 
         $referral_source          = (string) ($input['referral_source'] ?? '');
         $care_start_date          = (string) ($input['care_start_date'] ?? '');
@@ -261,7 +286,104 @@ class ReferralService
     }
 
     /**
-     * Updates only the workflow stage for a referral.
+     * Allowed broad lifecycle statuses.
+     *
+     * @return array<int, string>
+     */
+    public static function lifecycle_statuses(): array
+    {
+        return ['new', 'in_progress', 'completed', 'cancelled'];
+    }
+
+    /**
+     * Updates only referral.status through the central lifecycle pathway.
+     *
+     * When $fire_side_effects is false, persists the column only (caller owns TX
+     * and must call emit_status_change_side_effects after COMMIT).
+     *
+     * @return array{ok: bool, changed: bool, old_status: string, new_status: string}
+     */
+    public function change_lifecycle_status(int $id, string $new_status, bool $fire_side_effects = true): array
+    {
+        $new_status = sanitize_key($new_status);
+        if (! in_array($new_status, self::lifecycle_statuses(), true)) {
+            return [
+                'ok'         => false,
+                'changed'    => false,
+                'old_status' => '',
+                'new_status' => $new_status,
+            ];
+        }
+
+        $existing = $this->repository->find($id);
+        if (null === $existing) {
+            return [
+                'ok'         => false,
+                'changed'    => false,
+                'old_status' => '',
+                'new_status' => $new_status,
+            ];
+        }
+
+        $old_status = (string) ($existing['status'] ?? '');
+        if ($old_status === $new_status) {
+            return [
+                'ok'         => true,
+                'changed'    => false,
+                'old_status' => $old_status,
+                'new_status' => $new_status,
+            ];
+        }
+
+        $updated = $this->repository->update_status_only($id, $new_status);
+        if (! $updated) {
+            return [
+                'ok'         => false,
+                'changed'    => false,
+                'old_status' => $old_status,
+                'new_status' => $new_status,
+            ];
+        }
+
+        if ($fire_side_effects) {
+            $referral = $this->repository->find($id);
+            if (is_array($referral)) {
+                $this->emit_status_change_side_effects($referral, $old_status, $new_status);
+            }
+        }
+
+        return [
+            'ok'         => true,
+            'changed'    => true,
+            'old_status' => $old_status,
+            'new_status' => $new_status,
+        ];
+    }
+
+    /**
+     * Activity + assignee notification for a completed status change.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function emit_status_change_side_effects(array $referral, string $old_status, string $new_status): void
+    {
+        if ($old_status === $new_status) {
+            return;
+        }
+
+        $referral_id = absint($referral['id'] ?? 0);
+        if ($referral_id <= 0) {
+            return;
+        }
+
+        $this->activity_service->log_status_changed($referral_id, $old_status, $new_status);
+        $this->notification_service->notify_status_changed($referral, $old_status, $new_status);
+    }
+
+    /**
+     * Updates only the workflow stage for a legacy referral (legacy → legacy).
+     *
+     * Canonical pipeline progression must use ReferralPipelineService.
      */
     public function change_workflow_stage(int $id, int $workflow_stage_id): bool
     {
@@ -275,10 +397,19 @@ class ReferralService
             return false;
         }
 
+        if ($this->pipeline_service->is_referral_on_pipeline($existing)) {
+            return false;
+        }
+
         $old_workflow_stage_id = absint($existing['workflow_stage_id'] ?? 0);
 
         if ($old_workflow_stage_id === $workflow_stage_id) {
             return true;
+        }
+
+        $target = $this->workflow_stage_service->find($workflow_stage_id);
+        if (null === $target || $this->workflow_stage_service->is_pipeline_stage($target)) {
+            return false;
         }
 
         if ($workflow_stage_id <= 0 || ! $this->workflow_stage_service->is_selectable(

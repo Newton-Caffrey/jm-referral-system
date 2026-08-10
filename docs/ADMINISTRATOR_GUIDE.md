@@ -1,4 +1,4 @@
-# Administrator Guide — JM Referral System v1.2.0
+# Administrator Guide — JM Referral System v1.3.0
 
 Guide for WordPress Administrators and JM Administrators operating the system day to day.
 

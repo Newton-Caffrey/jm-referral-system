@@ -66,6 +66,7 @@ class ReportController
         $placement_movements = is_array($result['placement_movements'] ?? null)
             ? $result['placement_movements']
             : [];
+        $acquisition      = is_array($result['acquisition'] ?? null) ? $result['acquisition'] : [];
         $visit_filters    = is_array($result['visit_filters'] ?? null) ? $result['visit_filters'] : [];
         $sections         = $result['sections'] ?? [];
         $range_labels     = $result['range_labels'];

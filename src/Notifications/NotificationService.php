@@ -15,6 +15,8 @@ class NotificationService
     private const TEMPLATE_STATUS   = 'status-changed';
     private const TEMPLATE_PUBLIC_RECEIVED = 'public-referral-received';
     private const TEMPLATE_PUBLIC_CONFIRM  = 'public-referral-confirmation';
+    private const TEMPLATE_INTEREST        = 'interest-expressed';
+    private const TEMPLATE_PACKAGE_COST    = 'package-cost-sent';
 
     public function __construct(
         private EmailNotificationService $email_service,
@@ -178,6 +180,99 @@ class NotificationService
         );
 
         $this->email_service->send($email, $subject, self::TEMPLATE_PUBLIC_CONFIRM, $context);
+    }
+
+    /**
+     * Sends the Local Authority / referrer interest confirmation email.
+     *
+     * Returns true when wp_mail accepts the message for sending (not delivery proof).
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function notify_interest_expressed(array $referral, string $to_email): bool
+    {
+        $to_email = sanitize_email($to_email);
+        if ('' === $to_email || ! is_email($to_email)) {
+            return false;
+        }
+
+        $settings = PublicReferralSettings::all();
+        $contact_email = (string) ($settings['contact_email'] ?? '');
+        if ('' === $contact_email || ! is_email($contact_email)) {
+            $contact_email = (string) get_option('admin_email');
+        }
+
+        $company = PublicBranding::company_name($settings);
+        $context = [
+            'referral_number' => (string) ($referral['referral_number'] ?? ''),
+            'referrer_name'   => (string) ($referral['referrer_name'] ?? ''),
+            'site_name'       => $company,
+            'company_name'    => $company,
+            'site_url'        => home_url('/'),
+            'admin_email'     => $contact_email,
+            'contact_phone'   => (string) ($settings['contact_phone'] ?? ''),
+        ];
+
+        $subject = sprintf(
+            /* translators: 1: company name, 2: referral number */
+            __('%1$s — Interest in Referral %2$s', 'jm-referral-system'),
+            $company,
+            $context['referral_number']
+        );
+
+        return $this->email_service->send($to_email, $subject, self::TEMPLATE_INTEREST, $context);
+    }
+
+    /**
+     * Sends Package Cost email to the referrer with a private-document attachment.
+     *
+     * Returns true when wp_mail accepts the message for sending (not delivery proof).
+     *
+     * @param array<string, mixed> $referral
+     * @param array<int, string>   $attachment_paths Absolute readable server paths only.
+     */
+    public function notify_package_cost_sent(array $referral, string $to_email, array $attachment_paths): bool
+    {
+        $to_email = sanitize_email($to_email);
+        if ('' === $to_email || ! is_email($to_email)) {
+            return false;
+        }
+
+        if ([] === $attachment_paths) {
+            return false;
+        }
+
+        $settings = PublicReferralSettings::all();
+        $contact_email = (string) ($settings['contact_email'] ?? '');
+        if ('' === $contact_email || ! is_email($contact_email)) {
+            $contact_email = (string) get_option('admin_email');
+        }
+
+        $company = PublicBranding::company_name($settings);
+        $context = [
+            'referral_number' => (string) ($referral['referral_number'] ?? ''),
+            'referrer_name'   => (string) ($referral['referrer_name'] ?? ''),
+            'site_name'       => $company,
+            'company_name'    => $company,
+            'site_url'        => home_url('/'),
+            'admin_email'     => $contact_email,
+            'contact_phone'   => (string) ($settings['contact_phone'] ?? ''),
+        ];
+
+        $subject = sprintf(
+            /* translators: 1: company name, 2: referral number */
+            __('%1$s — Package Cost for Referral %2$s', 'jm-referral-system'),
+            $company,
+            $context['referral_number']
+        );
+
+        return $this->email_service->send(
+            $to_email,
+            $subject,
+            self::TEMPLATE_PACKAGE_COST,
+            $context,
+            $attachment_paths
+        );
     }
 
     /**

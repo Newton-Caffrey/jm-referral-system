@@ -3,6 +3,7 @@
 namespace JMReferral\Referral;
 
 use JMReferral\Database\Tables;
+use JMReferral\Pipeline\PipelineStage;
 
 class ReferralRepository
 {
@@ -48,10 +49,12 @@ class ReferralRepository
                 'referrer_phone'           => $data['referrer_phone'] ?? null,
                 'relationship_to_client'   => $data['relationship_to_client'] ?? null,
                 'submission_channel'       => $data['submission_channel'] ?? 'admin',
-                'public_consent_at'        => $data['public_consent_at'] ?? null,
-                'public_consent_version'   => $data['public_consent_version'] ?? null,
-                'created_at'               => $data['created_at'],
-                'updated_at'               => $data['updated_at'],
+                'public_consent_at'           => $data['public_consent_at'] ?? null,
+                'public_consent_version'      => $data['public_consent_version'] ?? null,
+                'workflow_stage_entered_at'   => $data['workflow_stage_entered_at'] ?? null,
+                'next_action_due_at'          => $data['next_action_due_at'] ?? null,
+                'created_at'                  => $data['created_at'],
+                'updated_at'                  => $data['updated_at'],
             ],
             [
                 '%s',
@@ -67,6 +70,8 @@ class ReferralRepository
                 '%s',
                 '%s',
                 '%d',
+                '%s',
+                '%s',
                 '%s',
                 '%s',
                 '%s',
@@ -162,7 +167,7 @@ class ReferralRepository
         $table = Tables::referrals_table();
         [$where_sql, $params] = $this->build_filter_clause($filters, $access_assigned_to);
 
-        $sql = "SELECT id, referral_number, client_name, client_email, client_phone, service_required, service_type_id, workflow_stage_id, priority, status, assigned_to, referral_source, care_start_date, preferred_contact_method, care_requirements, care_setting, submission_channel, referrer_type, referrer_organisation, relationship_to_client, public_consent_at, public_consent_version, client_first_name, client_last_name, client_date_of_birth, address_line_1, address_line_2, city, postcode, referrer_phone, archived_at, archived_by, archive_reason, created_at, updated_at
+        $sql = "SELECT id, referral_number, client_name, client_email, client_phone, service_required, service_type_id, workflow_stage_id, workflow_stage_entered_at, next_action_due_at, priority, status, assigned_to, referral_source, care_start_date, preferred_contact_method, care_requirements, care_setting, submission_channel, referrer_type, referrer_organisation, relationship_to_client, public_consent_at, public_consent_version, client_first_name, client_last_name, client_date_of_birth, address_line_1, address_line_2, city, postcode, referrer_phone, archived_at, archived_by, archive_reason, created_at, updated_at
             FROM {$table}
             WHERE {$where_sql}
             ORDER BY created_at DESC, id DESC";
@@ -266,15 +271,24 @@ class ReferralRepository
             $params[] = $care_setting;
         }
 
+        $pipeline_stage = isset($filters['pipeline_stage']) ? (string) $filters['pipeline_stage'] : '';
+        if ('' !== $pipeline_stage) {
+            $this->append_pipeline_stage_filter($where, $params, $pipeline_stage);
+        }
+
         // Record-level access constraint always wins over request assignee filters.
         if (null !== $access_assigned_to && $access_assigned_to > 0) {
             $where[]  = 'assigned_to = %d';
             $params[] = $access_assigned_to;
         } else {
-            $assigned_to = isset($filters['assigned_to']) ? absint($filters['assigned_to']) : 0;
-            if ($assigned_to > 0) {
-                $where[]  = 'assigned_to = %d';
-                $params[] = $assigned_to;
+            if (! empty($filters['unassigned'])) {
+                $where[] = '(assigned_to IS NULL OR assigned_to = 0)';
+            } else {
+                $assigned_to = isset($filters['assigned_to']) ? absint($filters['assigned_to']) : 0;
+                if ($assigned_to > 0) {
+                    $where[]  = 'assigned_to = %d';
+                    $params[] = $assigned_to;
+                }
             }
         }
 
@@ -284,6 +298,45 @@ class ReferralRepository
             implode(' AND ', $where),
             $params,
         ];
+    }
+
+    /**
+     * @param array<int, string> $where
+     * @param array<int, mixed>  $params
+     */
+    private function append_pipeline_stage_filter(array &$where, array &$params, string $pipeline_stage): void
+    {
+        global $wpdb;
+
+        $stages_table = Tables::workflow_stages_table();
+
+        if (PipelineStage::FILTER_LEGACY === $pipeline_stage) {
+            // Non-pipeline stages OR null stage OR stage missing pipeline flag.
+            $where[] = "(workflow_stage_id IS NULL OR workflow_stage_id NOT IN (
+                SELECT id FROM {$stages_table} WHERE is_pipeline_stage = 1
+            ))";
+            return;
+        }
+
+        if (! PipelineStage::is_canonical($pipeline_stage)) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name trusted.
+        $stage_id = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT id FROM {$stages_table} WHERE slug = %s AND is_pipeline_stage = 1 LIMIT 1",
+                $pipeline_stage
+            )
+        );
+
+        if ($stage_id <= 0) {
+            $where[] = '1=0';
+            return;
+        }
+
+        $where[]  = 'workflow_stage_id = %d';
+        $params[] = $stage_id;
     }
 
     /**
@@ -444,6 +497,139 @@ class ReferralRepository
                 '%s',
                 '%s',
             ],
+            ['%d']
+        );
+
+        return false !== $result;
+    }
+
+    /**
+     * Updates interest-response milestone columns only.
+     *
+     * @param array{
+     *     interest_expressed_at: string,
+     *     interest_expressed_by: int,
+     *     interest_response_method: string,
+     *     interest_response_recipient: string|null,
+     *     interest_email_status: string,
+     *     interest_email_sent_at: string|null
+     * } $data
+     */
+    public function update_interest_response(int $id, array $data): bool
+    {
+        global $wpdb;
+
+        if ($id <= 0) {
+            return false;
+        }
+
+        $result = $wpdb->update(
+            Tables::referrals_table(),
+            [
+                'interest_expressed_at'       => $data['interest_expressed_at'],
+                'interest_expressed_by'       => absint($data['interest_expressed_by']),
+                'interest_response_method'    => $data['interest_response_method'],
+                'interest_response_recipient' => $data['interest_response_recipient'],
+                'interest_email_status'       => $data['interest_email_status'],
+                'interest_email_sent_at'      => $data['interest_email_sent_at'],
+                'updated_at'                  => current_time('mysql'),
+            ],
+            ['id' => $id],
+            ['%s', '%d', '%s', '%s', '%s', '%s', '%s'],
+            ['%d']
+        );
+
+        return false !== $result;
+    }
+
+    /**
+     * Updates only the broad referral.status column.
+     *
+     * Prefer ReferralService::change_lifecycle_status for side effects.
+     */
+    public function update_status_only(int $id, string $status, ?string $updated_at = null): bool
+    {
+        global $wpdb;
+
+        if ($id <= 0 || '' === $status) {
+            return false;
+        }
+
+        $result = $wpdb->update(
+            Tables::referrals_table(),
+            [
+                'status'     => $status,
+                'updated_at' => $updated_at ?? current_time('mysql'),
+            ],
+            ['id' => $id],
+            ['%s', '%s'],
+            ['%d']
+        );
+
+        return false !== $result;
+    }
+
+    /**
+     * Claims care commencement once (conditional update).
+     *
+     * @return bool True when this request claimed the milestone.
+     */
+    public function claim_care_commencement(int $id, string $care_commenced_at, ?int $care_commenced_by): bool
+    {
+        global $wpdb;
+
+        if ($id <= 0 || '' === $care_commenced_at) {
+            return false;
+        }
+
+        $table = Tables::referrals_table();
+        $now = current_time('mysql');
+        $by = null !== $care_commenced_by && $care_commenced_by > 0 ? $care_commenced_by : null;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        $updated = $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table}
+                SET care_commenced_at = %s,
+                    care_commenced_by = " . (null === $by ? 'NULL' : '%d') . ",
+                    updated_at = %s
+                WHERE id = %d
+                  AND care_commenced_at IS NULL
+                LIMIT 1",
+                ...(null === $by
+                    ? [$care_commenced_at, $now, $id]
+                    : [$care_commenced_at, $by, $now, $id])
+            )
+        );
+
+        return false !== $updated && (int) $updated > 0;
+    }
+
+    /**
+     * Updates pipeline pointer and timing columns only.
+     */
+    public function update_pipeline_state(
+        int $id,
+        int $workflow_stage_id,
+        ?string $workflow_stage_entered_at,
+        ?string $next_action_due_at
+    ): bool {
+        global $wpdb;
+
+        if ($id <= 0 || $workflow_stage_id <= 0) {
+            return false;
+        }
+
+        $result = $wpdb->update(
+            Tables::referrals_table(),
+            [
+                'workflow_stage_id'           => $workflow_stage_id,
+                'workflow_stage_entered_at'   => $workflow_stage_entered_at,
+                'next_action_due_at'          => $next_action_due_at,
+                'updated_at'                  => current_time('mysql'),
+            ],
+            ['id' => $id],
+            ['%d', '%s', '%s', '%s'],
             ['%d']
         );
 
@@ -671,6 +857,197 @@ class ReferralRepository
         }
 
         return $counts;
+    }
+
+    /**
+     * Counts active (non-archived) referrals by canonical pipeline stage slug.
+     *
+     * @param array<int, string> $slugs
+     * @return array<string, int> slug => count
+     */
+    public function count_active_by_pipeline_slugs(array $slugs, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $slugs = array_values(array_filter(array_map('strval', $slugs), static function (string $slug): bool {
+            return PipelineStage::is_canonical($slug);
+        }));
+
+        $out = [];
+        foreach ($slugs as $slug) {
+            $out[$slug] = 0;
+        }
+
+        if ([] === $slugs) {
+            return $out;
+        }
+
+        $referrals = Tables::referrals_table();
+        $stages    = Tables::workflow_stages_table();
+        $placeholders = implode(',', array_fill(0, count($slugs), '%s'));
+
+        $where = [
+            "s.is_pipeline_stage = 1",
+            "s.slug IN ({$placeholders})",
+            'r.archived_at IS NULL',
+        ];
+        $params = $slugs;
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT s.slug AS stage_slug, COUNT(*) AS total
+            FROM {$referrals} r
+            INNER JOIN {$stages} s ON s.id = r.workflow_stage_id
+            WHERE " . implode(' AND ', $where) . '
+            GROUP BY s.slug';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- trusted fragments + prepared params.
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+        if (! is_array($results)) {
+            return $out;
+        }
+
+        foreach ($results as $row) {
+            $slug = (string) ($row['stage_slug'] ?? '');
+            if (isset($out[$slug])) {
+                $out[$slug] = (int) ($row['total'] ?? 0);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Count active referrals not on a canonical pipeline stage.
+     */
+    public function count_active_legacy_workflow(?int $access_assigned_to = null): int
+    {
+        global $wpdb;
+
+        $referrals = Tables::referrals_table();
+        $stages    = Tables::workflow_stages_table();
+
+        $where = [
+            'r.archived_at IS NULL',
+            "(r.workflow_stage_id IS NULL OR r.workflow_stage_id NOT IN (
+                SELECT id FROM {$stages} WHERE is_pipeline_stage = 1
+            ))",
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT COUNT(*) FROM {$referrals} r WHERE " . implode(' AND ', $where);
+
+        if ([] === $params) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+            return (int) $wpdb->get_var($sql);
+        }
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
+
+    /**
+     * Active acquisition-stage referrals for pipeline dashboard queues.
+     *
+     * @param array<int, string> $slugs
+     * @return array<int, array<string, mixed>>
+     */
+    public function find_active_pipeline_referrals(
+        array $slugs,
+        ?int $access_assigned_to = null,
+        int $limit = 300
+    ): array {
+        global $wpdb;
+
+        $slugs = array_values(array_filter(array_map('strval', $slugs), static function (string $slug): bool {
+            return PipelineStage::is_canonical($slug);
+        }));
+
+        if ([] === $slugs) {
+            return [];
+        }
+
+        $limit = max(1, min(500, $limit));
+        $referrals = Tables::referrals_table();
+        $stages    = Tables::workflow_stages_table();
+        $placeholders = implode(',', array_fill(0, count($slugs), '%s'));
+
+        $where = [
+            "s.is_pipeline_stage = 1",
+            "s.slug IN ({$placeholders})",
+            'r.archived_at IS NULL',
+        ];
+        $params = $slugs;
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $params[] = $limit;
+
+        $sql = "SELECT r.id, r.referral_number, r.client_name, r.priority, r.status, r.assigned_to,
+                r.care_setting, r.workflow_stage_id, r.workflow_stage_entered_at, r.next_action_due_at,
+                s.slug AS pipeline_stage_slug, s.name AS pipeline_stage_name, s.stage_order AS pipeline_stage_order
+            FROM {$referrals} r
+            INNER JOIN {$stages} s ON s.id = r.workflow_stage_id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY r.workflow_stage_entered_at ASC, r.id ASC
+            LIMIT %d';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Referral IDs that currently have an active Supported Living occupancy.
+     *
+     * @param array<int, int> $referral_ids
+     * @return array<int, true> keyed by referral_id
+     */
+    public function active_occupancy_referral_id_map(array $referral_ids): array
+    {
+        global $wpdb;
+
+        $referral_ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $referral_ids) {
+            return [];
+        }
+
+        $table = Tables::occupancies_table();
+        $placeholders = implode(',', array_fill(0, count($referral_ids), '%d'));
+        $params = array_merge($referral_ids, ['active']);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT DISTINCT referral_id FROM {$table}
+                WHERE referral_id IN ({$placeholders}) AND status = %s",
+                ...$params
+            )
+        );
+
+        $map = [];
+        if (is_array($rows)) {
+            foreach ($rows as $id) {
+                $rid = absint($id);
+                if ($rid > 0) {
+                    $map[$rid] = true;
+                }
+            }
+        }
+
+        return $map;
     }
 
     /**

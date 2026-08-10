@@ -312,7 +312,7 @@ class WorkflowStageController
 
         if ('blocked' === $deleted) {
             echo '<div class="notice notice-error is-dismissible"><p>';
-            echo esc_html__('This workflow stage cannot be deleted because it is used by one or more referrals.', 'jm-referral-system');
+            echo esc_html__('This workflow stage cannot be deleted (system pipeline stage, or it is used by one or more referrals).', 'jm-referral-system');
             echo '</p></div>';
             return;
         }

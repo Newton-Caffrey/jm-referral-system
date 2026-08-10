@@ -37,6 +37,7 @@ class Capabilities
     public const VIEW_HOMES = 'jmrs_view_homes';
     public const MANAGE_HOMES = 'jmrs_manage_homes';
     public const MANAGE_OCCUPANCIES = 'jmrs_manage_occupancies';
+    public const OVERRIDE_PIPELINE_STAGE = 'jmrs_override_pipeline_stage';
 
     /**
      * Returns every plugin capability.
@@ -79,6 +80,7 @@ class Capabilities
             self::VIEW_HOMES,
             self::MANAGE_HOMES,
             self::MANAGE_OCCUPANCIES,
+            self::OVERRIDE_PIPELINE_STAGE,
         ];
     }
 

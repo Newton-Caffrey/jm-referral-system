@@ -113,9 +113,10 @@ Optional setting: **Redirect JMRS Staff Away From wp-admin**.
 | --- | --- |
 | Dashboard | Scoped widgets; upcoming/awaiting/completed visits link to portal execute/review; Recent Referrals show View / Edit / Archive / Restore when permitted |
 | Referral list | Search/filters/pagination; Active / Archived / All scope; Edit / Archive / Restore when permitted |
-| Referral view | Summaries + secure downloads; Care Setting + current service location; contextual clinical actions (review care plan, meds, care team, schedules, visits); archived remains read-only |
+| Referral view | Summaries + secure downloads; Care Setting + current service location; pipeline panel; **Express Interest**; **Schedule / Reschedule Assessment**; **Assessment Outcome Review** (not suitable); **Package Cost**; **Local Authority Decision**; **Transition Planning / Confirm Care Commenced**; **Mark as Not Proceeding** (eligible stages; Admin/Manager/Coordinator); contextual clinical actions; archived remains read-only |
+| Dashboard | KPI strip + **Referral Pipeline** stage cards + **Needs Attention** + **Active Pipeline Queue** (Admin/Manager/Coordinator). Support Worker sees scoped care KPIs only (no commercial acquisition pipeline surface). |
 | Referral edit | Shared `ReferralService::update()` pipeline including client address (own-home service location) |
-| Assessment / Care Plan | Shared `attempt_*` pipelines; PRG to referral view |
+| Assessment / Care Plan | Shared `attempt_*` pipelines; PRG to referral view; clinical completion can advance pipeline to Package Cost to Prepare |
 | Care plan reviews | `jmrs_review_care_plans` + AccessPolicy; history on referral view |
 | Medications | Add/edit via status field (pause/discontinue); Support Workers read-only |
 | Care team | Add/edit; primary-carer rules unchanged |

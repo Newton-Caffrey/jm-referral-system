@@ -4,6 +4,8 @@ namespace JMReferral\Assessment;
 
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Pipeline\PipelineStage;
+use JMReferral\Pipeline\ReferralPipelineService;
 use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralRepository;
 
@@ -73,6 +75,29 @@ class ReferralAssessmentService
     }
 
     /**
+     * Canonical completion check for pipeline/business events.
+     *
+     * A row with outcome=pending (or missing/unknown) is not completed.
+     * Row existence alone is not completion.
+     *
+     * @param array<string, mixed>|null $assessment
+     */
+    public static function is_completed_assessment(?array $assessment): bool
+    {
+        if (null === $assessment) {
+            return false;
+        }
+
+        $outcome = (string) ($assessment['outcome'] ?? self::OUTCOME_PENDING);
+
+        if (self::OUTCOME_PENDING === $outcome) {
+            return false;
+        }
+
+        return in_array($outcome, self::allowed_outcomes(), true);
+    }
+
+    /**
      * Empty form defaults for create/edit.
      *
      * @return array<string, string>
@@ -121,7 +146,8 @@ class ReferralAssessmentService
         private ReferralAssessmentRepository $assessment_repository,
         private ReferralRepository $referral_repository,
         private ReferralActivityService $activity_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private ?ReferralPipelineService $pipeline_service = null
     ) {
     }
 
@@ -144,8 +170,13 @@ class ReferralAssessmentService
     /**
      * Creates or updates the assessment for a referral.
      *
+     * On clinical completion:
+     * - suitable / suitable_with_conditions from assessment_scheduled or assessment_review_required → package_cost_required
+     * - not_suitable from assessment_scheduled → assessment_review_required
+     * - pending edit while on review does not rewind the pipeline
+     *
      * @param array<string, string> $input Sanitized form data.
-     * @return array{id: int, created: bool}|array{errors: array<string, string>}|false
+     * @return array{id: int, created: bool, pipeline_advanced?: bool}|array{errors: array<string, string>}|false
      */
     public function save(int $referral_id, array $input): array|false
     {
@@ -156,8 +187,18 @@ class ReferralAssessmentService
         }
 
         $existing = $this->assessment_repository->find_by_referral($referral_id);
+        $was_completed = self::is_completed_assessment($existing);
         $now      = current_time('mysql');
         $payload  = $this->build_payload($input, $now);
+
+        // Preserve appointment scheduling columns on clinical save.
+        if (null !== $existing) {
+            foreach (ReferralAssessmentRepository::SCHEDULING_FIELDS as $field) {
+                if (! array_key_exists($field, $payload)) {
+                    $payload[$field] = $existing[$field] ?? null;
+                }
+            }
+        }
 
         if (null === $existing) {
             $payload['referral_id']      = $referral_id;
@@ -172,9 +213,17 @@ class ReferralAssessmentService
 
             $this->activity_service->log_assessment_created($referral_id);
 
+            $saved = $this->assessment_repository->find_by_referral($referral_id);
+            $pipeline_advanced = $this->maybe_advance_pipeline_on_completion(
+                $referral_id,
+                $was_completed,
+                $saved
+            );
+
             return [
-                'id'      => $id,
-                'created' => true,
+                'id'                 => $id,
+                'created'            => true,
+                'pipeline_advanced'  => $pipeline_advanced,
             ];
         }
 
@@ -196,10 +245,121 @@ class ReferralAssessmentService
 
         $this->activity_service->log_assessment_updated($referral_id);
 
+        $saved = $this->assessment_repository->find_by_referral($referral_id);
+        $pipeline_advanced = $this->maybe_advance_pipeline_on_completion(
+            $referral_id,
+            $was_completed,
+            $saved
+        );
+
         return [
-            'id'      => absint($existing['id'] ?? 0),
-            'created' => false,
+            'id'                => absint($existing['id'] ?? 0),
+            'created'           => false,
+            'pipeline_advanced' => $pipeline_advanced,
         ];
+    }
+
+    /**
+     * Outcomes that should advance acquisition to Package Cost.
+     *
+     * @return array<int, string>
+     */
+    public static function package_cost_eligible_outcomes(): array
+    {
+        return [
+            self::OUTCOME_SUITABLE,
+            self::OUTCOME_SUITABLE_WITH_CONDITIONS,
+        ];
+    }
+
+    public static function is_package_cost_eligible_outcome(string $outcome): bool
+    {
+        return in_array($outcome, self::package_cost_eligible_outcomes(), true);
+    }
+
+    /**
+     * @param array<string, mixed>|null $saved
+     */
+    private function maybe_advance_pipeline_on_completion(
+        int $referral_id,
+        bool $was_completed,
+        ?array $saved
+    ): bool {
+        if (null === $this->pipeline_service) {
+            return false;
+        }
+
+        if (! self::is_completed_assessment($saved)) {
+            // Pending (or incomplete) edits do not rewind assessment_review_required.
+            return false;
+        }
+
+        $outcome = (string) ($saved['outcome'] ?? '');
+
+        // First genuine clinical completion → assessment_completed (any non-pending outcome).
+        if (! $was_completed) {
+            $this->activity_service->log_assessment_completed($referral_id);
+        }
+
+        $referral = $this->referral_repository->find($referral_id);
+        if (null === $referral) {
+            return false;
+        }
+
+        $stage = $this->pipeline_service->current_stage_slug($referral);
+
+        if (self::is_package_cost_eligible_outcome($outcome)) {
+            if (! in_array(
+                $stage,
+                [PipelineStage::ASSESSMENT_SCHEDULED, PipelineStage::ASSESSMENT_REVIEW_REQUIRED],
+                true
+            )) {
+                return false;
+            }
+
+            $transition = $this->pipeline_service->transition(
+                $referral_id,
+                PipelineStage::PACKAGE_COST_REQUIRED,
+                null,
+                true,
+                false
+            );
+
+            if (empty($transition['ok'])) {
+                return false;
+            }
+
+            $from_label = (string) ($transition['from_label'] ?? PipelineStage::label($stage));
+            $to_label   = (string) ($transition['to_label'] ?? PipelineStage::label(PipelineStage::PACKAGE_COST_REQUIRED));
+            $this->activity_service->log_pipeline_stage_changed($referral_id, $from_label, $to_label);
+
+            return true;
+        }
+
+        // not_suitable: move to management review (commercial closure is a separate action).
+        if (self::OUTCOME_NOT_SUITABLE === $outcome
+            && PipelineStage::ASSESSMENT_SCHEDULED === $stage
+        ) {
+            $transition = $this->pipeline_service->transition(
+                $referral_id,
+                PipelineStage::ASSESSMENT_REVIEW_REQUIRED,
+                null,
+                true,
+                false
+            );
+
+            if (empty($transition['ok'])) {
+                return false;
+            }
+
+            $from_label = (string) ($transition['from_label'] ?? PipelineStage::label(PipelineStage::ASSESSMENT_SCHEDULED));
+            $to_label   = (string) ($transition['to_label'] ?? PipelineStage::label(PipelineStage::ASSESSMENT_REVIEW_REQUIRED));
+            $this->activity_service->log_pipeline_stage_changed($referral_id, $from_label, $to_label);
+
+            return true;
+        }
+
+        return false;
     }
 
     /**

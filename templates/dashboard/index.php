@@ -283,19 +283,10 @@ $list_url = admin_url( 'admin.php?page=jm-referrals-list' );
 		?>
 	<?php endif; ?>
 
-	<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Workflow Pipeline', 'jm-referral-system' ); ?></h2>
-	<div class="jmrs-stats">
-		<?php if ( empty( $pipeline ) ) : ?>
-			<p><?php echo esc_html__( 'No workflow stages configured.', 'jm-referral-system' ); ?></p>
-		<?php else : ?>
-			<?php foreach ( $pipeline as $stage ) : ?>
-				<div class="jmrs-stat">
-					<span class="jmrs-stat-number"><?php echo esc_html( (string) ( $stage['count'] ?? 0 ) ); ?></span>
-					<span class="jmrs-stat-label"><?php echo esc_html( (string) ( $stage['name'] ?? '' ) ); ?></span>
-				</div>
-			<?php endforeach; ?>
-		<?php endif; ?>
-	</div>
+	<?php
+	$context = 'admin';
+	include JMRS_PLUGIN_PATH . 'templates/dashboard/partials/pipeline-overview.php';
+	?>
 
 	<?php if ( $can_view_visits ) : ?>
 		<h2 class="jmrs-dashboard-section-title"><?php echo esc_html__( 'Upcoming Visits', 'jm-referral-system' ); ?></h2>

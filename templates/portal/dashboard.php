@@ -173,6 +173,12 @@ if ( $scoped_to_assigned ) {
 		<?php $jmrs_render_kpi_grid( $kpi_cards ); ?>
 	</section>
 
+	<?php
+	$context            = 'portal';
+	$pipeline_dashboard = is_array( $pipeline_dashboard ?? null ) ? $pipeline_dashboard : array();
+	include JMRS_PLUGIN_PATH . 'templates/dashboard/partials/pipeline-overview.php';
+	?>
+
 	<?php if ( $can_view_visits ) : ?>
 		<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-dash-visits">
 			<?php

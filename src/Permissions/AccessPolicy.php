@@ -119,6 +119,104 @@ class AccessPolicy
     }
 
     /**
+     * Whether the user may record a commercial interest response (Express Interest).
+     *
+     * Allowed: JM Administrator, Referral Manager, Care Coordinator, WP admins.
+     * Denied: Assessor, Support Worker (even with EDIT_REFERRALS).
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_express_interest(array $referral, ?int $user_id = null): bool
+    {
+        if (! $this->can_mutate_referral($referral, $user_id)) {
+            return false;
+        }
+
+        $user = $this->resolve_user($user_id);
+
+        if (! $user instanceof \WP_User) {
+            return false;
+        }
+
+        if (user_can($user, 'manage_options')
+            || in_array('administrator', (array) $user->roles, true)
+            || in_array(Roles::JM_ADMINISTRATOR, (array) $user->roles, true)
+            || in_array(Roles::REFERRAL_MANAGER, (array) $user->roles, true)
+            || in_array(Roles::CARE_COORDINATOR, (array) $user->roles, true)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether the user may prepare/send Package Cost (commercial action).
+     *
+     * Allowed: JM Administrator, Referral Manager, Care Coordinator, WP admins.
+     * Denied: Assessor, Support Worker.
+     * Does not require pipeline override.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_manage_package_cost(array $referral, ?int $user_id = null): bool
+    {
+        return $this->can_express_interest($referral, $user_id);
+    }
+
+    /**
+     * Whether the user may record a Local Authority / funding decision.
+     *
+     * Same commercial gate as Express Interest / Package Cost.
+     * Does not require pipeline override.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_record_la_decision(array $referral, ?int $user_id = null): bool
+    {
+        return $this->can_express_interest($referral, $user_id);
+    }
+
+    /**
+     * Whether the user may mark a referral Not Proceeding (generic acquisition closure).
+     *
+     * Same commercial gate. Does not apply at awaiting_la_decision (use LA Decision).
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_mark_not_proceeding(array $referral, ?int $user_id = null): bool
+    {
+        return $this->can_express_interest($referral, $user_id);
+    }
+
+    /**
+     * Whether the user may confirm care commencement (acquisition terminal success).
+     *
+     * Same commercial gate as Express Interest / Package Cost / LA Decision.
+     * Does not require pipeline override or occupancy manage capability.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_commence_care(array $referral, ?int $user_id = null): bool
+    {
+        return $this->can_express_interest($referral, $user_id);
+    }
+
+    /**
+     * Whether the user may schedule / reschedule assessment appointments.
+     *
+     * Allowed when they can mutate the referral (EDIT_REFERRALS + AccessPolicy),
+     * including Assessor. Support Worker lacks EDIT_REFERRALS and is denied.
+     * Does not grant pipeline override.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_schedule_assessment(array $referral, ?int $user_id = null): bool
+    {
+        return $this->can_mutate_referral($referral, $user_id);
+    }
+
+    /**
      * Roles/users that may access every referral record.
      */
     private function has_unrestricted_referral_access(\WP_User $user): bool
