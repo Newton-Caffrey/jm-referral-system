@@ -13,6 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.3.1] - 2026-08-11
+
+Public referral form wording/UX clarification for Local Authority users. Plugin version `1.3.1`. Database schema remains `2.28.0`. Portal rewrite remains `1.2.1`.
+
+### Changed
+
+- Public form welcome heading: “Make a Referral” → “Local Authority Referral Form”
+- Public form intro: Local Authority audience line, retaining 5–10 minute and incomplete-answer guidance; legacy product-default intro remapped on display without overwriting custom branding
+- Start button: “Start Referral” → “Start Local Authority Referral”
+- Small responsive adjustment so the longer primary button wraps cleanly on narrow screens
+- Product version `1.3.0` → `1.3.1` (`jm-referral-system.php` / `JMRS_VERSION`)
+
+No workflow, database, security, email, API, or business-logic changes.
+
 ## [1.3.0] - 2026-08-11
 
 Product release for the **Referral Acquisition Pipeline** (Phase 3) on top of Supported Living v1.2.0. Plugin version `1.3.0`. Database schema `2.28.0`. Portal rewrite `1.2.1`.

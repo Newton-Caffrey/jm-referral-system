@@ -55,9 +55,23 @@ class PublicBranding
         $settings = $settings ?? PublicReferralSettings::all();
         $heading  = trim((string) ($settings['public_heading'] ?? ''));
 
-        return '' !== $heading
-            ? $heading
-            : __('Make a Referral', 'jm-referral-system');
+        // Treat empty or previous product default as the current Local Authority heading.
+        if ('' === $heading || 'Make a Referral' === $heading) {
+            return __('Local Authority Referral Form', 'jm-referral-system');
+        }
+
+        return $heading;
+    }
+
+    /**
+     * Current product-default public referral intro (Local Authority audience).
+     */
+    public static function default_intro(): string
+    {
+        return __(
+            "Use this form to securely refer an individual to J&M Healthcare for assessment and consideration of care and support services.\n\nCompleting this referral usually takes around 5–10 minutes.\n\nIf you do not know every answer, that is okay. Provide as much information as you can and our team will contact you if anything else is needed.",
+            'jm-referral-system'
+        );
     }
 
     /**
@@ -68,14 +82,54 @@ class PublicBranding
         $settings = $settings ?? PublicReferralSettings::all();
         $intro    = trim((string) ($settings['public_intro'] ?? ''));
 
-        if ('' !== $intro) {
-            return $intro;
+        if ('' === $intro || self::is_legacy_product_intro($intro)) {
+            return self::default_intro();
         }
 
-        return __(
+        return $intro;
+    }
+
+    /**
+     * True when saved intro equals a known former JMRS product default (not custom branding).
+     */
+    private static function is_legacy_product_intro(string $intro): bool
+    {
+        $normalized = self::normalize_intro_for_compare($intro);
+
+        foreach (self::legacy_product_intros() as $legacy) {
+            if ($normalized === self::normalize_intro_for_compare($legacy)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Former product-default intro strings superseded by Local Authority wording.
+     *
+     * @return list<string>
+     */
+    private static function legacy_product_intros(): array
+    {
+        return [
+            // Original welcome default (pre–Local Authority clarification).
             "We're here to help.\n\nCompleting this referral usually takes around 5–10 minutes.\n\nIf you do not know every answer, that is okay. Provide as much information as you can and our team will contact you if anything else is needed.",
-            'jm-referral-system'
-        );
+            // Hyphen variant of the original (if en-dash was normalized on save).
+            "We're here to help.\n\nCompleting this referral usually takes around 5-10 minutes.\n\nIf you do not know every answer, that is okay. Provide as much information as you can and our team will contact you if anything else is needed.",
+            // Intermediate v1.3.1 draft: LA sentence only (before restoring timing / incomplete-answer guidance).
+            'Use this form to securely refer an individual to J&M Healthcare for assessment and consideration of care and support services.',
+        ];
+    }
+
+    private static function normalize_intro_for_compare(string $intro): string
+    {
+        $intro = str_replace(["\r\n", "\r"], "\n", $intro);
+        $intro = trim($intro);
+        // Treat en/em dashes like ASCII hyphen for "5–10" matching.
+        $intro = str_replace(["\u{2013}", "\u{2014}"], '-', $intro);
+
+        return $intro;
     }
 
     /**

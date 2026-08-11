@@ -207,6 +207,9 @@
 	line-height: inherit;
 	text-decoration: none;
 	cursor: pointer;
+	max-width: 100%;
+	white-space: normal;
+	text-align: center;
 }
 
 .jmrs-public-referral .jmrs-public-referral__btn--primary {

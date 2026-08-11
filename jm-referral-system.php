@@ -3,7 +3,7 @@
  * Plugin Name: J&M Referral System
  * Plugin URI: https://example.com
  * Description: Referral and Compliance Management System
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: J&M Healthcare
  * Text Domain: jm-referral-system
  * License: Proprietary (pending final licence decision)
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('JMRS_VERSION', '1.3.0');
+define('JMRS_VERSION', '1.3.1');
 define('JMRS_PLUGIN_FILE', __FILE__);
 define('JMRS_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('JMRS_PLUGIN_URL', plugin_dir_url(__FILE__));

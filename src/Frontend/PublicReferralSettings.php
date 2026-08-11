@@ -33,11 +33,8 @@ class PublicReferralSettings
             'max_upload_count'    => self::DEFAULT_MAX_UPLOAD_COUNT,
             'max_upload_size_mb'  => self::DEFAULT_MAX_UPLOAD_SIZE_MB,
             'company_name'        => PublicBranding::DEFAULT_COMPANY_NAME,
-            'public_heading'      => __('Make a Referral', 'jm-referral-system'),
-            'public_intro'        => __(
-                "We're here to help.\n\nCompleting this referral usually takes around 5–10 minutes.\n\nIf you do not know every answer, that is okay. Provide as much information as you can and our team will contact you if anything else is needed.",
-                'jm-referral-system'
-            ),
+            'public_heading'      => __('Local Authority Referral Form', 'jm-referral-system'),
+            'public_intro'        => PublicBranding::default_intro(),
             'contact_phone'       => '',
             'contact_email'       => '',
             'primary_colour'      => PublicBranding::DEFAULT_PRIMARY_COLOUR,

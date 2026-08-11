@@ -1,6 +1,6 @@
 # JM Referral System
 
-**Version 1.3.0** · **Database schema 2.28.0**
+**Version 1.3.1** · **Database schema 2.28.0**
 
 A secure WordPress plugin for healthcare referral and domiciliary care management, built for **J&M Healthcare**.
 
@@ -100,7 +100,8 @@ Report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md) and [`docs
 | [Administrator](docs/ADMINISTRATOR_GUIDE.md) | Full admin feature map |
 | [Staff user](docs/STAFF_USER_GUIDE.md) | Portal usage |
 | [Public referral](docs/PUBLIC_REFERRAL_GUIDE.md) | Website form |
-| [Release notes v1.3.0](docs/RELEASE_NOTES_v1.3.0.md) | Current release highlights |
+| [Release notes v1.3.1](CHANGELOG.md) | Current patch (public referral LA wording) |
+| [Release notes v1.3.0](docs/RELEASE_NOTES_v1.3.0.md) | Acquisition pipeline release |
 | [Release notes v1.2.0](docs/RELEASE_NOTES_v1.2.0.md) | Supported Living release |
 | [Release notes v1.0.0](docs/RELEASE_NOTES_v1.0.0.md) | First production package |
 | [Supported Living](docs/SUPPORTED_LIVING.md) | Homes, occupancy, service location, reporting |
@@ -154,7 +155,7 @@ Suggested archive root folder name: `jm-referral-system/`.
 
 ## Roadmap
 
-**Current release:** plugin `1.3.0` · DB `2.28.0` — see [`docs/RELEASE_NOTES_v1.3.0.md`](docs/RELEASE_NOTES_v1.3.0.md) and [`ROADMAP.md`](ROADMAP.md).
+**Current release:** plugin `1.3.1` · DB `2.28.0` — see [`CHANGELOG.md`](CHANGELOG.md) `[1.3.1]` and [`docs/RELEASE_NOTES_v1.3.0.md`](docs/RELEASE_NOTES_v1.3.0.md) for the prior feature release.
 Supported Living UAT: [`docs/uat/UAT_SUPPORTED_LIVING_V1_2.md`](docs/uat/UAT_SUPPORTED_LIVING_V1_2.md).
 
 ---

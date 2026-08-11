@@ -41,7 +41,7 @@ $nonce_action    = isset( $nonce_action ) ? (string) $nonce_action : 'jmrs_publi
 $nonce_field     = isset( $nonce_field ) ? (string) $nonce_field : 'jmrs_public_referral_nonce';
 
 $company_name  = (string) ( $branding['company_name'] ?? 'JM Healthcare' );
-$heading       = (string) ( $branding['heading'] ?? __( 'Make a Referral', 'jm-referral-system' ) );
+$heading       = (string) ( $branding['heading'] ?? __( 'Local Authority Referral Form', 'jm-referral-system' ) );
 $intro         = (string) ( $branding['intro'] ?? '' );
 $primary       = (string) ( $branding['primary_colour'] ?? '#0b5f4b' );
 $privacy_url   = (string) ( $settings['privacy_notice_url'] ?? '' );
@@ -150,7 +150,7 @@ $root_style = '--jmrs-primary:' . $primary . ';';
 				</div>
 				<div class="jmrs-public-referral__nav jmrs-public-referral__wizard-only" hidden>
 					<button type="button" class="jmrs-public-referral__btn jmrs-public-referral__btn--primary" data-jmrs-start>
-						<?php echo esc_html__( 'Start Referral', 'jm-referral-system' ); ?>
+						<?php echo esc_html__( 'Start Local Authority Referral', 'jm-referral-system' ); ?>
 					</button>
 				</div>
 			</section>
