@@ -7,7 +7,7 @@ namespace JMReferral\Portal;
  */
 class PortalRouter
 {
-    public const REWRITE_VERSION = '1.2.1';
+    public const REWRITE_VERSION = '1.2.2';
 
     public const QV_PORTAL = 'jmrs_portal';
     public const QV_ROUTE = 'jmrs_portal_route';
@@ -40,6 +40,7 @@ class PortalRouter
 
         $rules = [
             ['/?$', 'dashboard', null, null],
+            ['/management/?$', 'management', null, null],
             ['/referrals/?$', 'referrals', null, null],
             ['/referrals/([0-9]+)/edit/?$', 'referral_edit', '$matches[1]', null],
             ['/referrals/([0-9]+)/assessment/?$', 'referral_assessment', '$matches[1]', null],

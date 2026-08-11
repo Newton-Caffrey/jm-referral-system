@@ -240,11 +240,12 @@ Planned themes (not committed scope):
 | Version 1.1 | Portal workflows + UX (shipped with 1.2.0 package) | ✅ Complete (bundled in 1.2.0) |
 | Product Phase 2 / v1.2 | Supported Living (homes → occupancy → care setting → home dashboard → service location → reporting → UAT) | ✅ Shipped in `1.2.0` (DB `2.21.0`) |
 | Product Phase 3 / v1.3 | Referral Acquisition Pipeline → Dashboard → Acquisition Reporting | ✅ Shipped in `1.3.0` (DB `2.28.0`) |
+| Product v1.4 | Management Dashboard (presentation board over live pipeline) | ✅ Shipped in `1.4.0` (DB `2.28.0`, rewrite `1.2.2`) |
 | Post-1.0 hardening | Remaining performance, Chart.js local pin, legacy media cleanup, automated tests | 🚧 Absorbed into 1.1+ / backlog |
 
-**Current shipped release:** plugin `1.3.0` · DB `2.28.0` · see `docs/RELEASE_NOTES_v1.3.0.md`.
-**UAT:** `docs/uat/UAT_PHASE_3.md` · checklist `docs/RELEASE_CHECKLIST.md`.
+**Current shipped release:** plugin `1.4.0` · DB `2.28.0` · rewrite `1.2.2` — see `docs/RELEASE_NOTES_v1.4.0.md`.
+**UAT:** `docs/uat/UAT_MANAGEMENT_DASHBOARD_V1_4.md` · checklist `docs/RELEASE_CHECKLIST.md`.
 
-**Next versions:** Post-1.3 backlog (structured movement From/To metadata, occupancy trend chart, automated tests, remaining portal gaps) — see sections above and `docs/SUPPORTED_LIVING.md`.
+**Next versions:** Post-1.4 backlog (structured movement From/To metadata, occupancy trend chart, automated tests, deferred management prototype metrics) — see sections above and `docs/SUPPORTED_LIVING.md`.
 
 See `CHANGELOG.md` for release detail and `README.md` for current system documentation.

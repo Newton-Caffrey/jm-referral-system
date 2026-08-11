@@ -1,26 +1,42 @@
 # Release Checklist — JM Referral System
 
-**Current target release:** `1.3.1`
-**Product version:** `1.3.1` (`jm-referral-system.php` / `JMRS_VERSION`)
+**Current target release:** `1.4.0`
+**Product version:** `1.4.0` (`jm-referral-system.php` / `JMRS_VERSION`)
 **Database schema:** `2.28.0` (`Migrator::DB_VERSION` / option `jmrs_db_version`)
-**Portal rewrite:** `1.2.1` (`PortalRouter::REWRITE_VERSION`)
-**Release notes:** `CHANGELOG.md` `[1.3.1]` (wording patch); feature baseline `docs/RELEASE_NOTES_v1.3.0.md`
-**Phase 3 UAT:** `docs/uat/UAT_PHASE_3.md`
+**Portal rewrite:** `1.2.2` (`PortalRouter::REWRITE_VERSION`)
+**Release notes:** `CHANGELOG.md` `[1.4.0]`; `docs/RELEASE_NOTES_v1.4.0.md`
+**Management Dashboard UAT:** `docs/uat/UAT_MANAGEMENT_DASHBOARD_V1_4.md`
 
 Use this checklist before promoting a build to production. Tick items on staging with synthetic or anonymised data first. **Do not mark items passed unless manually confirmed.**
 
 ---
 
-## v1.3.1 — Public referral Local Authority wording patch
+## v1.4.0 — Management Dashboard feature release
 
-- [ ] Plugin header Version = `1.3.1`
-- [ ] `JMRS_VERSION` = `1.3.1`
-- [ ] README / CHANGELOG `[1.3.1]` agree on product `1.3.1`
+- [ ] Plugin header Version = `1.4.0`
+- [ ] `JMRS_VERSION` = `1.4.0`
+- [ ] README / CHANGELOG `[1.4.0]` / `docs/RELEASE_NOTES_v1.4.0.md` agree
 - [ ] DB version remains `2.28.0` (no migration)
-- [ ] Portal rewrite remains `1.2.1`
-- [ ] Public form shows Local Authority heading, intro, and start button
-- [ ] No workflow / email / schema regressions from v1.3.0
+- [ ] Portal rewrite = `1.2.2` (flush once when option lags)
+- [ ] `/management/` Management Dashboard reachable for allowed roles
+- [ ] Existing operational Dashboard unchanged
+- [ ] Visual + data UAT recorded in `docs/uat/UAT_MANAGEMENT_DASHBOARD_V1_4.md`
+- [ ] Proposed Package Value terminology (not revenue)
+- [ ] `_reference/` not in package / not tracked
 - [ ] Release ZIP root folder is exactly `jm-referral-system/`
+
+---
+
+## Historical — v1.3.1 Public referral Local Authority wording patch
+
+- [x] Plugin header Version = `1.3.1` (historical)
+- [x] `JMRS_VERSION` = `1.3.1`
+- [x] README / CHANGELOG `[1.3.1]` agree on product `1.3.1`
+- [x] DB version remains `2.28.0` (no migration)
+- [x] Portal rewrite remains `1.2.1`
+- [x] Public form shows Local Authority heading, intro, and start button
+- [x] No workflow / email / schema regressions from v1.3.0
+- [x] Release ZIP root folder is exactly `jm-referral-system/`
 
 ---
 

@@ -176,6 +176,59 @@ class PackageCostRepository
     }
 
     /**
+     * Latest package_total keyed by referral_id.
+     *
+     * @param array<int, int> $referral_ids
+     * @return array<int, array{package_total: string|null, status: string, currency: string}>
+     */
+    public function current_package_map_for_referrals(array $referral_ids): array
+    {
+        global $wpdb;
+
+        $referral_ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $referral_ids) {
+            return [];
+        }
+
+        $table = Tables::referral_package_costs_table();
+        $placeholders = implode(',', array_fill(0, count($referral_ids), '%d'));
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT pc.referral_id, pc.package_total, pc.status, pc.currency
+                FROM {$table} pc
+                INNER JOIN (
+                    SELECT referral_id, MAX(id) AS max_id
+                    FROM {$table}
+                    WHERE referral_id IN ({$placeholders})
+                    GROUP BY referral_id
+                ) latest ON latest.max_id = pc.id",
+                ...$referral_ids
+            ),
+            ARRAY_A
+        );
+
+        $map = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $rid = absint($row['referral_id'] ?? 0);
+                if ($rid > 0) {
+                    $map[$rid] = [
+                        'package_total' => null !== ($row['package_total'] ?? null) && '' !== (string) $row['package_total']
+                            ? (string) $row['package_total']
+                            : null,
+                        'status'   => (string) ($row['status'] ?? ''),
+                        'currency' => (string) ($row['currency'] ?? PackageCost::CURRENCY_GBP),
+                    ];
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function find(int $id): ?array

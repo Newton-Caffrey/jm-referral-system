@@ -1,10 +1,10 @@
-# Installation Guide — JM Referral System v1.3.0
+# Installation Guide — JM Referral System
 
 Professional installation and go-live guide for WordPress hosts.
 
-**Product version:** 1.3.0
+**Product version:** 1.4.0
 **Database schema:** 2.28.0
-**Portal rewrite:** 1.2.1
+**Portal rewrite:** 1.2.2
 
 ---
 

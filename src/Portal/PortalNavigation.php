@@ -57,6 +57,21 @@ class PortalNavigation
                 'icon'    => 'dashboard',
                 'section' => 'overview',
             ];
+
+            // Same commercial gate as pipeline Needs Attention (excludes Support Workers).
+            if (
+                Capabilities::current_user_can(Capabilities::VIEW_REFERRALS)
+                && ! $this->access_policy->should_scope_to_assigned()
+            ) {
+                $items[] = [
+                    'id'      => 'management',
+                    'label'   => __('Management Dashboard', 'jm-referral-system'),
+                    'url'     => PortalUrls::management(),
+                    'current' => 'management' === $current_route,
+                    'icon'    => 'dashboard',
+                    'section' => 'overview',
+                ];
+            }
         }
 
         if (Capabilities::current_user_can(Capabilities::VIEW_REFERRALS)) {

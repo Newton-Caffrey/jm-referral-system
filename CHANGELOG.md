@@ -13,6 +13,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.4.0] - 2026-08-11
+
+Feature release: **J&M Healthcare Management Dashboard** — senior-management presentation of the live referral-to-placement pipeline over real JMRS data. Plugin version `1.4.0`. Database schema remains `2.28.0` (no migration). Portal rewrite `1.2.1` → `1.2.2` for the new `/management/` route.
+
+Canonical acquisition workflow, existing operational Dashboard, Pipeline Attention rules, and schema are unchanged. Visual stages are presentation groups only.
+
+### Added
+
+- Staff portal **Management Dashboard** at `/{portal-base}/management/` (separate from the existing Dashboard)
+- Management masthead, KPI cards, six-stage visual acquisition funnel, and stage panels
+- **Here now** / **All who reached** views (reach uses `jmrs_referral_stage_history` only; no fabricated legacy milestones)
+- Homes & Capacity view from real Supported Living occupancy architecture
+- Ownership view from live acquisition `assigned_to` counts
+- Recommended Actions view reusing existing `PipelineAttentionService` / Needs Attention (no prototype thresholds)
+- Print-friendly dashboard styling
+- Read-only aggregators: `VisualStageMap`, `ManagementPipelineBoardService`
+- Scoped Management Dashboard CSS/JS and route-only Google Fonts load
+
+### Changed
+
+- Portal rewrite version `1.2.1` → `1.2.2` (auto-flush when stored option lags; not on every request)
+- Product version `1.3.1` → `1.4.0` (`jm-referral-system.php` / `JMRS_VERSION`)
+
+### Clarifications
+
+- Financial presentation uses **Proposed Package Value** (latest Package Cost `package_total` for live acquisition referrals only) — not revenue
+- `care_commenced` is excluded from live Placement Transition and from live Proposed Package Value
+- Prototype-only sample data, Edit Data / JSON editor, localStorage, and deferred prototype metrics (champion, attendees, LA entity, pre-visits, hours/rates, Funding Authority Performance, full Team Performance) are **not** shipped
+
+No database migration. No canonical stage remapping. No backfill of stage history.
+
 ## [1.3.1] - 2026-08-11
 
 Public referral form wording/UX clarification for Local Authority users. Plugin version `1.3.1`. Database schema remains `2.28.0`. Portal rewrite remains `1.2.1`.

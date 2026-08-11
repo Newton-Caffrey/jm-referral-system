@@ -79,6 +79,8 @@ class PortalController implements PortalViewHost
 
     private ?ServiceLocationResolver $service_location_resolver = null;
 
+    private ?\JMReferral\Pipeline\ManagementPipelineBoardService $management_board_service = null;
+
     public function __construct(
         private PortalNavigation $navigation,
         private ReferralService $referral_service,
@@ -143,6 +145,11 @@ class PortalController implements PortalViewHost
     public function set_occupancy_service(OccupancyService $occupancy_service): void
     {
         $this->occupancy_service = $occupancy_service;
+    }
+
+    public function set_management_board_service(\JMReferral\Pipeline\ManagementPipelineBoardService $service): void
+    {
+        $this->management_board_service = $service;
     }
 
     public function set_service_location_resolver(ServiceLocationResolver $service_location_resolver): void
@@ -237,6 +244,7 @@ class PortalController implements PortalViewHost
 
         match ($route) {
             'dashboard'            => $this->render_dashboard(),
+            'management'           => $this->render_management_dashboard(),
             'referrals'            => $this->render_referral_list(),
             'referral'             => $this->render_referral_view(),
             'referral_edit'        => $this->render_referral_edit(),
@@ -244,6 +252,45 @@ class PortalController implements PortalViewHost
             'referral_care_plan'   => $this->render_referral_care_plan(),
             default                => $this->render_error('404', __('Not Found', 'jm-referral-system'), 404),
         };
+    }
+
+    private function render_management_dashboard(): void
+    {
+        if (! Capabilities::current_user_can(Capabilities::VIEW_DASHBOARD)) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        if (null === $this->management_board_service) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
+        if (! $this->pipeline_attention_service->current_user_can_view_pipeline_dashboard()) {
+            $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $mode = isset($_GET['jmrs_mgmt_mode']) ? sanitize_key((string) wp_unslash($_GET['jmrs_mgmt_mode'])) : 'now';
+        $board = $this->management_board_service->get_board_payload([
+            'jmrs_mgmt_mode' => $mode,
+        ]);
+
+        $this->render_page(
+            'management-dashboard',
+            __('Management Dashboard', 'jm-referral-system'),
+            'management',
+            [
+                ['label' => __('Dashboard', 'jm-referral-system'), 'url' => PortalUrls::dashboard()],
+                ['label' => __('Management Dashboard', 'jm-referral-system'), 'url' => ''],
+            ],
+            [
+                'board' => $board,
+            ]
+        );
     }
 
     private function send_privacy_headers(): void

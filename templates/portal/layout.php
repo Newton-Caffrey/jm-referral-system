@@ -134,29 +134,35 @@ $document_title        = $page_title !== '' ? $page_title . ' — ' . $portal_na
 			<?php endif; ?>
 		</aside>
 
-		<div class="jmrs-portal-main-wrap">
+		<div class="jmrs-portal-main-wrap<?php echo 'management' === $current_route ? ' jmrs-portal-main-wrap--mgmt' : ''; ?>">
 			<header class="jmrs-portal-topbar">
 				<div class="jmrs-portal-topbar__title-block">
-					<?php if ( ! empty( $breadcrumbs ) ) : ?>
-						<nav class="jmrs-portal-breadcrumbs" aria-label="<?php echo esc_attr__( 'Breadcrumb', 'jm-referral-system' ); ?>">
-							<ol>
-								<?php foreach ( $breadcrumbs as $crumb ) : ?>
-									<?php
-									$crumb_label = (string) ( $crumb['label'] ?? '' );
-									$crumb_url   = (string) ( $crumb['url'] ?? '' );
-									?>
-									<li>
-										<?php if ( '' !== $crumb_url ) : ?>
-											<a href="<?php echo esc_url( $crumb_url ); ?>"><?php echo esc_html( $crumb_label ); ?></a>
-										<?php else : ?>
-											<span aria-current="page"><?php echo esc_html( $crumb_label ); ?></span>
-										<?php endif; ?>
-									</li>
-								<?php endforeach; ?>
-							</ol>
-						</nav>
+					<?php if ( 'management' !== $current_route ) : ?>
+						<?php if ( ! empty( $breadcrumbs ) ) : ?>
+							<nav class="jmrs-portal-breadcrumbs" aria-label="<?php echo esc_attr__( 'Breadcrumb', 'jm-referral-system' ); ?>">
+								<ol>
+									<?php foreach ( $breadcrumbs as $crumb ) : ?>
+										<?php
+										$crumb_label = (string) ( $crumb['label'] ?? '' );
+										$crumb_url   = (string) ( $crumb['url'] ?? '' );
+										?>
+										<li>
+											<?php if ( '' !== $crumb_url ) : ?>
+												<a href="<?php echo esc_url( $crumb_url ); ?>"><?php echo esc_html( $crumb_label ); ?></a>
+											<?php else : ?>
+												<span aria-current="page"><?php echo esc_html( $crumb_label ); ?></span>
+											<?php endif; ?>
+										</li>
+									<?php endforeach; ?>
+								</ol>
+							</nav>
+						<?php endif; ?>
+						<?php if ( '' !== $page_title ) : ?>
+							<h1 class="jmrs-portal-page-title"><?php echo esc_html( $page_title ); ?></h1>
+						<?php endif; ?>
+					<?php else : ?>
+						<span class="screen-reader-text"><?php echo esc_html( $page_title ); ?></span>
 					<?php endif; ?>
-					<h1 class="jmrs-portal-page-title"><?php echo esc_html( $page_title ); ?></h1>
 				</div>
 
 				<div class="jmrs-portal-topbar__actions">

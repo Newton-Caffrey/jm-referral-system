@@ -102,12 +102,12 @@ Prefer copying to a staging directory, delete excluded paths, then zip the folde
 - [ ] Unzip → single top-level folder named exactly `jm-referral-system`
 - [ ] `jm-referral-system/jm-referral-system.php` exists at that path
 - [ ] `vendor/autoload.php` exists
-- [ ] Plugin header Version matches intended release (`1.3.0`)
-- [ ] `JMRS_VERSION` is `1.3.0`
+- [ ] Plugin header Version matches intended release (`1.4.0`)
+- [ ] `JMRS_VERSION` is `1.4.0`
 - [ ] Activates on a clean WordPress staging site
-- [ ] Upgrade from previous production DB version reaches current `Migrator::DB_VERSION` (`2.28.0` from `2.21.0`)
+- [ ] Upgrade from previous production leaves `Migrator::DB_VERSION` at `2.28.0` (no migration in 1.4.0)
 - [ ] Fresh install also reaches current DB version with canonical pipeline stages seeded
-
+- [ ] Portal rewrite reaches `1.2.2` after first load when upgrading from `1.2.1`
 ---
 
 ## Upgrade vs replace

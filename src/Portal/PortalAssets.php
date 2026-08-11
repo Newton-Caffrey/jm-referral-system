@@ -15,6 +15,8 @@ class PortalAssets
         'admin-bar',
         'dashicons',
         'jmrs-portal',
+        'jmrs-management-fonts',
+        'jmrs-management-dashboard',
     ];
 
     public static function enqueue(): void
@@ -38,6 +40,32 @@ class PortalAssets
             file_exists($js) ? (string) filemtime($js) : JMRS_VERSION,
             true
         );
+
+        $route = sanitize_key((string) get_query_var(PortalRouter::QV_ROUTE));
+        if ('management' === $route) {
+            wp_enqueue_style(
+                'jmrs-management-fonts',
+                'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&display=swap',
+                [],
+                null
+            );
+
+            $mgmt_css = JMRS_PLUGIN_PATH . 'assets/css/management-dashboard.css';
+            $mgmt_js  = JMRS_PLUGIN_PATH . 'assets/js/management-dashboard.js';
+            wp_enqueue_style(
+                'jmrs-management-dashboard',
+                JMRS_PLUGIN_URL . 'assets/css/management-dashboard.css',
+                ['jmrs-portal', 'jmrs-management-fonts'],
+                file_exists($mgmt_css) ? (string) filemtime($mgmt_css) : JMRS_VERSION
+            );
+            wp_enqueue_script(
+                'jmrs-management-dashboard',
+                JMRS_PLUGIN_URL . 'assets/js/management-dashboard.js',
+                ['jmrs-portal'],
+                file_exists($mgmt_js) ? (string) filemtime($mgmt_js) : JMRS_VERSION,
+                true
+            );
+        }
 
         $branding = PortalSettings::branding();
         $css_vars = sprintf(

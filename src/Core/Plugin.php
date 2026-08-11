@@ -805,6 +805,19 @@ class Plugin
         $controller->set_occupancy_service($occupancy_service);
         $controller->set_service_location_resolver($service_location_resolver);
 
+        $management_board = new \JMReferral\Pipeline\ManagementPipelineBoardService(
+            $pipeline_attention_service,
+            $repository,
+            new \JMReferral\Pipeline\ReferralStageHistoryRepository(),
+            new \JMReferral\PackageCost\PackageCostRepository(),
+            $assessment_repository,
+            $this->access_policy,
+            $this->user_provider,
+            $home_service,
+            $occupancy_service
+        );
+        $controller->set_management_board_service($management_board);
+
         PortalRouter::set_controller($controller);
         PortalRouter::register();
         PortalAccess::register();

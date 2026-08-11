@@ -17,6 +17,19 @@ class PortalUrls
         return self::home();
     }
 
+    public static function management(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/management/');
+    }
+
+    /**
+     * @param array<string, scalar> $args
+     */
+    public static function management_with_args(array $args): string
+    {
+        return add_query_arg($args, self::management());
+    }
+
     public static function referrals(): string
     {
         return home_url('/' . PortalSettings::base_path() . '/referrals/');

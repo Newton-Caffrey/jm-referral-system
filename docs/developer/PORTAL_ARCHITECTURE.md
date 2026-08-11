@@ -3,7 +3,7 @@
 Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clinical`, `JMReferral\Portal\Homes`).
 
 **Default base path:** `staff-portal`
-**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.1`)
+**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.2`)
 **Disabled by default** (`PortalSettings`).
 
 ---
@@ -32,6 +32,7 @@ Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_e
 | URL | Route key |
 | --- | --- |
 | `/{base}/` | `dashboard` |
+| `/{base}/management/` | `management` (Management Dashboard; rewrite `1.2.2`) |
 | `/{base}/referrals/` | `referrals` |
 | `/{base}/referrals/{id}/` | `referral` |
 | `/{base}/referrals/{id}/edit/` | `referral_edit` |
