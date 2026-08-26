@@ -90,6 +90,31 @@ class PortalUrls
         return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id));
     }
 
+    public static function referral_meeting_new(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'meetings/new');
+    }
+
+    public static function referral_meeting_edit(int $referral_id, int $meeting_id): string
+    {
+        return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id) . '/edit');
+    }
+
+    public static function referral_meeting_schedule(int $referral_id, int $meeting_id): string
+    {
+        return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id) . '/schedule');
+    }
+
+    public static function referral_meeting_complete(int $referral_id, int $meeting_id): string
+    {
+        return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id) . '/complete');
+    }
+
+    public static function referral_meeting_cancel(int $referral_id, int $meeting_id): string
+    {
+        return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id) . '/cancel');
+    }
+
     public static function schedule_new(int $referral_id): string
     {
         return self::referral_path($referral_id, 'schedules/new');

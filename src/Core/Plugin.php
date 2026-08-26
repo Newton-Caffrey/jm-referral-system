@@ -398,7 +398,7 @@ class Plugin
             $meeting_repository
         );
 
-        new \JMReferral\Meeting\ReferralMeetingService(
+        $meeting_service = new \JMReferral\Meeting\ReferralMeetingService(
             $repository,
             $meeting_repository,
             $activity_service,
@@ -631,7 +631,10 @@ class Plugin
             $transition_planning_service,
             $care_commencement_service,
             $pipeline_attention_service,
-            $meeting_read_service
+            $meeting_read_service,
+            $meeting_service,
+            $meeting_repository,
+            $meeting_attendee_repository
         );
 
         $create_controller->register();
@@ -679,7 +682,10 @@ class Plugin
         \JMReferral\Transition\TransitionPlanningService $transition_planning_service,
         \JMReferral\Transition\CareCommencementService $care_commencement_service,
         \JMReferral\Pipeline\PipelineAttentionService $pipeline_attention_service,
-        \JMReferral\Meeting\ReferralMeetingReadService $meeting_read_service
+        \JMReferral\Meeting\ReferralMeetingReadService $meeting_read_service,
+        \JMReferral\Meeting\ReferralMeetingService $meeting_service,
+        \JMReferral\Meeting\ReferralMeetingRepository $meeting_repository,
+        \JMReferral\Meeting\MeetingAttendeeRepository $meeting_attendee_repository
     ): void {
         $operational_alert_service = new OperationalAlertService(
             $repository,
@@ -803,6 +809,9 @@ class Plugin
             $clinical_access,
             $this->access_policy,
             $meeting_read_service,
+            $meeting_service,
+            $meeting_repository,
+            $meeting_attendee_repository,
             $retention_service
         );
         $controller->set_meetings_handler($meetings_handler);

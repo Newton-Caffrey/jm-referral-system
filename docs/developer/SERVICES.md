@@ -41,9 +41,14 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 ## Meetings & responsibilities (Phase 4B.1 / 4B.2.1)
 
 ### `ReferralMeetingService`
-- **Purpose:** Create/update/reschedule/complete/cancel referral meetings (controlled values). Does not advance pipeline.
-- **Deps:** Referral + meeting repos, activity, AccessPolicy (`can_manage_referral_meetings`)
-- **Used by:** Write UI from Phase 4B.2.2 (not yet)
+- **Purpose:** Create draft/scheduled meetings; update details; schedule/reschedule; complete; cancel. Server-side lifecycle via `MeetingLifecyclePolicy`. Does not advance pipeline. Does not send emails. No reopen/delete.
+- **Public API (4B.2.2):** `create_draft`, `create_scheduled`, `update_details`, `schedule`, `reschedule`, `complete`, `cancel`. Generic status/mass-assignment of lifecycle columns is not accepted.
+- **Deps:** Referral + meeting repos, activity, AccessPolicy (`can_manage_referral_meetings` + visibility), `MeetingLifecyclePolicy`
+- **Used by:** Portal `MeetingsHandler` write routes (Phase 4B.2.2)
+
+### `MeetingLifecyclePolicy`
+- **Purpose:** Allowed actions by status (draft/scheduled mutable; completed/cancelled terminal).
+- **Used by:** `ReferralMeetingService`, `MeetingsHandler` (UI action visibility)
 
 ### `MeetingAttendeeService`
 - **Purpose:** Add/update/remove internal and external meeting attendees; rejects duplicates and invalid kinds.

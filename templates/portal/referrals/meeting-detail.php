@@ -22,6 +22,9 @@ $external     = is_array( $detail['external'] ?? null ) ? $detail['external'] : 
 $can_view_contacts  = ! empty( $detail['can_view_contacts'] );
 $list_url           = (string) ( $detail['list_url'] ?? '' );
 $referral_url       = (string) ( $detail['referral_url'] ?? '' );
+$can_manage         = ! empty( $can_manage );
+$actions            = is_array( $actions ?? null ) ? $actions : array();
+$flash_notice       = is_array( $flash_notice ?? null ) ? $flash_notice : null;
 
 $date_format = (string) get_option( 'date_format' );
 $time_format = (string) get_option( 'time_format' );
@@ -34,6 +37,11 @@ $fmt = static function ( string $raw ) use ( $dt_format ): string {
 $status_key = sanitize_html_class( (string) ( $meeting['status'] ?? '' ) );
 $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? '' ) : '';
 ?>
+<?php if ( is_array( $flash_notice ) && ! empty( $flash_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $flash_notice['type'] ?? 'success' ) ); ?>" role="status">
+		<p><?php echo esc_html( (string) $flash_notice['message'] ); ?></p>
+	</div>
+<?php endif; ?>
 <?php if ( $is_archived ) : ?>
 	<div class="jmrs-portal-notice jmrs-portal-notice--warning" role="status">
 		<?php echo esc_html__( 'This referral is archived. Meetings are read-only.', 'jm-referral-system' ); ?>
@@ -41,6 +49,21 @@ $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? 
 <?php endif; ?>
 
 <div class="jmrs-portal-quick-actions jmrs-meeting-detail-actions">
+	<?php if ( ! empty( $actions['edit'] ) ) : ?>
+		<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( (string) $actions['edit'] ); ?>"><?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?></a>
+	<?php endif; ?>
+	<?php if ( ! empty( $actions['schedule'] ) ) : ?>
+		<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( (string) $actions['schedule'] ); ?>"><?php echo esc_html__( 'Schedule meeting', 'jm-referral-system' ); ?></a>
+	<?php endif; ?>
+	<?php if ( ! empty( $actions['reschedule'] ) ) : ?>
+		<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( (string) $actions['reschedule'] ); ?>"><?php echo esc_html__( 'Reschedule meeting', 'jm-referral-system' ); ?></a>
+	<?php endif; ?>
+	<?php if ( ! empty( $actions['complete'] ) ) : ?>
+		<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( (string) $actions['complete'] ); ?>"><?php echo esc_html__( 'Complete meeting', 'jm-referral-system' ); ?></a>
+	<?php endif; ?>
+	<?php if ( ! empty( $actions['cancel'] ) ) : ?>
+		<a class="jmrs-button jmrs-button--danger" href="<?php echo esc_url( (string) $actions['cancel'] ); ?>"><?php echo esc_html__( 'Cancel meeting', 'jm-referral-system' ); ?></a>
+	<?php endif; ?>
 	<?php if ( '' !== $list_url ) : ?>
 		<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $list_url ); ?>"><?php echo esc_html__( 'Back to Meetings', 'jm-referral-system' ); ?></a>
 	<?php endif; ?>

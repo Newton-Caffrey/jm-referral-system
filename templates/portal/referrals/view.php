@@ -865,6 +865,10 @@ $meetings_summary   = is_array( $meetings_summary ?? null ) ? $meetings_summary 
 $meetings_list_url  = (string) ( $meetings_list_url ?? '' );
 $meetings_counts    = is_array( $meetings_summary['counts'] ?? null ) ? $meetings_summary['counts'] : array();
 $meetings_next      = is_array( $meetings_summary['next_meeting'] ?? null ) ? $meetings_summary['next_meeting'] : null;
+$can_manage_meetings = ! empty( $meetings_summary['can_manage'] ) && empty( $is_archived );
+$meetings_new_url   = $can_manage_meetings
+	? \JMReferral\Portal\PortalUrls::referral_meeting_new( absint( $referral['id'] ?? 0 ) )
+	: '';
 ?>
 <?php if ( $can_view_meetings ) : ?>
 	<section class="jmrs-portal-section jmrs-portal-panel jmrs-meetings-referral-summary" aria-labelledby="jmrs-portal-ref-meetings">
@@ -872,9 +876,13 @@ $meetings_next      = is_array( $meetings_summary['next_meeting'] ?? null ) ? $m
 		$section_title   = __( 'Meetings', 'jm-referral-system' );
 		$section_id      = 'jmrs-portal-ref-meetings';
 		$section_badge   = null;
-		$section_actions = ( '' !== $meetings_list_url )
-			? array( array( __( 'View all meetings', 'jm-referral-system' ), $meetings_list_url ) )
-			: array();
+		$section_actions = array();
+		if ( '' !== $meetings_new_url ) {
+			$section_actions[] = array( __( 'Add meeting', 'jm-referral-system' ), $meetings_new_url );
+		}
+		if ( '' !== $meetings_list_url ) {
+			$section_actions[] = array( __( 'View all meetings', 'jm-referral-system' ), $meetings_list_url );
+		}
 		include $jmrs_partials_path . 'section-header.php';
 		?>
 		<p class="jmrs-meetings-counts">

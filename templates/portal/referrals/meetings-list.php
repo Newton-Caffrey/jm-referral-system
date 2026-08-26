@@ -25,12 +25,20 @@ $meetings      = is_array( $list['meetings'] ?? null ) ? $list['meetings'] : arr
 $page          = max( 1, absint( $list['page'] ?? 1 ) );
 $total_pages   = max( 1, absint( $list['total_pages'] ?? 1 ) );
 $total         = absint( $list['total'] ?? 0 );
+$can_manage    = ! empty( $can_manage );
+$new_url       = (string) ( $new_url ?? '' );
+$flash_notice  = is_array( $flash_notice ?? null ) ? $flash_notice : null;
 $jmrs_partials = JMRS_PLUGIN_PATH . 'templates/portal/partials/';
 
 $date_format = (string) get_option( 'date_format' );
 $time_format = (string) get_option( 'time_format' );
 $dt_format   = trim( $date_format . ' ' . $time_format );
 ?>
+<?php if ( is_array( $flash_notice ) && ! empty( $flash_notice['message'] ) ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $flash_notice['type'] ?? 'success' ) ); ?>" role="status">
+		<p><?php echo esc_html( (string) $flash_notice['message'] ); ?></p>
+	</div>
+<?php endif; ?>
 <?php if ( $is_archived ) : ?>
 	<div class="jmrs-portal-notice jmrs-portal-notice--warning" role="status">
 		<?php echo esc_html__( 'This referral is archived. Meetings are read-only.', 'jm-referral-system' ); ?>
@@ -38,6 +46,9 @@ $dt_format   = trim( $date_format . ' ' . $time_format );
 <?php endif; ?>
 
 <div class="jmrs-portal-quick-actions">
+	<?php if ( $can_manage && '' !== $new_url ) : ?>
+		<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( $new_url ); ?>"><?php echo esc_html__( 'Add meeting', 'jm-referral-system' ); ?></a>
+	<?php endif; ?>
 	<?php if ( '' !== $referral_url ) : ?>
 		<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $referral_url ); ?>"><?php echo esc_html__( 'Back to Referral', 'jm-referral-system' ); ?></a>
 	<?php endif; ?>
@@ -68,7 +79,9 @@ $dt_format   = trim( $date_format . ' ' . $time_format );
 		<?php
 		$empty_title   = '';
 		$empty_message = __( 'No meetings recorded for this referral.', 'jm-referral-system' );
-		$empty_actions = array();
+		$empty_actions = ( $can_manage && '' !== $new_url )
+			? array( array( __( 'Add meeting', 'jm-referral-system' ), $new_url ) )
+			: array();
 		include $jmrs_partials . 'empty-state.php';
 		?>
 	<?php else : ?>

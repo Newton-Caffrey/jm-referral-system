@@ -4,7 +4,7 @@
 **Baseline commit:** `b930611c00e5d6651bd4a36da6618b4148d5b0dc` (Phase 4B.1 checkpoint)  
 **Product:** 1.4.0 · **Database:** 2.29.0 · **Portal rewrite:** 1.2.2 (baseline) → **1.2.3** (Phase 4B.2.1)
 
-**Status:** Audit approved; Phase 4B.2.1 read-only UI implemented and staging UAT passed (2026-08-26). Phase 4B.2.2 write UI not started.
+**Status:** Audit approved; Phase 4B.2.1 read-only UI checkpointed; Phase 4B.2.2 write UI + lifecycle enforcement staging UAT **PASS** (2026-08-26; rewrite **1.2.4**). Attendance soft warning code-reviewed only (no attendees in UAT). Phase 4B.2.3 internal attendee UI not started.
 
 **Out of scope for 4B.2:** Champion / Transition Lead UI (→ 4B.3), Management Dashboard meeting widgets, assessment scheduling, care-team assignments, ownership (`assigned_to`), canonical pipeline / VisualStageMap, emails, schema changes.
 

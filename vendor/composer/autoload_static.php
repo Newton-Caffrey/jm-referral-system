@@ -81,6 +81,7 @@ class ComposerStaticInit57bc947798ed76a137536f3057b4dbb5
         'JMReferral\\Meeting\\MeetingAttendee' => __DIR__ . '/../..' . '/src/Meeting/MeetingAttendee.php',
         'JMReferral\\Meeting\\MeetingAttendeeRepository' => __DIR__ . '/../..' . '/src/Meeting/MeetingAttendeeRepository.php',
         'JMReferral\\Meeting\\MeetingAttendeeService' => __DIR__ . '/../..' . '/src/Meeting/MeetingAttendeeService.php',
+        'JMReferral\\Meeting\\MeetingLifecyclePolicy' => __DIR__ . '/../..' . '/src/Meeting/MeetingLifecyclePolicy.php',
         'JMReferral\\Meeting\\ReferralMeeting' => __DIR__ . '/../..' . '/src/Meeting/ReferralMeeting.php',
         'JMReferral\\Meeting\\ReferralMeetingReadService' => __DIR__ . '/../..' . '/src/Meeting/ReferralMeetingReadService.php',
         'JMReferral\\Meeting\\ReferralMeetingRepository' => __DIR__ . '/../..' . '/src/Meeting/ReferralMeetingRepository.php',

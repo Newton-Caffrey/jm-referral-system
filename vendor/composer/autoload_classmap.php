@@ -66,6 +66,7 @@ return array(
     'JMReferral\\Meeting\\MeetingAttendee' => $baseDir . '/src/Meeting/MeetingAttendee.php',
     'JMReferral\\Meeting\\MeetingAttendeeRepository' => $baseDir . '/src/Meeting/MeetingAttendeeRepository.php',
     'JMReferral\\Meeting\\MeetingAttendeeService' => $baseDir . '/src/Meeting/MeetingAttendeeService.php',
+    'JMReferral\\Meeting\\MeetingLifecyclePolicy' => $baseDir . '/src/Meeting/MeetingLifecyclePolicy.php',
     'JMReferral\\Meeting\\ReferralMeeting' => $baseDir . '/src/Meeting/ReferralMeeting.php',
     'JMReferral\\Meeting\\ReferralMeetingReadService' => $baseDir . '/src/Meeting/ReferralMeetingReadService.php',
     'JMReferral\\Meeting\\ReferralMeetingRepository' => $baseDir . '/src/Meeting/ReferralMeetingRepository.php',
