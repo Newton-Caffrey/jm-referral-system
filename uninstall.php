@@ -52,6 +52,8 @@ $tables = [
     Tables::care_plan_versions_table(),
     Tables::referral_care_plans_table(),
     Tables::referral_assessments_table(),
+    Tables::referral_meeting_attendees_table(),
+    Tables::referral_meetings_table(),
     Tables::referral_documents_table(),
     Tables::referral_notes_table(),
     Tables::referral_activity_table(),

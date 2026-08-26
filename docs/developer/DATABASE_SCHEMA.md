@@ -1,6 +1,6 @@
 # Database Schema — JM Referral System
 
-Schema version: **`2.28.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
+Schema version: **`2.29.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
 DDL authority: `JMReferral\Database\Tables::create()` via WordPress `dbDelta`.
 
 All physical names are `{wpdb->prefix}jmrs_*`. Methods below are on `Tables`.
@@ -20,6 +20,8 @@ erDiagram
   jmrs_referrals ||--o{ jmrs_visit_schedules : has
   jmrs_referrals ||--o{ jmrs_care_visits : has
   jmrs_referrals ||--o{ jmrs_medications : has
+  jmrs_referrals ||--o{ jmrs_referral_meetings : has
+  jmrs_referral_meetings ||--o{ jmrs_referral_meeting_attendees : has
   jmrs_service_types ||--o{ jmrs_referrals : classifies
   jmrs_workflow_stages ||--o{ jmrs_referrals : stages
   jmrs_referral_care_plans ||--o{ jmrs_care_plan_versions : versions
@@ -47,9 +49,9 @@ erDiagram
 | **PK** | `id` |
 | **FKs (logical)** | `service_type_id` → service types; `workflow_stage_id` → workflow stages; `assigned_to` / `archived_by` → WP users |
 
-**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **`care_start_date`** (preferred/requested intake date from referral form — **not** actual care commencement), **`workflow_stage_entered_at`**, **`next_action_due_at`** (Phase 3B pipeline timing; no SLA hardcoding), **interest response milestone (Phase 3C):** `interest_expressed_at`, `interest_expressed_by`, `interest_response_method` (`email` \| `phone` \| `other`), `interest_response_recipient`, `interest_email_status` (`sent` \| `failed` \| `not_applicable`), `interest_email_sent_at`, **care commencement milestone (Phase 3G):** `care_commenced_at`, `care_commenced_by` (actual recorded commencement — NULL until explicit Confirm Care Commenced; no backfill), **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps.
+**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **`care_start_date`** (preferred/requested intake date from referral form — **not** actual care commencement), **`workflow_stage_entered_at`**, **`next_action_due_at`** (Phase 3B pipeline timing; no SLA hardcoding), **interest response milestone (Phase 3C):** `interest_expressed_at`, `interest_expressed_by`, `interest_response_method` (`email` \| `phone` \| `other`), `interest_response_recipient`, `interest_email_status` (`sent` \| `failed` \| `not_applicable`), `interest_email_sent_at`, **care commencement milestone (Phase 3G):** `care_commenced_at`, `care_commenced_by` (actual recorded commencement — NULL until explicit Confirm Care Commenced; no backfill), **responsibility metadata (Phase 4B.1):** `champion_user_id`, `transition_lead_user_id` (nullable WP users; **not** access grants; `assigned_to` remains owner), **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps.
 
-**Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, `care_setting`, `workflow_stage_entered_at`, `next_action_due_at`, `interest_expressed_at`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
+**Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, `care_setting`, `workflow_stage_entered_at`, `next_action_due_at`, `interest_expressed_at`, `champion_user_id`, `transition_lead_user_id`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
 
 **Workflows:** Create (admin/public → default canonical `interest_required`), edit (pipeline stages locked on generic form), assign, legacy stage change, pipeline override (Manager/Admin), **Express Interest** (`InterestResponseService`), **Transition Planning / Care Commencement** (`TransitionPlanningService` / `CareCommencementService`), list/export/filter by care setting + pipeline stage, archive/restore, portal view.
 
@@ -192,6 +194,42 @@ Do not store clinical narrative here. Human timeline also logs concise `pipeline
 **Indexes:** `referral_id`, `package_cost_id`, `decision`, `(referral_id, decision)`, `decision_at`.
 
 **Rules:** Record only when stage = `awaiting_la_decision` and a **sent** Package Cost exists for the referral. Decisions are immutable in normal workflow. Pipeline transitions via `ReferralPipelineService` only (no direct `workflow_stage_id` writes).
+
+---
+
+### `jmrs_referral_meetings` — `referral_meetings_table()` (Phase 4B.1)
+
+**Purpose:** Multi-party referral meetings (e.g. commissioner / pre-assessment). **Distinct from** formal assessment appointments on `jmrs_referral_assessments`. Multiple meetings per referral. **Does not** advance pipeline stages.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Logical FKs** | `referral_id` → referrals; `created_by` / `updated_by` → WP users |
+
+**Columns:** `meeting_type` (`commissioner_pre_assessment` \| `other`), `status` (`draft` \| `scheduled` \| `completed` \| `cancelled`), `scheduled_at`, `scheduled_end_at`, `location_type` (`in_person` \| `online` \| `telephone` \| `other`), `location_name`, `location_address`, `online_meeting_url`, `purpose`, `outcome` (short; not clinical narrative), timestamps, `completed_at`, `cancelled_at`.
+
+**Indexes:** `referral_id`, `meeting_type`, `status`, `scheduled_at`, `(referral_id, status)`, `(referral_id, scheduled_at)`.
+
+**Services:** `ReferralMeetingService` (+ `ReferralMeetingRepository`). No UI in 4B.1.
+
+---
+
+### `jmrs_referral_meeting_attendees` — `referral_meeting_attendees_table()` (Phase 4B.1)
+
+**Purpose:** Internal (WP user) and external participants for a meeting.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Logical FKs** | `meeting_id` → meetings; `user_id` → WP users (internal only) |
+
+**Columns:** `attendee_kind` (`internal` \| `external`), `user_id` (required for internal), `display_name` (required for external), `professional_role`, `organisation`, `email`, `telephone`, `participant_category`, `meeting_role`, `attendance_status` (`invited` \| `confirmed` \| `attended` \| `absent` \| `declined`), `sort_order`, timestamps.
+
+**Indexes:** `meeting_id`, `user_id`, `attendee_kind`, `attendance_status`, `(meeting_id, user_id)`, `(meeting_id, sort_order)`.
+
+**Rules:** Duplicate internal `user_id` per meeting rejected in application layer. Activity logs must not include external email/phone. Archive preserves rows; permanent referral delete cascades attendees then meetings.
+
+**Services:** `MeetingAttendeeService` (+ `MeetingAttendeeRepository`). Responsibilities: `ReferralResponsibilityService` for champion / transition lead columns.
 
 ---
 

@@ -3,7 +3,7 @@
 Professional installation and go-live guide for WordPress hosts.
 
 **Product version:** 1.4.0
-**Database schema:** 2.28.0
+**Database schema:** 2.29.0
 **Portal rewrite:** 1.2.2
 
 ---
@@ -51,7 +51,7 @@ Disk space: allow for database growth plus `wp-content/uploads/jmrs-private/` (p
 
 ### What activation does
 
-- Runs database migrations (`jmrs_db_version` → `2.28.0`)
+- Runs database migrations (`jmrs_db_version` → `2.29.0`)
 - Registers JM roles and grants Administrator capabilities
 - Ensures private document storage is ready
 - Flushes rewrite rules once (staff portal routes when enabled later)

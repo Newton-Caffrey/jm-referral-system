@@ -140,13 +140,23 @@ Correction while still on review: `assessment_review_required` → (suitable / s
 
 **Completion semantics:** `is_completed_assessment()` = outcome ∈ {suitable, suitable_with_conditions, not_suitable}. Saving with outcome=`pending` does **not** advance the pipeline. Re-saving an already-completed assessment does not duplicate history/transitions.
 
-**Out-of-sequence:** Completing clinically while still at `assessment_to_schedule` does **not** silently skip stages; Manager/Admin override is required for repair.
+---
 
-**Activity:** `assessment_scheduled`, `assessment_rescheduled`, `assessment_needs_rescheduling`, `assessment_completed` — concise; no address/phone/email/clinical narrative in descriptions.
+## Referral meetings & responsibilities (Phase 4B.1 data foundation)
 
-**Permissions:** `AccessPolicy::can_schedule_assessment` (= mutate / EDIT_REFERRALS). Assessor allowed. Support Worker denied. Override capability not required.
+**Schema:** DB `2.29.0` — `jmrs_referral_meetings`, `jmrs_referral_meeting_attendees`, plus `champion_user_id` / `transition_lead_user_id` on referrals.
 
-**Legacy:** Existing assessments keep NULL scheduling fields. No backfill. Legacy referrals outside the canonical pipeline are untouched until intentionally moved via override.
+**Services:** `ReferralMeetingService`, `MeetingAttendeeService`, `ReferralResponsibilityService` (no portal UI / routes / WP Admin meeting screens in 4B.1).
+
+**Critical:** Meetings are **independent** of formal assessment appointments and **must not** create, advance, or reverse canonical pipeline stages. `assessment_to_schedule` / Visual Stage 2 (“Appointment to Arrange”) are unchanged. Creating, completing, or cancelling a meeting does not write stage history.
+
+**Owner vs responsibilities:** `assigned_to` remains the referral owner. Champion and transition lead are nullable responsibility metadata only and do **not** grant AccessPolicy visibility. Future UI must still enforce referral-level scope.
+
+**Activity (meetings):** `meeting_created`, `meeting_updated`, `meeting_rescheduled`, `meeting_completed`, `meeting_cancelled`, `meeting_attendee_*`, `champion_*`, `transition_lead_*` — data-minimised (no external email/phone/URL in descriptions).
+
+**Permissions:** `AccessPolicy::can_manage_referral_meetings` / `can_assign_referral_responsibilities` (same allow/deny as Express Interest). Assessor and Support Worker denied. No emails from these services.
+
+**Migration:** No meeting/attendee/champion/transition-lead backfill. Empty tables and NULL columns after upgrade until staff assign them.
 
 ---
 

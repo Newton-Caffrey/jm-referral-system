@@ -673,6 +673,134 @@ class ReferralActivityService
         );
     }
 
+    public function log_meeting_created(int $referral_id, string $meeting_type_label = ''): void
+    {
+        $this->log(
+            $referral_id,
+            'meeting_created',
+            '' !== $meeting_type_label
+                ? sprintf(
+                    /* translators: %s: meeting type label */
+                    __('Meeting created (%s).', 'jm-referral-system'),
+                    $meeting_type_label
+                )
+                : __('Meeting created.', 'jm-referral-system')
+        );
+    }
+
+    public function log_meeting_updated(int $referral_id): void
+    {
+        $this->log($referral_id, 'meeting_updated', __('Meeting updated.', 'jm-referral-system'));
+    }
+
+    public function log_meeting_rescheduled(int $referral_id): void
+    {
+        $this->log($referral_id, 'meeting_rescheduled', __('Meeting rescheduled.', 'jm-referral-system'));
+    }
+
+    public function log_meeting_completed(int $referral_id): void
+    {
+        $this->log($referral_id, 'meeting_completed', __('Meeting completed.', 'jm-referral-system'));
+    }
+
+    public function log_meeting_cancelled(int $referral_id): void
+    {
+        $this->log($referral_id, 'meeting_cancelled', __('Meeting cancelled.', 'jm-referral-system'));
+    }
+
+    public function log_meeting_attendee_added(int $referral_id, string $kind_label = ''): void
+    {
+        $this->log(
+            $referral_id,
+            'meeting_attendee_added',
+            '' !== $kind_label
+                ? sprintf(
+                    /* translators: %s: attendee kind label */
+                    __('Meeting attendee added (%s).', 'jm-referral-system'),
+                    $kind_label
+                )
+                : __('Meeting attendee added.', 'jm-referral-system')
+        );
+    }
+
+    public function log_meeting_attendee_updated(int $referral_id): void
+    {
+        $this->log($referral_id, 'meeting_attendee_updated', __('Meeting attendee updated.', 'jm-referral-system'));
+    }
+
+    public function log_meeting_attendee_removed(int $referral_id): void
+    {
+        $this->log($referral_id, 'meeting_attendee_removed', __('Meeting attendee removed.', 'jm-referral-system'));
+    }
+
+    public function log_champion_assigned(int $referral_id, string $display_name): void
+    {
+        $this->log(
+            $referral_id,
+            'champion_assigned',
+            sprintf(
+                /* translators: %s: staff display name */
+                __('Client champion assigned to %s.', 'jm-referral-system'),
+                $display_name
+            )
+        );
+    }
+
+    public function log_champion_reassigned(int $referral_id, string $old_name, string $new_name): void
+    {
+        $this->log(
+            $referral_id,
+            'champion_reassigned',
+            sprintf(
+                /* translators: 1: previous name 2: new name */
+                __('Client champion reassigned from %1$s to %2$s.', 'jm-referral-system'),
+                $old_name,
+                $new_name
+            )
+        );
+    }
+
+    public function log_champion_unassigned(int $referral_id): void
+    {
+        $this->log($referral_id, 'champion_unassigned', __('Client champion cleared.', 'jm-referral-system'));
+    }
+
+    public function log_transition_lead_assigned(int $referral_id, string $display_name): void
+    {
+        $this->log(
+            $referral_id,
+            'transition_lead_assigned',
+            sprintf(
+                /* translators: %s: staff display name */
+                __('Transition lead assigned to %s.', 'jm-referral-system'),
+                $display_name
+            )
+        );
+    }
+
+    public function log_transition_lead_reassigned(int $referral_id, string $old_name, string $new_name): void
+    {
+        $this->log(
+            $referral_id,
+            'transition_lead_reassigned',
+            sprintf(
+                /* translators: 1: previous name 2: new name */
+                __('Transition lead reassigned from %1$s to %2$s.', 'jm-referral-system'),
+                $old_name,
+                $new_name
+            )
+        );
+    }
+
+    public function log_transition_lead_unassigned(int $referral_id): void
+    {
+        $this->log(
+            $referral_id,
+            'transition_lead_unassigned',
+            __('Transition lead cleared.', 'jm-referral-system')
+        );
+    }
+
     /**
      * Persists an activity entry for the current user.
      */

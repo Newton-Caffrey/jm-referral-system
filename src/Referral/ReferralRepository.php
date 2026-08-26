@@ -666,6 +666,101 @@ class ReferralRepository
     }
 
     /**
+     * Updates champion and/or transition lead only (Phase 4B.1). Does not touch assigned_to.
+     *
+     * @param array{champion_user_id?: int|null, transition_lead_user_id?: int|null} $data
+     */
+    public function update_responsibility_fields(int $id, array $data): bool
+    {
+        global $wpdb;
+
+        if ($id <= 0) {
+            return false;
+        }
+
+        $row     = [];
+        $formats = [];
+
+        if (array_key_exists('champion_user_id', $data)) {
+            $value = $data['champion_user_id'];
+            $row['champion_user_id'] = null === $value || '' === $value || 0 === (int) $value
+                ? null
+                : absint($value);
+            $formats[] = '%d';
+        }
+
+        if (array_key_exists('transition_lead_user_id', $data)) {
+            $value = $data['transition_lead_user_id'];
+            $row['transition_lead_user_id'] = null === $value || '' === $value || 0 === (int) $value
+                ? null
+                : absint($value);
+            $formats[] = '%d';
+        }
+
+        if ([] === $row) {
+            return false;
+        }
+
+        $row['updated_at'] = current_time('mysql');
+        $formats[]         = '%s';
+
+        $result = $wpdb->update(
+            Tables::referrals_table(),
+            $row,
+            ['id' => $id],
+            $formats,
+            ['%d']
+        );
+
+        return false !== $result;
+    }
+
+    /**
+     * Batch read of responsibility user IDs for referrals (future dashboard).
+     *
+     * @param array<int, int> $referral_ids
+     * @return array<int, array{champion_user_id: int, transition_lead_user_id: int}>
+     */
+    public function responsibility_map_for_referrals(array $referral_ids): array
+    {
+        global $wpdb;
+
+        $referral_ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $referral_ids) {
+            return [];
+        }
+
+        $table        = Tables::referrals_table();
+        $placeholders = implode(',', array_fill(0, count($referral_ids), '%d'));
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT id, champion_user_id, transition_lead_user_id
+                FROM {$table}
+                WHERE id IN ({$placeholders})",
+                ...$referral_ids
+            ),
+            ARRAY_A
+        );
+
+        $map = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $rid = absint($row['id'] ?? 0);
+                if ($rid > 0) {
+                    $map[$rid] = [
+                        'champion_user_id'        => absint($row['champion_user_id'] ?? 0),
+                        'transition_lead_user_id' => absint($row['transition_lead_user_id'] ?? 0),
+                    ];
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * Deletes a referral by ID.
      *
      * @return bool True when a row was deleted.

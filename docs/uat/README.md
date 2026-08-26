@@ -4,6 +4,7 @@ User Acceptance Testing materials for **JM Healthcare Referral Platform** / JM R
 
 | Document | Purpose |
 | --- | --- |
+| [UAT_PHASE_4B_1_DATA_FOUNDATION.md](UAT_PHASE_4B_1_DATA_FOUNDATION.md) | **Phase 4B.1** meetings/attendees/responsibility data foundation |
 | [UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md](UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md) | **Phase 4A** accuracy / privacy / existing-data parity (pre-release) |
 | [UAT_MANAGEMENT_DASHBOARD_V1_4.md](UAT_MANAGEMENT_DASHBOARD_V1_4.md) | **v1.4.0 Management Dashboard UAT** (visual + data acceptance) |
 | [UAT_PHASE_3.md](UAT_PHASE_3.md) | **Phase 3 final UAT** (acquisition pipeline → reporting, upgrade, regression) |

@@ -203,6 +203,36 @@ class AccessPolicy
     }
 
     /**
+     * Meeting-management capability helper (Phase 4B foundation).
+     *
+     * Allowed when the user may express interest on the referral:
+     * JM Administrator, Referral Manager, Care Coordinator, WordPress administrator.
+     * Denied: Assessor, Support Worker.
+     * Does not change existing capability grants. Does not advance workflow.
+     * Services use this for future UI; no production route calls it yet.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_manage_referral_meetings(array $referral, ?int $user_id = null): bool
+    {
+        return $this->can_express_interest($referral, $user_id);
+    }
+
+    /**
+     * Responsibility-assignment capability helper (Phase 4B foundation).
+     *
+     * Assign/clear champion_user_id / transition_lead_user_id only.
+     * Same allow/deny roles as meeting-management capability.
+     * Does not alter assigned_to ownership or referral visibility scoping.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_assign_referral_responsibilities(array $referral, ?int $user_id = null): bool
+    {
+        return $this->can_express_interest($referral, $user_id);
+    }
+
+    /**
      * Whether the user may schedule / reschedule assessment appointments.
      *
      * Allowed when they can mutate the referral (EDIT_REFERRALS + AccessPolicy),

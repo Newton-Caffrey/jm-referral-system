@@ -385,11 +385,38 @@ class Plugin
             $this->user_provider
         );
 
+        $meeting_repository          = new \JMReferral\Meeting\ReferralMeetingRepository();
+        $meeting_attendee_repository = new \JMReferral\Meeting\MeetingAttendeeRepository();
+
         $retention_service = new ReferralRetentionService(
             $repository,
             new ReferralDependencyRepository(),
             $activity_service,
+            $this->access_policy,
+            $meeting_attendee_repository,
+            $meeting_repository
+        );
+
+        // Phase 4B.1 foundation services — constructed for DI readiness; no controllers/routes yet.
+        new \JMReferral\Meeting\ReferralMeetingService(
+            $repository,
+            $meeting_repository,
+            $activity_service,
             $this->access_policy
+        );
+        new \JMReferral\Meeting\MeetingAttendeeService(
+            $repository,
+            $meeting_repository,
+            $meeting_attendee_repository,
+            $activity_service,
+            $this->access_policy,
+            $this->user_provider
+        );
+        new \JMReferral\Meeting\ReferralResponsibilityService(
+            $repository,
+            $activity_service,
+            $this->access_policy,
+            $this->user_provider
         );
 
         $care_team_repository_for_transition = new CareTeamRepository();

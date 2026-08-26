@@ -130,6 +130,8 @@ Class: `JMReferral\Permissions\AccessPolicy`.
 | `can_record_la_decision` | Same commercial gate as `can_express_interest`. Covers recording Approved / Declined / Not Proceeding. Does **not** require `override_pipeline_stage`. |
 | `can_mark_not_proceeding` | Same commercial gate. Generic Mark as Not Proceeding on allowed active stages (not `awaiting_la_decision`). Does **not** require `override_pipeline_stage`. |
 | `can_commence_care` | Same commercial gate. Confirm Care Commenced on `transition_planning` when hard prerequisites are met. Does **not** require `override_pipeline_stage` or `jmrs_manage_occupancies`. |
+| `can_manage_referral_meetings` | Meeting-management capability (Phase 4B.1). Same allow/deny roles as Express Interest. Assessor / Support Worker denied. **No UI yet.** Does not advance pipeline or grant visibility. |
+| `can_assign_referral_responsibilities` | Responsibility-assignment capability. Assign/clear `champion_user_id` / `transition_lead_user_id`. Does **not** change `assigned_to` or AccessPolicy scoping. **No UI yet.** |
 
 ### Pipeline Dashboard (Phase 3H)
 

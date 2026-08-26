@@ -225,6 +225,26 @@ class Tables
     }
 
     /**
+     * Referral meetings (Phase 4B.1) — distinct from assessment appointments.
+     */
+    public static function referral_meetings_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_meetings';
+    }
+
+    /**
+     * Meeting attendees / participants (Phase 4B.1).
+     */
+    public static function referral_meeting_attendees_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_meeting_attendees';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -257,6 +277,8 @@ class Tables
         self::create_occupancies_table($charset);
         self::create_referral_package_costs_table($charset);
         self::create_referral_la_decisions_table($charset);
+        self::create_referral_meetings_table($charset);
+        self::create_referral_meeting_attendees_table($charset);
     }
 
     /**
@@ -313,6 +335,8 @@ class Tables
             interest_email_sent_at DATETIME NULL,
             care_commenced_at DATETIME NULL,
             care_commenced_by BIGINT UNSIGNED NULL,
+            champion_user_id BIGINT UNSIGNED NULL,
+            transition_lead_user_id BIGINT UNSIGNED NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -330,6 +354,8 @@ class Tables
             KEY workflow_stage_entered_at (workflow_stage_entered_at),
             KEY next_action_due_at (next_action_due_at),
             KEY interest_expressed_at (interest_expressed_at),
+            KEY champion_user_id (champion_user_id),
+            KEY transition_lead_user_id (transition_lead_user_id),
             KEY archived_at_status (archived_at, status),
             KEY status_priority (status, priority),
             KEY assigned_to_archived_at (assigned_to, archived_at)
@@ -1031,6 +1057,79 @@ class Tables
             KEY decision (decision),
             KEY referral_id_decision (referral_id, decision),
             KEY decision_at (decision_at)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Referral meetings — multiple per referral; not assessment appointments.
+     */
+    private static function create_referral_meetings_table(string $charset): void
+    {
+        $table = self::referral_meetings_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            meeting_type VARCHAR(50) NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'draft',
+            scheduled_at DATETIME NULL,
+            scheduled_end_at DATETIME NULL,
+            location_type VARCHAR(30) NULL,
+            location_name VARCHAR(255) NULL,
+            location_address VARCHAR(500) NULL,
+            online_meeting_url VARCHAR(500) NULL,
+            purpose VARCHAR(255) NULL,
+            outcome VARCHAR(255) NULL,
+            created_by BIGINT UNSIGNED NULL,
+            updated_by BIGINT UNSIGNED NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            completed_at DATETIME NULL,
+            cancelled_at DATETIME NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY meeting_type (meeting_type),
+            KEY status (status),
+            KEY scheduled_at (scheduled_at),
+            KEY referral_id_status (referral_id, status),
+            KEY referral_id_scheduled_at (referral_id, scheduled_at)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Meeting attendees — internal (WP user) or external participants.
+     */
+    private static function create_referral_meeting_attendees_table(string $charset): void
+    {
+        $table = self::referral_meeting_attendees_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            meeting_id BIGINT UNSIGNED NOT NULL,
+            attendee_kind VARCHAR(20) NOT NULL,
+            user_id BIGINT UNSIGNED NULL,
+            display_name VARCHAR(255) NULL,
+            professional_role VARCHAR(150) NULL,
+            organisation VARCHAR(255) NULL,
+            email VARCHAR(190) NULL,
+            telephone VARCHAR(50) NULL,
+            participant_category VARCHAR(50) NULL,
+            meeting_role VARCHAR(150) NULL,
+            attendance_status VARCHAR(30) NOT NULL DEFAULT 'invited',
+            sort_order INT NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY meeting_id (meeting_id),
+            KEY user_id (user_id),
+            KEY attendee_kind (attendee_kind),
+            KEY attendance_status (attendance_status),
+            KEY meeting_id_user_id (meeting_id, user_id),
+            KEY meeting_id_sort_order (meeting_id, sort_order)
         ) {$charset};";
 
         dbDelta($sql);

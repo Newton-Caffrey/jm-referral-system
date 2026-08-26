@@ -24,7 +24,7 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 
 ### `ReferralRetentionService`
 - **Purpose:** Archive, restore, permanent delete, dependency blocking.
-- **Deps:** `ReferralRepository`, `ReferralDependencyRepository`, activity, AccessPolicy
+- **Deps:** `ReferralRepository`, `ReferralDependencyRepository`, activity, AccessPolicy; optional Phase 4B.1 meeting/attendee repos for permanent-delete cascade
 - **Used by:** List/view retention actions, portal archived display helpers
 
 ---
@@ -35,6 +35,25 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Purpose:** Staff upload, public intake upload, download preparation, legacy migration batches, storage counts.
 - **Deps:** Doc repo, referral repo, activity, AccessPolicy, `PrivateDocumentStorage`
 - **Used by:** Document controllers, public intake, Settings migration, portal view downloads
+
+---
+
+## Meetings & responsibilities (Phase 4B.1 — no UI yet)
+
+### `ReferralMeetingService`
+- **Purpose:** Create/update/reschedule/complete/cancel referral meetings (controlled values). Does not advance pipeline.
+- **Deps:** Referral + meeting repos, activity, AccessPolicy (`can_manage_referral_meetings`)
+- **Used by:** Internal only in 4B.1 (no controllers/routes)
+
+### `MeetingAttendeeService`
+- **Purpose:** Add/update/remove internal and external meeting attendees; rejects duplicates and invalid kinds.
+- **Deps:** Referral + meeting + attendee repos, activity, AccessPolicy, `UserProvider`
+- **Used by:** Internal only in 4B.1
+
+### `ReferralResponsibilityService`
+- **Purpose:** Assign/clear `champion_user_id` / `transition_lead_user_id`. Does not change `assigned_to` or visibility.
+- **Deps:** Referral repo, activity, AccessPolicy (`can_assign_referral_responsibilities`), `UserProvider`
+- **Used by:** Internal only in 4B.1
 
 ---
 

@@ -16,11 +16,11 @@ A: No. Leave it off until portal UAT passes (downloads, AJAX, exports).
 **Q: Can I delete all plugin data on uninstall?**
 A: Only if you set `JMRS_DELETE_DATA_ON_UNINSTALL` to `true` in `wp-config.php` on a disposable site after backups.
 
-**Q: Why is DB version `2.28.0` while the product is `1.4.0`?**
-A: Product semver and schema version are independent. Schema bumps only when tables/columns change. Product `1.4.0` keeps schema `2.28.0` (no migration for the Management Dashboard).
+**Q: Why is DB version `2.29.0` while the product is still `1.4.0`?**
+A: Product semver and schema version are independent. Schema bumps when tables/columns change. Phase 4B.1 adds meetings/attendees/responsibility columns at DB `2.29.0` without a product release yet. Product `1.4.0` previously shipped with schema `2.28.0` (Management Dashboard had no migration).
 
 **Q: Can I upgrade directly from v1.2.0 (DB `2.21.0`)?**
-A: Yes. One migrate pass applies additive steps through `2.28.0`. Legacy referrals are not remapped; no migration emails. From v1.3.1, only product/rewrite change for 1.4.0.
+A: Yes. One migrate pass applies additive steps through `2.29.0`. Legacy referrals are not remapped; no migration emails. Meetings/champions are not backfilled. From v1.3.1 → 1.4.0 product, only product/rewrite changed until 4B.1 schema.
 
 **Q: Is there a REST API or mobile app?**
 A: Not in the current release. See roadmap for later phases.

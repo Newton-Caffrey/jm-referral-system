@@ -11,7 +11,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.28.0';
+    public const DB_VERSION = '2.29.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -202,6 +202,12 @@ class Migrator
 
         if (version_compare($from_version, '2.28.0', '<')) {
             // care_commenced_at / care_commenced_by on jmrs_referrals via Tables::create() / dbDelta. No backfill.
+        }
+
+        if (version_compare($from_version, '2.29.0', '<')) {
+            // Phase 4B.1: jmrs_referral_meetings, jmrs_referral_meeting_attendees,
+            // champion_user_id / transition_lead_user_id on referrals via Tables::create() / dbDelta.
+            // No backfill — no meetings, attendees, champions, or transition leads fabricated.
         }
     }
 

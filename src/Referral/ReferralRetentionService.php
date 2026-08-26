@@ -14,7 +14,9 @@ class ReferralRetentionService
         private ReferralRepository $referral_repository,
         private ReferralDependencyRepository $dependency_repository,
         private ReferralActivityService $activity_service,
-        private AccessPolicy $access_policy
+        private AccessPolicy $access_policy,
+        private ?\JMReferral\Meeting\MeetingAttendeeRepository $meeting_attendee_repository = null,
+        private ?\JMReferral\Meeting\ReferralMeetingRepository $meeting_repository = null
     ) {
     }
 
@@ -293,6 +295,14 @@ class ReferralRetentionService
         try {
             // Safe empty-referral metadata: bootstrap activity only (no clinical children remain).
             $this->dependency_repository->delete_activity_for_referral($referral_id);
+
+            // Phase 4B.1: cascade meeting attendees then meetings (not clinical blockers).
+            if (null !== $this->meeting_attendee_repository) {
+                $this->meeting_attendee_repository->delete_by_referral_id($referral_id);
+            }
+            if (null !== $this->meeting_repository) {
+                $this->meeting_repository->delete_by_referral_id($referral_id);
+            }
 
             if (! $this->can_permanently_delete($referral_id)) {
                 $wpdb->query('ROLLBACK');
