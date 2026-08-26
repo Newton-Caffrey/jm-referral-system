@@ -1,6 +1,6 @@
 <?php
 /**
- * Management Dashboard (Phase 2A) — presentation board over live JMRS data.
+ * Management Dashboard — presentation board over live JMRS data (Phase 4A).
  *
  * @var array<string, mixed> $view
  */
@@ -41,6 +41,18 @@ $funnel_json = wp_json_encode( $funnel );
 if ( ! is_string( $funnel_json ) ) {
 	$funnel_json = '[]';
 }
+
+/**
+ * @param array<string, mixed> $row
+ */
+$jmrs_mgmt_client_cell = static function ( array $row ): void {
+	?>
+	<td>
+		<span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?></span>
+		<div class="jmrs-mgmt__role"><?php echo esc_html( (string) ( $row['client_initials'] ?? '—' ) ); ?></div>
+	</td>
+	<?php
+};
 ?>
 <div class="jmrs-mgmt" data-jmrs-mgmt>
 	<header class="jmrs-mgmt__masthead">
@@ -147,6 +159,10 @@ if ( ! is_string( $funnel_json ) ) {
 					</div>
 				</div>
 
+				<?php if ( ! empty( $stage['rows_note'] ) ) : ?>
+					<p class="jmrs-mgmt__trunc-note" role="status"><?php echo esc_html( (string) $stage['rows_note'] ); ?></p>
+				<?php endif; ?>
+
 				<?php if ( [] === $rows ) : ?>
 					<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No referrals in this view.', 'jm-referral-system' ); ?></div>
 				<?php else : ?>
@@ -155,18 +171,34 @@ if ( ! is_string( $funnel_json ) ) {
 							<thead>
 								<tr>
 									<th><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
-									<th><?php echo esc_html__( 'Canonical stage', 'jm-referral-system' ); ?></th>
-									<th><?php echo esc_html__( 'Owner', 'jm-referral-system' ); ?></th>
-									<th class="jmrs-mgmt__num"><?php echo esc_html__( 'Days in stage', 'jm-referral-system' ); ?></th>
-									<?php if ( 'appointment_set' === $key ) : ?>
-										<th><?php echo esc_html__( 'Scheduling status', 'jm-referral-system' ); ?></th>
-									<?php elseif ( 'assessment' === $key ) : ?>
-										<th><?php echo esc_html__( 'Assessment schedule', 'jm-referral-system' ); ?></th>
-										<th><?php echo esc_html__( 'Assessor', 'jm-referral-system' ); ?></th>
+									<th><?php echo esc_html__( 'Funding / referrer', 'jm-referral-system' ); ?></th>
+									<?php if ( 'now' === $mode ) : ?>
+										<th class="jmrs-mgmt__num"><?php echo esc_html__( 'Days in stage', 'jm-referral-system' ); ?></th>
+									<?php else : ?>
+										<th><?php echo esc_html__( 'First reached', 'jm-referral-system' ); ?></th>
 									<?php endif; ?>
-									<?php if ( in_array( $key, array( 'package_costing', 'authority_consideration', 'placement_transition' ), true ) ) : ?>
+									<?php if ( 'la_referrals' === $key ) : ?>
+										<th><?php echo esc_html__( 'Received', 'jm-referral-system' ); ?></th>
+										<th><?php echo esc_html__( 'Interest response', 'jm-referral-system' ); ?></th>
+									<?php elseif ( 'appointment_set' === $key ) : ?>
+										<th><?php echo esc_html__( 'Scheduling', 'jm-referral-system' ); ?></th>
+										<th><?php echo esc_html__( 'Assessor', 'jm-referral-system' ); ?></th>
+									<?php elseif ( 'assessment' === $key ) : ?>
+										<th><?php echo esc_html__( 'Assessment', 'jm-referral-system' ); ?></th>
+										<th><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></th>
+										<th><?php echo esc_html__( 'Assessor', 'jm-referral-system' ); ?></th>
+									<?php elseif ( 'package_costing' === $key ) : ?>
+										<th class="jmrs-mgmt__num"><?php echo esc_html__( 'Proposed Package Value', 'jm-referral-system' ); ?></th>
+										<th><?php echo esc_html__( 'Package Cost', 'jm-referral-system' ); ?></th>
+									<?php elseif ( 'authority_consideration' === $key ) : ?>
+										<th class="jmrs-mgmt__num"><?php echo esc_html__( 'Proposed Package Value', 'jm-referral-system' ); ?></th>
+										<th><?php echo esc_html__( 'Authority status', 'jm-referral-system' ); ?></th>
+										<th class="jmrs-mgmt__num"><?php echo esc_html__( 'Days awaiting', 'jm-referral-system' ); ?></th>
+									<?php elseif ( 'placement_transition' === $key ) : ?>
+										<th><?php echo esc_html__( 'Placement', 'jm-referral-system' ); ?></th>
 										<th class="jmrs-mgmt__num"><?php echo esc_html__( 'Proposed Package Value', 'jm-referral-system' ); ?></th>
 									<?php endif; ?>
+									<th><?php echo esc_html__( 'Owner', 'jm-referral-system' ); ?></th>
 									<th><?php echo esc_html__( 'Open', 'jm-referral-system' ); ?></th>
 								</tr>
 							</thead>
@@ -174,38 +206,146 @@ if ( ! is_string( $funnel_json ) ) {
 								<?php foreach ( $rows as $row ) : ?>
 									<?php if ( ! is_array( $row ) ) { continue; } ?>
 									<tr>
-										<td>
-											<span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?></span>
-											<div class="jmrs-mgmt__role"><?php echo esc_html( (string) ( $row['client_name'] ?? '' ) ); ?></div>
-										</td>
-										<td><?php echo esc_html( (string) ( $row['stage_label'] ?? '' ) ); ?></td>
-										<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['owner_name'] ?? '' ) ); ?></td>
-										<td class="jmrs-mgmt__num"><?php echo null !== ( $row['waiting_days'] ?? null ) ? esc_html( (string) (int) $row['waiting_days'] ) : '—'; ?></td>
-										<?php if ( 'appointment_set' === $key ) : ?>
+										<?php $jmrs_mgmt_client_cell( $row ); ?>
+										<td><?php echo esc_html( (string) ( $row['funding_label'] ?? '—' ) ); ?></td>
+										<?php if ( 'now' === $mode ) : ?>
+											<td class="jmrs-mgmt__num"><?php echo null !== ( $row['waiting_days'] ?? null ) ? esc_html( (string) (int) $row['waiting_days'] ) : '—'; ?></td>
+										<?php else : ?>
+											<td><?php echo esc_html( (string) ( $row['first_reached_label'] ?? '—' ) ); ?></td>
+										<?php endif; ?>
+
+										<?php if ( 'la_referrals' === $key ) : ?>
 											<td>
-												<span class="jmrs-mgmt__pill jmrs-mgmt__pill--warn"><?php echo esc_html__( 'Scheduling required', 'jm-referral-system' ); ?></span>
-												<div class="jmrs-mgmt__role"><?php echo esc_html__( 'Appointment to arrange — not booked', 'jm-referral-system' ); ?></div>
+												<?php echo esc_html( (string) ( $row['received_label'] ?? '—' ) ); ?>
+												<?php if ( null !== ( $row['days_since_received'] ?? null ) ) : ?>
+													<div class="jmrs-mgmt__role">
+														<?php
+														printf(
+															/* translators: %d: days since referral received */
+															esc_html__( '%d days since received', 'jm-referral-system' ),
+															(int) $row['days_since_received']
+														);
+														?>
+													</div>
+												<?php endif; ?>
 											</td>
-										<?php elseif ( 'assessment' === $key ) : ?>
 											<td>
-												<?php
-												$sched = (string) ( $row['scheduled_at'] ?? '' );
-												$loc   = (string) ( $row['location_name'] ?? '' );
-												if ( '' !== $sched ) {
-													echo esc_html( $sched );
-													if ( '' !== $loc ) {
-														echo '<div class="jmrs-mgmt__role">' . esc_html( $loc ) . '</div>';
-													}
-												} else {
-													echo '<span class="jmrs-mgmt__pill jmrs-mgmt__pill--warn">' . esc_html__( 'No schedule on record', 'jm-referral-system' ) . '</span>';
-												}
-												?>
+												<?php echo esc_html( (string) ( $row['interest_state'] ?? '—' ) ); ?>
+												<div class="jmrs-mgmt__role">
+													<?php echo esc_html( (string) ( $row['interest_response_date'] ?? '—' ) ); ?>
+													<?php if ( '—' !== (string) ( $row['interest_response_method'] ?? '—' ) ) : ?>
+														· <?php echo esc_html( (string) $row['interest_response_method'] ); ?>
+													<?php endif; ?>
+												</div>
+												<?php if ( '—' !== (string) ( $row['interest_response_recipient'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['interest_response_recipient'] ); ?></div>
+												<?php endif; ?>
+											</td>
+										<?php elseif ( 'appointment_set' === $key ) : ?>
+											<td>
+												<span class="jmrs-mgmt__pill jmrs-mgmt__pill--warn"><?php echo esc_html( (string) ( $row['scheduling_status'] ?? __( 'Scheduling required', 'jm-referral-system' ) ) ); ?></span>
+												<?php if ( '—' !== (string) ( $row['scheduled_date_label'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role">
+														<?php echo esc_html( (string) $row['scheduled_date_label'] ); ?>
+														<?php if ( '—' !== (string) ( $row['scheduled_time_label'] ?? '—' ) ) : ?>
+															· <?php echo esc_html( (string) $row['scheduled_time_label'] ); ?>
+														<?php endif; ?>
+													</div>
+												<?php endif; ?>
+												<?php if ( '' !== (string) ( $row['location_name'] ?? '' ) ) : ?>
+													<div class="jmrs-mgmt__role">
+														<?php echo esc_html( (string) ( $row['location_type_label'] ?? '' ) ); ?>
+														<?php if ( '' !== (string) ( $row['location_type_label'] ?? '' ) ) : ?> · <?php endif; ?>
+														<?php echo esc_html( (string) $row['location_name'] ); ?>
+													</div>
+												<?php endif; ?>
+												<?php if ( '' !== (string) ( $row['assessment_contact_name'] ?? '' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['assessment_contact_name'] ); ?></div>
+												<?php endif; ?>
 											</td>
 											<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['assessor_name'] ?? '—' ) ); ?></td>
-										<?php endif; ?>
-										<?php if ( in_array( $key, array( 'package_costing', 'authority_consideration', 'placement_transition' ), true ) ) : ?>
+										<?php elseif ( 'assessment' === $key ) : ?>
+											<td>
+												<?php echo esc_html( (string) ( $row['assessment_date_label'] ?? '—' ) ); ?>
+												<?php if ( '—' !== (string) ( $row['scheduled_date_label'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role">
+														<?php echo esc_html( (string) $row['scheduled_date_label'] ); ?>
+														<?php if ( '—' !== (string) ( $row['scheduled_time_label'] ?? '—' ) ) : ?>
+															· <?php echo esc_html( (string) $row['scheduled_time_label'] ); ?>
+														<?php endif; ?>
+													</div>
+												<?php endif; ?>
+												<?php if ( '' !== (string) ( $row['location_name'] ?? '' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['location_name'] ); ?></div>
+												<?php endif; ?>
+												<div class="jmrs-mgmt__role"><?php echo esc_html( (string) ( $row['assessment_status_label'] ?? '' ) ); ?></div>
+											</td>
+											<td><?php echo esc_html( (string) ( $row['outcome_label'] ?? '—' ) ); ?></td>
+											<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['assessor_name'] ?? '—' ) ); ?></td>
+										<?php elseif ( 'package_costing' === $key ) : ?>
+											<td class="jmrs-mgmt__num"><b><?php echo esc_html( (string) ( $row['proposed_value'] ?? '—' ) ); ?></b></td>
+											<td>
+												<?php echo esc_html( (string) ( $row['package_status_label'] ?? '—' ) ); ?>
+												<div class="jmrs-mgmt__role">
+													<?php echo esc_html__( 'Prepared', 'jm-referral-system' ); ?>:
+													<?php echo esc_html( (string) ( $row['prepared_at_label'] ?? '—' ) ); ?>
+													<?php if ( '—' !== (string) ( $row['prepared_by_name'] ?? '—' ) ) : ?>
+														· <?php echo esc_html( (string) $row['prepared_by_name'] ); ?>
+													<?php endif; ?>
+												</div>
+												<div class="jmrs-mgmt__role">
+													<?php echo esc_html__( 'Sent', 'jm-referral-system' ); ?>:
+													<?php echo esc_html( (string) ( $row['sent_at_label'] ?? '—' ) ); ?>
+													<?php if ( '—' !== (string) ( $row['send_method_label'] ?? '—' ) ) : ?>
+														· <?php echo esc_html( (string) $row['send_method_label'] ); ?>
+													<?php endif; ?>
+												</div>
+												<?php if ( '—' !== (string) ( $row['package_recipient'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['package_recipient'] ); ?></div>
+												<?php endif; ?>
+												<?php if ( '—' !== (string) ( $row['submission_reference'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['submission_reference'] ); ?></div>
+												<?php endif; ?>
+											</td>
+										<?php elseif ( 'authority_consideration' === $key ) : ?>
+											<td class="jmrs-mgmt__num"><b><?php echo esc_html( (string) ( $row['proposed_value'] ?? '—' ) ); ?></b></td>
+											<td>
+												<?php echo esc_html( (string) ( $row['authority_status_label'] ?? '—' ) ); ?>
+												<div class="jmrs-mgmt__role">
+													<?php echo esc_html__( 'Sent', 'jm-referral-system' ); ?>:
+													<?php echo esc_html( (string) ( $row['package_sent_label'] ?? '—' ) ); ?>
+												</div>
+												<?php if ( '—' !== (string) ( $row['package_recipient'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['package_recipient'] ); ?></div>
+												<?php endif; ?>
+												<?php if ( '—' !== (string) ( $row['send_method_label'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['send_method_label'] ); ?></div>
+												<?php endif; ?>
+												<?php if ( '—' !== (string) ( $row['submission_reference'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['submission_reference'] ); ?></div>
+												<?php endif; ?>
+											</td>
+											<td class="jmrs-mgmt__num"><?php echo null !== ( $row['days_awaiting_authority'] ?? null ) ? esc_html( (string) (int) $row['days_awaiting_authority'] ) : '—'; ?></td>
+										<?php elseif ( 'placement_transition' === $key ) : ?>
+											<td>
+												<?php echo esc_html( (string) ( $row['home_name'] ?? '—' ) ); ?>
+												<?php if ( '—' !== (string) ( $row['bedroom_label'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['bedroom_label'] ); ?></div>
+												<?php endif; ?>
+												<?php if ( '—' !== (string) ( $row['destination_setting'] ?? '—' ) ) : ?>
+													<div class="jmrs-mgmt__role"><?php echo esc_html( (string) $row['destination_setting'] ); ?></div>
+												<?php endif; ?>
+												<div class="jmrs-mgmt__role">
+													<?php echo esc_html( (string) ( $row['move_in_label'] ?? '—' ) ); ?>
+													<?php if ( '' !== (string) ( $row['move_in_note'] ?? '' ) ) : ?>
+														· <?php echo esc_html( (string) $row['move_in_note'] ); ?>
+													<?php endif; ?>
+												</div>
+											</td>
 											<td class="jmrs-mgmt__num"><b><?php echo esc_html( (string) ( $row['proposed_value'] ?? '—' ) ); ?></b></td>
 										<?php endif; ?>
+
+										<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['owner_name'] ?? '' ) ); ?></td>
 										<td>
 											<?php if ( '' !== (string) ( $row['view_url'] ?? '' ) ) : ?>
 												<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $row['view_url'] ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
@@ -229,11 +369,14 @@ if ( ! is_string( $funnel_json ) ) {
 					<?php
 					if ( is_array( $estate ) ) {
 						printf(
-							/* translators: 1: occupied 2: capacity 3: percent */
-							esc_html__( 'Estate occupancy %1$d of %2$d (%3$s%%). Derived from active bedrooms and occupancies.', 'jm-referral-system' ),
-							absint( $estate['occupied'] ?? 0 ),
+							/* translators: 1: occupied now 2: capacity 3: pct today 4: future move-ins 5: projected 6: projected pct */
+							esc_html__( 'Estate today: %1$d of %2$d occupied (%3$s%%). Confirmed future move-ins: %4$d. Projected: %5$d (%6$s%%).', 'jm-referral-system' ),
+							absint( $estate['occupied_now'] ?? $estate['occupied'] ?? 0 ),
 							absint( $estate['capacity'] ?? 0 ),
-							esc_html( (string) ( $estate['occupancy_pct'] ?? 0 ) )
+							esc_html( (string) ( $estate['occupancy_pct'] ?? 0 ) ),
+							absint( $estate['future_move_ins'] ?? 0 ),
+							absint( $estate['projected'] ?? 0 ),
+							esc_html( (string) ( $estate['projected_pct'] ?? 0 ) )
 						);
 					}
 					?>
@@ -254,7 +397,7 @@ if ( ! is_string( $funnel_json ) ) {
 						<div class="jmrs-mgmt__beds" aria-hidden="true">
 							<?php
 							$cap = absint( $home['capacity'] ?? 0 );
-							$occ = absint( $home['occupied'] ?? 0 );
+							$occ = absint( $home['occupied_now'] ?? $home['occupied'] ?? 0 );
 							for ( $i = 0; $i < $cap; $i++ ) {
 								$class = $i < $occ ? ' is-filled' : '';
 								echo '<span class="jmrs-mgmt__bed' . esc_attr( $class ) . '"></span>';
@@ -262,9 +405,12 @@ if ( ! is_string( $funnel_json ) ) {
 							?>
 						</div>
 						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Capacity', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) absint( $home['capacity'] ?? 0 ) ); ?></span></div>
-						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Occupied', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) absint( $home['occupied'] ?? 0 ) ); ?></span></div>
-						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Vacant', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) absint( $home['vacant'] ?? 0 ) ); ?></span></div>
-						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Occupancy', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) ( $home['occupancy_pct'] ?? 0 ) ); ?>%</span></div>
+						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Occupied now', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) absint( $home['occupied_now'] ?? $home['occupied'] ?? 0 ) ); ?></span></div>
+						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Vacancies today', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) absint( $home['vacancies_today'] ?? $home['vacant'] ?? 0 ) ); ?></span></div>
+						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Confirmed future move-ins', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) absint( $home['future_move_ins'] ?? 0 ) ); ?></span></div>
+						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Projected occupancy', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) absint( $home['projected'] ?? 0 ) ); ?></span></div>
+						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Occupancy today', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) ( $home['occupancy_pct'] ?? 0 ) ); ?>%</span></div>
+						<div class="jmrs-mgmt__home-row"><span><?php echo esc_html__( 'Projected %', 'jm-referral-system' ); ?></span><span><?php echo esc_html( (string) ( $home['projected_pct'] ?? 0 ) ); ?>%</span></div>
 					</div>
 				<?php endforeach; ?>
 			</div>
@@ -331,7 +477,7 @@ if ( ! is_string( $funnel_json ) ) {
 						<h4>
 							<?php echo esc_html( (string) ( $action['referral_number'] ?? '' ) ); ?>
 							—
-							<?php echo esc_html( (string) ( $action['client_name'] ?? '' ) ); ?>
+							<?php echo esc_html( (string) ( $action['client_initials'] ?? '—' ) ); ?>
 						</h4>
 						<span class="jmrs-mgmt__pill jmrs-mgmt__pill--<?php echo esc_attr( $pill ); ?>"><?php echo esc_html( ucfirst( $sev ) ); ?></span>
 					</div>

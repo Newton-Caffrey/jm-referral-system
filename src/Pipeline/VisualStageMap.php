@@ -22,7 +22,7 @@ class VisualStageMap
      *
      * Mapping rationale (Phase 2A):
      * - interest_required → awaiting interest / LA referral decision
-     * - assessment_to_schedule → appointment not yet booked (Appointment Set)
+     * - assessment_to_schedule → appointment not yet booked (Appointment to Arrange)
      * - assessment_scheduled + assessment_review_required → Assessment work
      * - package_cost_required → Package Costing
      * - awaiting_la_decision → Authority Consideration
@@ -51,9 +51,10 @@ class VisualStageMap
             self::APPOINTMENT_SET => [
                 'key'      => self::APPOINTMENT_SET,
                 'order'    => 2,
-                'name'     => __('Appointment set', 'jm-referral-system'),
+                // Phase 4A: honest label — canonical stage is assessment_to_schedule (not yet booked).
+                'name'     => __('Appointment to Arrange', 'jm-referral-system'),
                 'colour'   => '#0E7C86',
-                'question' => __('Canonical stage: Assessment to Schedule — appointment still needs arranging (not yet booked).', 'jm-referral-system'),
+                'question' => __('Assessment appointment still needs arranging (not yet booked).', 'jm-referral-system'),
                 'slugs'    => [PipelineStage::ASSESSMENT_TO_SCHEDULE],
             ],
             self::ASSESSMENT => [

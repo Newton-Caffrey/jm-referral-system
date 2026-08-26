@@ -996,6 +996,9 @@ class ReferralRepository
 
         $sql = "SELECT r.id, r.referral_number, r.client_name, r.priority, r.status, r.assigned_to,
                 r.care_setting, r.workflow_stage_id, r.workflow_stage_entered_at, r.next_action_due_at,
+                r.created_at, r.referrer_organisation, r.referrer_type,
+                r.interest_expressed_at, r.interest_expressed_by, r.interest_response_method,
+                r.interest_response_recipient, r.interest_email_status,
                 s.slug AS pipeline_stage_slug, s.name AS pipeline_stage_name, s.stage_order AS pipeline_stage_order
             FROM {$referrals} r
             INNER JOIN {$stages} s ON s.id = r.workflow_stage_id
@@ -1007,6 +1010,64 @@ class ReferralRepository
         $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
 
         return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Ownership counts for active referrals on the given pipeline slugs (uncapped).
+     *
+     * @param array<int, string> $slugs
+     * @return array<int, array{assigned_to: int, referrals_owned: int}>
+     */
+    public function count_ownership_by_pipeline_slugs(array $slugs, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $slugs = array_values(array_filter(array_map('strval', $slugs), static function (string $slug): bool {
+            return PipelineStage::is_canonical($slug);
+        }));
+
+        if ([] === $slugs) {
+            return [];
+        }
+
+        $referrals = Tables::referrals_table();
+        $stages    = Tables::workflow_stages_table();
+        $placeholders = implode(',', array_fill(0, count($slugs), '%s'));
+
+        $where = [
+            's.is_pipeline_stage = 1',
+            "s.slug IN ({$placeholders})",
+            'r.archived_at IS NULL',
+        ];
+        $params = $slugs;
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT COALESCE(r.assigned_to, 0) AS assigned_to, COUNT(*) AS referrals_owned
+            FROM {$referrals} r
+            INNER JOIN {$stages} s ON s.id = r.workflow_stage_id
+            WHERE " . implode(' AND ', $where) . '
+            GROUP BY COALESCE(r.assigned_to, 0)
+            ORDER BY referrals_owned DESC';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+        if (! is_array($results)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($results as $row) {
+            $out[] = [
+                'assigned_to'     => absint($row['assigned_to'] ?? 0),
+                'referrals_owned' => absint($row['referrals_owned'] ?? 0),
+            ];
+        }
+
+        return $out;
     }
 
     /**

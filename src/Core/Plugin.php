@@ -814,7 +814,9 @@ class Plugin
             $this->access_policy,
             $this->user_provider,
             $home_service,
-            $occupancy_service
+            $occupancy_service,
+            $occupancy_repository,
+            new \JMReferral\LaDecision\LaDecisionRepository()
         );
         $controller->set_management_board_service($management_board);
 

@@ -96,6 +96,55 @@ class LaDecisionRepository
     }
 
     /**
+     * Latest LA decision per referral (batch).
+     *
+     * @param array<int, int> $referral_ids
+     * @return array<int, array<string, mixed>>
+     */
+    public function current_decision_map_for_referrals(array $referral_ids): array
+    {
+        global $wpdb;
+
+        $referral_ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        if ([] === $referral_ids) {
+            return [];
+        }
+
+        $table = Tables::referral_la_decisions_table();
+        $placeholders = implode(',', array_fill(0, count($referral_ids), '%d'));
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT d.id, d.referral_id, d.package_cost_id, d.decision, d.decision_at, d.recorded_by,
+                    d.funding_confirmed, d.funding_reference, d.decision_reference, d.reason_code,
+                    d.notes, d.created_at, d.updated_at
+                FROM {$table} d
+                INNER JOIN (
+                    SELECT referral_id, MAX(id) AS max_id
+                    FROM {$table}
+                    WHERE referral_id IN ({$placeholders})
+                    GROUP BY referral_id
+                ) latest ON latest.max_id = d.id",
+                ...$referral_ids
+            ),
+            ARRAY_A
+        );
+
+        $map = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $rid = absint($row['referral_id'] ?? 0);
+                if ($rid > 0) {
+                    $map[$rid] = $row;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function find(int $id): ?array

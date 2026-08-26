@@ -57,6 +57,8 @@ Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_e
 | `/{base}/homes/{id}/bedrooms/new/` | `bedroom_new` |
 | `/{base}/homes/{id}/bedrooms/{id}/edit/` | `bedroom_edit` |
 
+Management Dashboard board (`ManagementPipelineBoardService`, Phase 4A): read-only; row DTOs use `client_initials` (not full `client_name`); Here Now uses `waiting_days` from current stage entry; All Who Reached uses `first_reached_label` from stage history; KPIs/ownership/PPV/occupancy splits are uncapped aggregates; table rows may be capped with `rows_note`. See `docs/uat/UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md`.
+
 ```mermaid
 flowchart TD
   TR[template_redirect] --> QV{jmrs_portal=1?}

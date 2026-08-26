@@ -196,7 +196,9 @@ class PackageCostRepository
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT pc.referral_id, pc.package_total, pc.status, pc.currency
+                "SELECT pc.referral_id, pc.package_total, pc.status, pc.currency,
+                    pc.prepared_at, pc.prepared_by, pc.sent_at, pc.sent_by,
+                    pc.send_method, pc.recipient, pc.submission_reference
                 FROM {$table} pc
                 INNER JOIN (
                     SELECT referral_id, MAX(id) AS max_id
@@ -218,14 +220,73 @@ class PackageCostRepository
                         'package_total' => null !== ($row['package_total'] ?? null) && '' !== (string) $row['package_total']
                             ? (string) $row['package_total']
                             : null,
-                        'status'   => (string) ($row['status'] ?? ''),
-                        'currency' => (string) ($row['currency'] ?? PackageCost::CURRENCY_GBP),
+                        'status'               => (string) ($row['status'] ?? ''),
+                        'currency'             => (string) ($row['currency'] ?? PackageCost::CURRENCY_GBP),
+                        'prepared_at'          => (string) ($row['prepared_at'] ?? ''),
+                        'prepared_by'          => absint($row['prepared_by'] ?? 0),
+                        'sent_at'              => (string) ($row['sent_at'] ?? ''),
+                        'sent_by'              => absint($row['sent_by'] ?? 0),
+                        'send_method'          => (string) ($row['send_method'] ?? ''),
+                        'recipient'            => (string) ($row['recipient'] ?? ''),
+                        'submission_reference' => (string) ($row['submission_reference'] ?? ''),
                     ];
                 }
             }
         }
 
         return $map;
+    }
+
+    /**
+     * Sum of latest package_total for non-archived referrals currently on the given pipeline slugs.
+     *
+     * @param array<int, string> $slugs
+     */
+    public function sum_current_package_total_for_pipeline_slugs(array $slugs, ?int $access_assigned_to = null): float
+    {
+        global $wpdb;
+
+        $slugs = array_values(array_filter(array_map('strval', $slugs), static function (string $slug): bool {
+            return \JMReferral\Pipeline\PipelineStage::is_canonical($slug);
+        }));
+
+        if ([] === $slugs) {
+            return 0.0;
+        }
+
+        $pc       = Tables::referral_package_costs_table();
+        $referrals = Tables::referrals_table();
+        $stages   = Tables::workflow_stages_table();
+        $placeholders = implode(',', array_fill(0, count($slugs), '%s'));
+
+        $where = [
+            's.is_pipeline_stage = 1',
+            "s.slug IN ({$placeholders})",
+            'r.archived_at IS NULL',
+            'pc.package_total IS NOT NULL',
+        ];
+        $params = $slugs;
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT COALESCE(SUM(pc.package_total), 0) AS total
+            FROM {$pc} pc
+            INNER JOIN (
+                SELECT referral_id, MAX(id) AS max_id
+                FROM {$pc}
+                GROUP BY referral_id
+            ) latest ON latest.max_id = pc.id
+            INNER JOIN {$referrals} r ON r.id = pc.referral_id
+            INNER JOIN {$stages} s ON s.id = r.workflow_stage_id
+            WHERE " . implode(' AND ', $where);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $total = $wpdb->get_var($wpdb->prepare($sql, ...$params));
+
+        return (float) $total;
     }
 
     /**

@@ -247,4 +247,151 @@ class ReferralStageHistoryRepository
 
         return array_values(array_filter(array_map('absint', $rows)));
     }
+
+    /**
+     * Distinct referral count that reached any of the given stage slugs (uncapped).
+     *
+     * @param array<int, string> $to_stage_slugs
+     */
+    public function count_distinct_reached_any_slug(array $to_stage_slugs, ?int $access_assigned_to = null): int
+    {
+        global $wpdb;
+
+        $to_stage_slugs = array_values(array_filter(array_map('strval', $to_stage_slugs), static function (string $slug): bool {
+            return PipelineStage::is_canonical($slug);
+        }));
+
+        if ([] === $to_stage_slugs) {
+            return 0;
+        }
+
+        $history   = Tables::referral_stage_history_table();
+        $referrals = Tables::referrals_table();
+        $placeholders = implode(',', array_fill(0, count($to_stage_slugs), '%s'));
+
+        $sql = "SELECT COUNT(DISTINCT h.referral_id)
+            FROM {$history} h
+            INNER JOIN {$referrals} r ON r.id = h.referral_id
+            WHERE h.to_stage_slug IN ({$placeholders})
+              AND r.archived_at IS NULL";
+
+        $params = $to_stage_slugs;
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $sql     .= ' AND r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
+
+    /**
+     * Uncapped distinct count: ever reached any of the slugs (history) OR currently present in them (legacy).
+     * Does not invent earlier milestones — only unions real history IDs with current presence.
+     *
+     * @param array<int, string> $to_stage_slugs
+     */
+    public function count_distinct_reached_or_currently_in(
+        array $to_stage_slugs,
+        ?int $access_assigned_to = null
+    ): int {
+        global $wpdb;
+
+        $to_stage_slugs = array_values(array_filter(array_map('strval', $to_stage_slugs), static function (string $slug): bool {
+            return PipelineStage::is_canonical($slug);
+        }));
+
+        if ([] === $to_stage_slugs) {
+            return 0;
+        }
+
+        $history   = Tables::referral_stage_history_table();
+        $referrals = Tables::referrals_table();
+        $stages    = Tables::workflow_stages_table();
+        $placeholders = implode(',', array_fill(0, count($to_stage_slugs), '%s'));
+
+        $access_sql = '';
+        $params     = $to_stage_slugs;
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $access_sql = ' AND r.assigned_to = %d';
+            $params[]   = $access_assigned_to;
+        }
+
+        $params = array_merge($params, $to_stage_slugs);
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT COUNT(*) FROM (
+            SELECT h.referral_id AS id
+            FROM {$history} h
+            INNER JOIN {$referrals} r ON r.id = h.referral_id
+            WHERE h.to_stage_slug IN ({$placeholders})
+              AND r.archived_at IS NULL{$access_sql}
+            UNION
+            SELECT r.id
+            FROM {$referrals} r
+            INNER JOIN {$stages} s ON s.id = r.workflow_stage_id
+            WHERE s.is_pipeline_stage = 1
+              AND s.slug IN ({$placeholders})
+              AND r.archived_at IS NULL{$access_sql}
+        ) u";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
+
+    /**
+     * Earliest history created_at when each referral entered any of the given to_stage_slugs.
+     *
+     * @param array<int, int> $referral_ids
+     * @param array<int, string> $to_stage_slugs
+     * @return array<int, string> referral_id => mysql datetime
+     */
+    public function first_reached_at_map(array $referral_ids, array $to_stage_slugs): array
+    {
+        global $wpdb;
+
+        $referral_ids = array_values(array_unique(array_filter(array_map('absint', $referral_ids))));
+        $to_stage_slugs = array_values(array_filter(array_map('strval', $to_stage_slugs), static function (string $slug): bool {
+            return PipelineStage::is_canonical($slug);
+        }));
+
+        if ([] === $referral_ids || [] === $to_stage_slugs) {
+            return [];
+        }
+
+        $history = Tables::referral_stage_history_table();
+        $id_ph   = implode(',', array_fill(0, count($referral_ids), '%d'));
+        $slug_ph = implode(',', array_fill(0, count($to_stage_slugs), '%s'));
+        $params  = array_merge($referral_ids, $to_stage_slugs);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT h.referral_id, MIN(h.created_at) AS first_reached_at
+                FROM {$history} h
+                WHERE h.referral_id IN ({$id_ph})
+                  AND h.to_stage_slug IN ({$slug_ph})
+                GROUP BY h.referral_id",
+                ...$params
+            ),
+            ARRAY_A
+        );
+
+        $map = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $rid = absint($row['referral_id'] ?? 0);
+                $at  = (string) ($row['first_reached_at'] ?? '');
+                if ($rid > 0 && '' !== $at) {
+                    $map[$rid] = $at;
+                }
+            }
+        }
+
+        return $map;
+    }
 }
