@@ -146,7 +146,9 @@ Correction while still on review: `assessment_review_required` → (suitable / s
 
 **Schema:** DB `2.29.0` — `jmrs_referral_meetings`, `jmrs_referral_meeting_attendees`, plus `champion_user_id` / `transition_lead_user_id` on referrals.
 
-**Services:** `ReferralMeetingService`, `MeetingAttendeeService`, `ReferralResponsibilityService` (no portal UI / routes / WP Admin meeting screens in 4B.1).
+**Services:** `ReferralMeetingService`, `MeetingAttendeeService`, `ReferralResponsibilityService`, `ReferralMeetingReadService`.
+
+**Portal UI (4B.2.1 read-only):** Nested routes `/referrals/{id}/meetings/` and `/referrals/{id}/meetings/{meeting_id}/` (`PortalRouter` rewrite **1.2.3**). Referral workspace summary + **Meetings** quick action. View via `can_view_referral_meetings`; contacts/URL via `can_view_referral_meeting_contacts` (managers retain contact read on archived referrals; mutation still via `can_manage_referral_meetings`). No create/edit POST in 4B.2.1.
 
 **Critical:** Meetings are **independent** of formal assessment appointments and **must not** create, advance, or reverse canonical pipeline stages. `assessment_to_schedule` / Visual Stage 2 (“Appointment to Arrange”) are unchanged. Creating, completing, or cancelling a meeting does not write stage history.
 
@@ -154,7 +156,7 @@ Correction while still on review: `assessment_review_required` → (suitable / s
 
 **Activity (meetings):** `meeting_created`, `meeting_updated`, `meeting_rescheduled`, `meeting_completed`, `meeting_cancelled`, `meeting_attendee_*`, `champion_*`, `transition_lead_*` — data-minimised (no external email/phone/URL in descriptions).
 
-**Permissions:** `AccessPolicy::can_manage_referral_meetings` / `can_assign_referral_responsibilities` (same allow/deny as Express Interest). Assessor and Support Worker denied. No emails from these services.
+**Permissions:** `AccessPolicy::can_manage_referral_meetings` / `can_assign_referral_responsibilities` (same allow/deny as Express Interest for mutations). Contact read: `can_view_referral_meeting_contacts`. Assessor and Support Worker denied management; Assessor denied contacts; Support Worker denied meeting view. No emails from these services.
 
 **Migration:** No meeting/attendee/champion/transition-lead backfill. Empty tables and NULL columns after upgrade until staff assign them.
 

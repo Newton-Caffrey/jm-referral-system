@@ -385,6 +385,7 @@ class Plugin
             $this->user_provider
         );
 
+        // Phase 4B.1 foundation services — constructed for DI readiness; no write controllers yet.
         $meeting_repository          = new \JMReferral\Meeting\ReferralMeetingRepository();
         $meeting_attendee_repository = new \JMReferral\Meeting\MeetingAttendeeRepository();
 
@@ -397,7 +398,6 @@ class Plugin
             $meeting_repository
         );
 
-        // Phase 4B.1 foundation services — constructed for DI readiness; no controllers/routes yet.
         new \JMReferral\Meeting\ReferralMeetingService(
             $repository,
             $meeting_repository,
@@ -415,6 +415,13 @@ class Plugin
         new \JMReferral\Meeting\ReferralResponsibilityService(
             $repository,
             $activity_service,
+            $this->access_policy,
+            $this->user_provider
+        );
+
+        $meeting_read_service = new \JMReferral\Meeting\ReferralMeetingReadService(
+            $meeting_repository,
+            $meeting_attendee_repository,
             $this->access_policy,
             $this->user_provider
         );
@@ -623,7 +630,8 @@ class Plugin
             $non_proceeding_service,
             $transition_planning_service,
             $care_commencement_service,
-            $pipeline_attention_service
+            $pipeline_attention_service,
+            $meeting_read_service
         );
 
         $create_controller->register();
@@ -670,7 +678,8 @@ class Plugin
         \JMReferral\Pipeline\ReferralNonProceedingService $non_proceeding_service,
         \JMReferral\Transition\TransitionPlanningService $transition_planning_service,
         \JMReferral\Transition\CareCommencementService $care_commencement_service,
-        \JMReferral\Pipeline\PipelineAttentionService $pipeline_attention_service
+        \JMReferral\Pipeline\PipelineAttentionService $pipeline_attention_service,
+        \JMReferral\Meeting\ReferralMeetingReadService $meeting_read_service
     ): void {
         $operational_alert_service = new OperationalAlertService(
             $repository,
@@ -788,6 +797,16 @@ class Plugin
         );
 
         $controller->set_clinical_dispatcher($clinical_dispatcher);
+
+        $meetings_handler = new \JMReferral\Portal\Meetings\MeetingsHandler(
+            $controller,
+            $clinical_access,
+            $this->access_policy,
+            $meeting_read_service,
+            $retention_service
+        );
+        $controller->set_meetings_handler($meetings_handler);
+        $controller->set_meeting_read_service($meeting_read_service);
 
         $home_repository      = new HomeRepository();
         $bedroom_repository   = new BedroomRepository();

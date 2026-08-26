@@ -130,8 +130,10 @@ Class: `JMReferral\Permissions\AccessPolicy`.
 | `can_record_la_decision` | Same commercial gate as `can_express_interest`. Covers recording Approved / Declined / Not Proceeding. Does **not** require `override_pipeline_stage`. |
 | `can_mark_not_proceeding` | Same commercial gate. Generic Mark as Not Proceeding on allowed active stages (not `awaiting_la_decision`). Does **not** require `override_pipeline_stage`. |
 | `can_commence_care` | Same commercial gate. Confirm Care Commenced on `transition_planning` when hard prerequisites are met. Does **not** require `override_pipeline_stage` or `jmrs_manage_occupancies`. |
-| `can_manage_referral_meetings` | Meeting-management capability (Phase 4B.1). Same allow/deny roles as Express Interest. Assessor / Support Worker denied. **No UI yet.** Does not advance pipeline or grant visibility. |
-| `can_assign_referral_responsibilities` | Responsibility-assignment capability. Assign/clear `champion_user_id` / `transition_lead_user_id`. Does **not** change `assigned_to` or AccessPolicy scoping. **No UI yet.** |
+| `can_view_referral_meetings` | View meeting list/detail/summary when `can_view_referral`. **Denies Support Worker** even on assigned referrals. Assessor allowed view-only. Does not grant manage or contact PII. |
+| `can_view_referral_meeting_contacts` | Read external email, telephone, and online meeting URL when meetings are visible **and** user has meeting-management roles (JM Admin, Referral Manager, Care Coordinator, WP admin). **Does not require mutate** — authorised managers retain contact read on archived referrals. Denied: Assessor, Support Worker. Champion / transition lead / attendee status do not grant. Does not grant mutation. |
+| `can_manage_referral_meetings` | Meeting **mutation** capability (Phase 4B.1). Same allow/deny roles as Express Interest (includes archived-mutate gate). Assessor / Support Worker denied. **Not** used for contact/URL visibility (see `can_view_referral_meeting_contacts`). **No write UI until 4B.2.2.** Does not advance pipeline or bypass referral visibility. |
+| `can_assign_referral_responsibilities` | Responsibility-assignment capability. Assign/clear `champion_user_id` / `transition_lead_user_id`. Does **not** change `assigned_to` or AccessPolicy scoping. **No UI yet (4B.3).** |
 
 ### Pipeline Dashboard (Phase 3H)
 

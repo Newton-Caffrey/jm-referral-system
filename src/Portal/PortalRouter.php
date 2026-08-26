@@ -7,7 +7,7 @@ namespace JMReferral\Portal;
  */
 class PortalRouter
 {
-    public const REWRITE_VERSION = '1.2.2';
+    public const REWRITE_VERSION = '1.2.3';
 
     public const QV_PORTAL = 'jmrs_portal';
     public const QV_ROUTE = 'jmrs_portal_route';
@@ -50,6 +50,8 @@ class PortalRouter
             ['/referrals/([0-9]+)/medications/([0-9]+)/edit/?$', 'medication_edit', '$matches[1]', '$matches[2]'],
             ['/referrals/([0-9]+)/care-team/new/?$', 'care_team_new', '$matches[1]', null],
             ['/referrals/([0-9]+)/care-team/([0-9]+)/edit/?$', 'care_team_edit', '$matches[1]', '$matches[2]'],
+            ['/referrals/([0-9]+)/meetings/?$', 'referral_meetings', '$matches[1]', null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/?$', 'referral_meeting', '$matches[1]', '$matches[2]'],
             ['/referrals/([0-9]+)/schedules/new/?$', 'schedule_new', '$matches[1]', null],
             ['/referrals/([0-9]+)/schedules/([0-9]+)/edit/?$', 'schedule_edit', '$matches[1]', '$matches[2]'],
             ['/referrals/([0-9]+)/schedules/([0-9]+)/generate/?$', 'schedule_generate', '$matches[1]', '$matches[2]'],

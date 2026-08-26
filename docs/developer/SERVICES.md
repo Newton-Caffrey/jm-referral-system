@@ -38,22 +38,28 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 
 ---
 
-## Meetings & responsibilities (Phase 4B.1 — no UI yet)
+## Meetings & responsibilities (Phase 4B.1 / 4B.2.1)
 
 ### `ReferralMeetingService`
 - **Purpose:** Create/update/reschedule/complete/cancel referral meetings (controlled values). Does not advance pipeline.
 - **Deps:** Referral + meeting repos, activity, AccessPolicy (`can_manage_referral_meetings`)
-- **Used by:** Internal only in 4B.1 (no controllers/routes)
+- **Used by:** Write UI from Phase 4B.2.2 (not yet)
 
 ### `MeetingAttendeeService`
 - **Purpose:** Add/update/remove internal and external meeting attendees; rejects duplicates and invalid kinds.
 - **Deps:** Referral + meeting + attendee repos, activity, AccessPolicy, `UserProvider`
-- **Used by:** Internal only in 4B.1
+- **Used by:** Write UI from Phase 4B.2.3/4 (not yet)
+
+### `ReferralMeetingReadService`
+- **Purpose:** Read-only summary, paginated list, detail presentation; strips contact PII / online URL unless `can_view_referral_meeting_contacts`.
+- **Deps:** Meeting + attendee repos, AccessPolicy (`can_view_referral_meetings` / `can_view_referral_meeting_contacts` / `can_manage_referral_meetings`), `UserProvider`
+- **Query strategy:** Grouped status counts; paginated list with total; attendee counts grouped by meeting IDs; detail attendees once; batched internal display names; prepared SQL. List/summary do not present external contact PII or online URLs.
+- **Used by:** Portal `MeetingsHandler`, referral workspace summary (Phase 4B.2.1). Write UI starts in Phase 4B.2.2 (not yet).
 
 ### `ReferralResponsibilityService`
 - **Purpose:** Assign/clear `champion_user_id` / `transition_lead_user_id`. Does not change `assigned_to` or visibility.
 - **Deps:** Referral repo, activity, AccessPolicy (`can_assign_referral_responsibilities`), `UserProvider`
-- **Used by:** Internal only in 4B.1
+- **Used by:** Phase 4B.3 (no UI yet)
 
 ---
 

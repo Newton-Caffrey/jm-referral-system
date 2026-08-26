@@ -3,7 +3,7 @@
 Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clinical`, `JMReferral\Portal\Homes`).
 
 **Default base path:** `staff-portal`
-**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.2`)
+**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.3`)
 **Disabled by default** (`PortalSettings`).
 
 ---
@@ -20,6 +20,7 @@ Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clin
 | `ClinicalDispatcher` | Routes clinical portal actions to focused handlers |
 | `ClinicalAccess` | Shared referral gates + breadcrumbs for clinical handlers |
 | Handlers | `CarePlanReviewHandler`, `MedicationHandler`, `CareTeamHandler`, `ScheduleHandler`, `VisitHandler` |
+| `MeetingsHandler` | Read-only referral meetings list/detail (Phase 4B.2.1). GET-only; no POST. Support Worker denied; Assessor safe-field view; contacts via `can_view_referral_meeting_contacts`. |
 | `HomesHandler` | Supported living homes & bedrooms via shared `HomeService` / `BedroomService` |
 | `PortalAccess` / `PortalNavigation` / `PortalAssets` | Eligibility, nav, CSS/JS |
 
@@ -32,7 +33,7 @@ Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_e
 | URL | Route key |
 | --- | --- |
 | `/{base}/` | `dashboard` |
-| `/{base}/management/` | `management` (Management Dashboard; rewrite `1.2.2`) |
+| `/{base}/management/` | `management` (Management Dashboard; rewrite `1.2.3`) |
 | `/{base}/referrals/` | `referrals` |
 | `/{base}/referrals/{id}/` | `referral` |
 | `/{base}/referrals/{id}/edit/` | `referral_edit` |
@@ -43,6 +44,8 @@ Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_e
 | `/{base}/referrals/{id}/medications/{id}/edit/` | `medication_edit` |
 | `/{base}/referrals/{id}/care-team/new/` | `care_team_new` |
 | `/{base}/referrals/{id}/care-team/{id}/edit/` | `care_team_edit` |
+| `/{base}/referrals/{id}/meetings/` | `referral_meetings` (4B.2.1 read-only) |
+| `/{base}/referrals/{id}/meetings/{meeting_id}/` | `referral_meeting` (4B.2.1 read-only) |
 | `/{base}/referrals/{id}/schedules/new/` | `schedule_new` |
 | `/{base}/referrals/{id}/schedules/{id}/edit/` | `schedule_edit` |
 | `/{base}/referrals/{id}/schedules/{id}/generate/` | `schedule_generate` |

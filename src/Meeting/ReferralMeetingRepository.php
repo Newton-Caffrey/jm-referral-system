@@ -156,6 +156,122 @@ class ReferralMeetingRepository
     }
 
     /**
+     * Counts meetings for a referral grouped by status.
+     *
+     * @return array{total: int, draft: int, scheduled: int, completed: int, cancelled: int}
+     */
+    public function count_by_status_for_referral(int $referral_id): array
+    {
+        global $wpdb;
+
+        $counts = [
+            'total'     => 0,
+            'draft'     => 0,
+            'scheduled' => 0,
+            'completed' => 0,
+            'cancelled' => 0,
+        ];
+
+        if ($referral_id <= 0) {
+            return $counts;
+        }
+
+        $table = Tables::referral_meetings_table();
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name trusted.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT status, COUNT(*) AS cnt FROM {$table}
+                WHERE referral_id = %d
+                GROUP BY status",
+                $referral_id
+            ),
+            ARRAY_A
+        );
+
+        if (! is_array($rows)) {
+            return $counts;
+        }
+
+        foreach ($rows as $row) {
+            $status = (string) ($row['status'] ?? '');
+            $cnt    = absint($row['cnt'] ?? 0);
+            $counts['total'] += $cnt;
+            if (isset($counts[$status])) {
+                $counts[$status] = $cnt;
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
+     * UI list ordering: upcoming scheduled → past scheduled → drafts → completed → cancelled.
+     *
+     * @return array{rows: array<int, array<string, mixed>>, total: int}
+     */
+    public function list_for_ui(int $referral_id, int $limit = 20, int $offset = 0): array
+    {
+        global $wpdb;
+
+        if ($referral_id <= 0) {
+            return ['rows' => [], 'total' => 0];
+        }
+
+        $limit  = max(1, min(100, $limit));
+        $offset = max(0, $offset);
+        $table  = Tables::referral_meetings_table();
+        $now    = current_time('mysql');
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name trusted.
+        $total = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE referral_id = %d",
+                $referral_id
+            )
+        );
+
+        $order = '
+            CASE
+                WHEN status = \'' . ReferralMeeting::STATUS_SCHEDULED . '\' AND scheduled_at IS NOT NULL AND scheduled_at >= %s THEN 0
+                WHEN status = \'' . ReferralMeeting::STATUS_SCHEDULED . '\' THEN 1
+                WHEN status = \'' . ReferralMeeting::STATUS_DRAFT . '\' THEN 2
+                WHEN status = \'' . ReferralMeeting::STATUS_COMPLETED . '\' THEN 3
+                WHEN status = \'' . ReferralMeeting::STATUS_CANCELLED . '\' THEN 4
+                ELSE 5
+            END ASC,
+            CASE
+                WHEN status = \'' . ReferralMeeting::STATUS_SCHEDULED . '\' AND scheduled_at IS NOT NULL AND scheduled_at >= %s THEN scheduled_at
+            END ASC,
+            CASE
+                WHEN status = \'' . ReferralMeeting::STATUS_SCHEDULED . '\' AND (scheduled_at IS NULL OR scheduled_at < %s) THEN scheduled_at
+            END DESC,
+            updated_at DESC,
+            id DESC';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT ' . self::SELECT_COLUMNS . " FROM {$table}
+                WHERE referral_id = %d
+                ORDER BY {$order}
+                LIMIT %d OFFSET %d",
+                $referral_id,
+                $now,
+                $now,
+                $now,
+                $limit,
+                $offset
+            ),
+            ARRAY_A
+        );
+
+        return [
+            'rows'  => is_array($rows) ? $rows : [],
+            'total' => $total,
+        ];
+    }
+
+    /**
      * Next upcoming non-cancelled meeting with scheduled_at >= now (site time).
      *
      * @return array<string, mixed>|null

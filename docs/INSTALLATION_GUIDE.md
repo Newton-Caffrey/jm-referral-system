@@ -4,7 +4,7 @@ Professional installation and go-live guide for WordPress hosts.
 
 **Product version:** 1.4.0
 **Database schema:** 2.29.0
-**Portal rewrite:** 1.2.2
+**Portal rewrite:** 1.2.3
 
 ---
 

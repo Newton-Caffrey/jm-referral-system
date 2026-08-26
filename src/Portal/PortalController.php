@@ -66,6 +66,13 @@ class PortalController implements PortalViewHost
     private ?ClinicalDispatcher $clinical_dispatcher = null;
 
     /**
+     * Set after construction via set_meetings_handler().
+     */
+    private ?\JMReferral\Portal\Meetings\MeetingsHandler $meetings_handler = null;
+
+    private ?\JMReferral\Meeting\ReferralMeetingReadService $meeting_read_service = null;
+
+    /**
      * Set after construction via set_homes_handler() (HomesHandler needs PortalViewHost).
      */
     private ?HomesHandler $homes_handler = null;
@@ -126,6 +133,16 @@ class PortalController implements PortalViewHost
     public function set_clinical_dispatcher(ClinicalDispatcher $clinical_dispatcher): void
     {
         $this->clinical_dispatcher = $clinical_dispatcher;
+    }
+
+    public function set_meetings_handler(\JMReferral\Portal\Meetings\MeetingsHandler $meetings_handler): void
+    {
+        $this->meetings_handler = $meetings_handler;
+    }
+
+    public function set_meeting_read_service(\JMReferral\Meeting\ReferralMeetingReadService $meeting_read_service): void
+    {
+        $this->meeting_read_service = $meeting_read_service;
     }
 
     /**
@@ -226,6 +243,12 @@ class PortalController implements PortalViewHost
             }
 
             $this->clinical_dispatcher->dispatch($route);
+
+            return;
+        }
+
+        if (null !== $this->meetings_handler && $this->meetings_handler->handles($route)) {
+            $this->meetings_handler->dispatch($route);
 
             return;
         }
@@ -830,6 +853,25 @@ class PortalController implements PortalViewHost
             }
         }
 
+        $meetings_summary  = [
+            'can_view'     => false,
+            'can_manage'   => false,
+            'counts'       => [
+                'total'     => 0,
+                'draft'     => 0,
+                'scheduled' => 0,
+                'completed' => 0,
+                'cancelled' => 0,
+            ],
+            'next_meeting' => null,
+            'list_url'     => '',
+        ];
+        $can_view_meetings = false;
+        if (null !== $this->meeting_read_service) {
+            $meetings_summary  = $this->meeting_read_service->get_referral_summary($referral);
+            $can_view_meetings = ! empty($meetings_summary['can_view']);
+        }
+
         $can_view_visits = Capabilities::current_user_can(Capabilities::VIEW_VISITS);
         $can_manage_visits = $this->visit_service->can_manage_visits_for_referral($referral);
         $care_visits     = [];
@@ -1143,6 +1185,11 @@ class PortalController implements PortalViewHost
             'care_team_members'          => $care_team_members,
             'care_team_roles'            => $care_team_roles,
             'care_team_statuses'         => $care_team_statuses,
+            'meetings_summary'           => $meetings_summary,
+            'can_view_meetings'          => $can_view_meetings,
+            'meetings_list_url'          => $can_view_meetings
+                ? PortalUrls::referral_meetings($referral_id)
+                : '',
             'can_view_visits'            => $can_view_visits,
             'can_manage_visits'          => $can_manage_visits,
             'visit_new_url'              => ($can_manage_visits && ! $is_archived)
@@ -2485,6 +2532,7 @@ class PortalController implements PortalViewHost
                 null === ($view['care_plan'] ?? null) ? __('Create Care Plan', 'jm-referral-system') : __('Edit Care Plan', 'jm-referral-system'),
                 'jmrs-button jmrs-button--secondary',
             ],
+            ['can_view_meetings', 'meetings_list_url', __('Meetings', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
             ['can_manage_visits', 'visit_new_url', __('Schedule Visit', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
             ['can_manage_medications', 'medication_new_url', __('Add Medication', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],
             ['can_manage_care_team', 'care_team_new_url', __('Add Team Member', 'jm-referral-system'), 'jmrs-button jmrs-button--secondary'],

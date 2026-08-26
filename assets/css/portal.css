@@ -1590,3 +1590,67 @@ body.admin-bar.jmrs-portal-body {
 .jmrs-service-location--compact {
 	padding-top: 0.5rem;
 }
+
+/* --- Meetings (Phase 4B.2.1 read-only) --- */
+.jmrs-meetings-counts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1.25rem;
+	margin: 0.5rem 0 0.75rem;
+}
+
+.jmrs-meetings-next {
+	margin: 0.5rem 0 0;
+	line-height: 1.5;
+}
+
+.jmrs-meeting-status {
+	font-weight: 600;
+}
+
+.jmrs-meeting-detail__dl {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	gap: 0.75rem 1.25rem;
+	margin: 0;
+}
+
+.jmrs-meeting-detail__dl > div {
+	margin: 0;
+}
+
+.jmrs-meeting-detail__dl dt {
+	font-weight: 600;
+	margin: 0 0 0.15rem;
+}
+
+.jmrs-meeting-detail__dl dd {
+	margin: 0;
+	word-break: break-word;
+}
+
+.jmrs-meetings-pagination {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem;
+	margin-top: 1rem;
+}
+
+.jmrs-meetings-table-wrap {
+	overflow-x: auto;
+}
+
+@media print {
+	.jmrs-portal-sidebar,
+	.jmrs-portal-nav-toggle,
+	.jmrs-portal-quick-actions,
+	.jmrs-meeting-detail-actions {
+		display: none !important;
+	}
+
+	.jmrs-meeting-detail,
+	.jmrs-portal-panel {
+		break-inside: avoid;
+	}
+}

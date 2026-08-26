@@ -859,6 +859,58 @@ $care_plan_short_fields = array( 'visit_frequency', 'visit_duration' );
 	</section>
 <?php endif; ?>
 
+<?php
+$can_view_meetings  = ! empty( $can_view_meetings );
+$meetings_summary   = is_array( $meetings_summary ?? null ) ? $meetings_summary : array();
+$meetings_list_url  = (string) ( $meetings_list_url ?? '' );
+$meetings_counts    = is_array( $meetings_summary['counts'] ?? null ) ? $meetings_summary['counts'] : array();
+$meetings_next      = is_array( $meetings_summary['next_meeting'] ?? null ) ? $meetings_summary['next_meeting'] : null;
+?>
+<?php if ( $can_view_meetings ) : ?>
+	<section class="jmrs-portal-section jmrs-portal-panel jmrs-meetings-referral-summary" aria-labelledby="jmrs-portal-ref-meetings">
+		<?php
+		$section_title   = __( 'Meetings', 'jm-referral-system' );
+		$section_id      = 'jmrs-portal-ref-meetings';
+		$section_badge   = null;
+		$section_actions = ( '' !== $meetings_list_url )
+			? array( array( __( 'View all meetings', 'jm-referral-system' ), $meetings_list_url ) )
+			: array();
+		include $jmrs_partials_path . 'section-header.php';
+		?>
+		<p class="jmrs-meetings-counts">
+			<span><?php echo esc_html( sprintf( /* translators: %d: count */ __( 'Total: %d', 'jm-referral-system' ), absint( $meetings_counts['total'] ?? 0 ) ) ); ?></span>
+			<span><?php echo esc_html( sprintf( /* translators: %d: count */ __( 'Scheduled: %d', 'jm-referral-system' ), absint( $meetings_counts['scheduled'] ?? 0 ) ) ); ?></span>
+			<span><?php echo esc_html( sprintf( /* translators: %d: count */ __( 'Draft: %d', 'jm-referral-system' ), absint( $meetings_counts['draft'] ?? 0 ) ) ); ?></span>
+			<span><?php echo esc_html( sprintf( /* translators: %d: count */ __( 'Completed: %d', 'jm-referral-system' ), absint( $meetings_counts['completed'] ?? 0 ) ) ); ?></span>
+			<span><?php echo esc_html( sprintf( /* translators: %d: count */ __( 'Cancelled: %d', 'jm-referral-system' ), absint( $meetings_counts['cancelled'] ?? 0 ) ) ); ?></span>
+		</p>
+		<?php if ( null !== $meetings_next ) : ?>
+			<?php
+			$next_scheduled = (string) ( $meetings_next['scheduled_at'] ?? '' );
+			$next_disp      = '' !== $next_scheduled
+				? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $next_scheduled )
+				: '—';
+			?>
+			<p class="jmrs-meetings-next">
+				<strong><?php echo esc_html__( 'Next scheduled:', 'jm-referral-system' ); ?></strong>
+				<?php echo esc_html( (string) ( $meetings_next['meeting_type_label'] ?? '' ) ); ?>
+				—
+				<span class="jmrs-portal-badge jmrs-meeting-status jmrs-meeting-status--<?php echo esc_attr( sanitize_html_class( (string) ( $meetings_next['status'] ?? '' ) ) ); ?>">
+					<?php echo esc_html( (string) ( $meetings_next['status_label'] ?? '' ) ); ?>
+				</span>
+				—
+				<?php echo esc_html( (string) $next_disp ); ?>
+				—
+				<?php echo esc_html( (string) ( $meetings_next['location_summary'] ?? '—' ) ); ?>
+			</p>
+		<?php elseif ( 0 === absint( $meetings_counts['total'] ?? 0 ) ) : ?>
+			<p><?php echo esc_html__( 'No meetings recorded for this referral.', 'jm-referral-system' ); ?></p>
+		<?php else : ?>
+			<p><?php echo esc_html__( 'No upcoming scheduled meeting.', 'jm-referral-system' ); ?></p>
+		<?php endif; ?>
+	</section>
+<?php endif; ?>
+
 <?php if ( $can_view_care_team ) : ?>
 	<section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-portal-ref-team">
 		<?php

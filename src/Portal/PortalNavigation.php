@@ -32,6 +32,8 @@ class PortalNavigation
         'medication_edit',
         'care_team_new',
         'care_team_edit',
+        'referral_meetings',
+        'referral_meeting',
         'schedule_new',
         'schedule_edit',
         'schedule_generate',

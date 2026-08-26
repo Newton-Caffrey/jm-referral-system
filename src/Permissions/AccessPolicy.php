@@ -203,19 +203,91 @@ class AccessPolicy
     }
 
     /**
+     * Whether the user may view referral meetings (Phase 4B.2 read UI).
+     *
+     * Requires referral visibility. Explicitly denies Support Workers even when
+     * they can view an assigned referral. Assessor may view when they can view
+     * the referral. Does not grant management or contact-PII access.
+     * Does not change capability matrix grants.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_view_referral_meetings(array $referral, ?int $user_id = null): bool
+    {
+        if (! $this->can_view_referral($referral, $user_id)) {
+            return false;
+        }
+
+        // Support Worker is the only assigned-scoped role; deny meeting access.
+        if ($this->should_scope_to_assigned($user_id)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether the user may view sensitive meeting contact fields (Phase 4B.2.1A).
+     *
+     * Covers: external participant email/telephone and online meeting URL.
+     * Requires referral visibility and the same commercial/management roles as
+     * Express Interest (JM Admin, Referral Manager, Care Coordinator, WP admin).
+     * Does **not** require can_mutate_referral — authorised managers may still
+     * view contacts on archived referrals while writes remain blocked.
+     * Denied: Assessor, Support Worker.
+     * Does not grant meeting mutation. Does not bypass referral visibility.
+     * Champion / transition lead / internal attendee status do not grant this.
+     *
+     * @param array<string, mixed> $referral
+     */
+    public function can_view_referral_meeting_contacts(array $referral, ?int $user_id = null): bool
+    {
+        if (! $this->can_view_referral_meetings($referral, $user_id)) {
+            return false;
+        }
+
+        return $this->has_meeting_management_role($user_id);
+    }
+
+    /**
      * Meeting-management capability helper (Phase 4B foundation).
      *
      * Allowed when the user may express interest on the referral:
      * JM Administrator, Referral Manager, Care Coordinator, WordPress administrator.
      * Denied: Assessor, Support Worker.
+     * Write/mutation gate for meetings (requires non-archived mutate path via express interest).
+     * Does not control read-only contact visibility — use can_view_referral_meeting_contacts().
+     * Does not bypass referral visibility (callers must still check can_view_referral).
      * Does not change existing capability grants. Does not advance workflow.
-     * Services use this for future UI; no production route calls it yet.
      *
      * @param array<string, mixed> $referral
      */
     public function can_manage_referral_meetings(array $referral, ?int $user_id = null): bool
     {
         return $this->can_express_interest($referral, $user_id);
+    }
+
+    /**
+     * Commercial / meeting-management roles without the archived-mutate gate.
+     */
+    private function has_meeting_management_role(?int $user_id = null): bool
+    {
+        $user = $this->resolve_user($user_id);
+
+        if (! $user instanceof \WP_User) {
+            return false;
+        }
+
+        if (user_can($user, 'manage_options')
+            || in_array('administrator', (array) $user->roles, true)
+            || in_array(Roles::JM_ADMINISTRATOR, (array) $user->roles, true)
+            || in_array(Roles::REFERRAL_MANAGER, (array) $user->roles, true)
+            || in_array(Roles::CARE_COORDINATOR, (array) $user->roles, true)
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

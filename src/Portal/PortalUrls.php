@@ -80,6 +80,16 @@ class PortalUrls
         return self::referral_path($referral_id, 'care-team/' . max(0, $assignment_id) . '/edit');
     }
 
+    public static function referral_meetings(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'meetings');
+    }
+
+    public static function referral_meeting(int $referral_id, int $meeting_id): string
+    {
+        return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id));
+    }
+
     public static function schedule_new(int $referral_id): string
     {
         return self::referral_path($referral_id, 'schedules/new');

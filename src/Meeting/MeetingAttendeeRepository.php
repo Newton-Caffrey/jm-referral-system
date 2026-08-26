@@ -237,6 +237,62 @@ class MeetingAttendeeRepository
     }
 
     /**
+     * Attendee counts by kind for many meetings (list page; no PII rows).
+     *
+     * @param array<int, int> $meeting_ids
+     * @return array<int, array{internal: int, external: int}>
+     */
+    public function count_kinds_by_meeting_ids(array $meeting_ids): array
+    {
+        global $wpdb;
+
+        $meeting_ids = array_values(array_unique(array_filter(array_map('absint', $meeting_ids))));
+        $out         = [];
+        foreach ($meeting_ids as $mid) {
+            $out[$mid] = ['internal' => 0, 'external' => 0];
+        }
+
+        if ([] === $meeting_ids) {
+            return $out;
+        }
+
+        $table        = Tables::referral_meeting_attendees_table();
+        $placeholders = implode(',', array_fill(0, count($meeting_ids), '%d'));
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT meeting_id, attendee_kind, COUNT(*) AS cnt
+                FROM {$table}
+                WHERE meeting_id IN ({$placeholders})
+                GROUP BY meeting_id, attendee_kind",
+                ...$meeting_ids
+            ),
+            ARRAY_A
+        );
+
+        if (! is_array($rows)) {
+            return $out;
+        }
+
+        foreach ($rows as $row) {
+            $mid  = absint($row['meeting_id'] ?? 0);
+            $kind = (string) ($row['attendee_kind'] ?? '');
+            $cnt  = absint($row['cnt'] ?? 0);
+            if ($mid <= 0 || ! isset($out[$mid])) {
+                continue;
+            }
+            if (MeetingAttendee::KIND_INTERNAL === $kind) {
+                $out[$mid]['internal'] = $cnt;
+            } elseif (MeetingAttendee::KIND_EXTERNAL === $kind) {
+                $out[$mid]['external'] = $cnt;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @param array<int, int> $meeting_ids
      * @return array<int, array<int, array<string, mixed>>>
      */
