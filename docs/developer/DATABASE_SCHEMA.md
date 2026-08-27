@@ -49,7 +49,7 @@ erDiagram
 | **PK** | `id` |
 | **FKs (logical)** | `service_type_id` → service types; `workflow_stage_id` → workflow stages; `assigned_to` / `archived_by` → WP users |
 
-**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **`care_start_date`** (preferred/requested intake date from referral form — **not** actual care commencement), **`workflow_stage_entered_at`**, **`next_action_due_at`** (Phase 3B pipeline timing; no SLA hardcoding), **interest response milestone (Phase 3C):** `interest_expressed_at`, `interest_expressed_by`, `interest_response_method` (`email` \| `phone` \| `other`), `interest_response_recipient`, `interest_email_status` (`sent` \| `failed` \| `not_applicable`), `interest_email_sent_at`, **care commencement milestone (Phase 3G):** `care_commenced_at`, `care_commenced_by` (actual recorded commencement — NULL until explicit Confirm Care Commenced; no backfill), **responsibility metadata (Phase 4B.1):** `champion_user_id`, `transition_lead_user_id` (nullable WP users; **not** access grants; `assigned_to` remains owner), **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps.
+**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **`care_start_date`** (preferred/requested intake date from referral form — **not** actual care commencement), **`workflow_stage_entered_at`**, **`next_action_due_at`** (Phase 3B pipeline timing; no SLA hardcoding), **interest response milestone (Phase 3C):** `interest_expressed_at`, `interest_expressed_by`, `interest_response_method` (`email` \| `phone` \| `other`), `interest_response_recipient`, `interest_email_status` (`sent` \| `failed` \| `not_applicable`), `interest_email_sent_at`, **care commencement milestone (Phase 3G / 4H.1):** `care_commenced_at`, `care_commenced_by` (actual recorded commencement — NULL until explicit Confirm Care Commenced; record-once via conditional UPDATE; no backfill; no correction/reopen columns), **responsibility metadata (Phase 4B.1):** `champion_user_id`, `transition_lead_user_id` (nullable WP users; **not** access grants; `assigned_to` remains owner), **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps. **No** `proposed_home_id` / `proposed_bedroom_id` / transition-plan table (Phase 4H.1 deliberately omitted).
 
 **Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, `care_setting`, `workflow_stage_entered_at`, `next_action_due_at`, `interest_expressed_at`, `champion_user_id`, `transition_lead_user_id`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
 
@@ -400,11 +400,11 @@ Unexecuted / generated visits leave these NULL. No backfill for legacy executed 
 | **Indexes** | `(referral_id, status)`, `(bedroom_id, status)`, `(home_id, status)`, `move_in_date`, `status` |
 | **App FKs** | `referral_id`, `home_id`, `bedroom_id`, `created_by`, `ended_by` (no DB constraints) |
 
-**Status values:** `active`, `ended`.
+**Status values:** `active`, `ended` (historical). No `reserved` / `proposed` / `confirmed` / `future` statuses (Phase 4H.1).
 
 **Columns:** move_in_date, move_out_date, notes, end_reason, created_by, ended_by, created_at, updated_at, ended_at.
 
-Active uniqueness is enforced in `OccupancyService` with transactions + `SELECT … FOR UPDATE` (not a partial unique index).
+Active uniqueness is enforced in `OccupancyService` with transactions + `SELECT … FOR UPDATE` (not a partial unique index). Future-dated `move_in_date` with `status=active` still blocks bedroom vacancy on Homes pages; Management Dashboard splits occupied-now vs confirmed future move-ins (**KNOWN PRODUCT SEMANTIC — NOT CHANGED IN PHASE 4H.1**). Place Resident does not advance acquisition pipeline.
 
 ---
 

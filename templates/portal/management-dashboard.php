@@ -1055,7 +1055,7 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 					if ( is_array( $estate ) ) {
 						printf(
 							/* translators: 1: occupied now 2: capacity 3: pct today 4: future move-ins 5: projected 6: projected pct */
-							esc_html__( 'Estate today: %1$d of %2$d occupied (%3$s%%). Confirmed future move-ins: %4$d. Projected: %5$d (%6$s%%).', 'jm-referral-system' ),
+							esc_html__( 'Estate today: %1$d of %2$d occupied now (%3$s%%). Confirmed future move-ins (not counted as occupied today): %4$d. Projected: %5$d (%6$s%%).', 'jm-referral-system' ),
 							absint( $estate['occupied_now'] ?? $estate['occupied'] ?? 0 ),
 							absint( $estate['capacity'] ?? 0 ),
 							esc_html( (string) ( $estate['occupancy_pct'] ?? 0 ) ),

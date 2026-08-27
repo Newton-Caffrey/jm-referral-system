@@ -55,6 +55,9 @@ $search  = (string) ( $filters['search'] ?? '' );
 			<span class="jmrs-portal-kpi-card__value"><?php echo esc_html( (string) $pct ); ?>%</span>
 		</div>
 	</div>
+	<p class="description" style="margin-top: 0.75rem;">
+		<?php echo esc_html__( 'Occupied counts every active occupancy row for placement availability, including future move-in dates. This differs from Management Dashboard “Occupied now” (move-in on or before today). KNOWN PRODUCT SEMANTIC — NOT CHANGED IN PHASE 4H.1.', 'jm-referral-system' ); ?>
+	</p>
 </section>
 
 <section class="jmrs-portal-section" aria-labelledby="jmrs-portal-occ-filters">

@@ -154,11 +154,11 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Purpose:** CRUD; default stage; pipeline counts for dashboard.
 - **Deps:** `WorkflowStageRepository`, `ReferralRepository`
 
-### `TransitionPlanningService` / `CareCommencementService` (Phase 3G)
-- **Purpose:** Derive Transition Planning readiness from existing LA decision / occupancy / care plan / team / schedule state; explicitly record care commencement (`care_commenced_at`/`by`) and pipeline `transition_planning` → `care_commenced`.
-- **Deps:** Pipeline, LA decision repo, occupancy/home/bedroom repos, care plan/team/schedule repos, `ServiceLocationResolver`, `AccessPolicy`, activity, `ReferralService`
-- **Used by:** `ReferralViewController`, `PortalController`
-- **Notes:** Does not auto-commence on placement or visit. Does not modify `OccupancyService`.
+### `TransitionPlanningService` / `CareCommencementService` (Phase 3G / **4H.1**)
+- **Purpose:** Derive Transition Planning readiness from existing LA decision / package / occupancy / care plan / team / schedule / responsibility state; explicitly record care commencement (`care_commenced_at`/`by`) and pipeline `transition_planning` → `care_commenced`.
+- **Deps:** Pipeline, LA decision repo, PackageCostRepository, occupancy/home/bedroom repos, care plan/team/schedule repos, `ServiceLocationResolver`, `AccessPolicy`, activity, `ReferralService`, `UserProvider`
+- **Used by:** `ReferralViewController`, `PortalController` (shared partial `templates/referrals/partials/transition-planning.php`)
+- **Notes (4H.1):** Readiness remains **derived** (no transition-plan table, checklist, or readiness %). Transition Lead displayed; assignment grants **no** access. Place Resident (`OccupancyService`) does **not** advance pipeline. SL requires active occupancy with valid active home/bedroom; Own Home must not have SL occupancy. Care commencement is record-once (`claim_care_commencement` + lock); allowlisted input only; site-timezone date validation; no future commence; SL commence ≥ move-in. Status remains/`new`→`in_progress` (never `completed`). No new emails. No target-home/reservation. Assessor may view panel when referral is visible (**EXISTING PRODUCT BEHAVIOUR — REQUIRES FUTURE JM CONFIRMATION**). Support Worker denied. Capacity: Management “occupied now” vs Homes “all active occupancy unavailable” — **KNOWN PRODUCT SEMANTIC — NOT CHANGED IN PHASE 4H.1**. No migration. Focused UAT **PASS** 2026-08-27 (Supported Living **MANUALLY TESTED**; Own Home **NOT RUN — CODE REVIEWED**; staging referral 10 retained at `care_commenced` with active occupancy). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**.
 
 ### `PipelineAttentionService` (Phase 3H)
 - **Purpose:** Pipeline overview counts, Needs Attention queue, Active Pipeline Queue; waiting-time and internal-target evaluation.

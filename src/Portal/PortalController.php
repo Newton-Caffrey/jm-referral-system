@@ -2028,12 +2028,15 @@ class PortalController implements PortalViewHost
 
         check_admin_referer('jmrs_confirm_care_commenced_' . $referral_id, 'jmrs_confirm_care_commenced_nonce');
 
+        $raw_at = $_POST['jmrs_care_commenced_at'] ?? '';
+        if (is_array($raw_at) || is_object($raw_at)) {
+            $raw_at = '';
+        }
+
         $result = $this->care_commencement_service->commence(
             $referral_id,
             [
-                'care_commenced_at'   => isset($_POST['jmrs_care_commenced_at'])
-                    ? sanitize_text_field(wp_unslash($_POST['jmrs_care_commenced_at']))
-                    : '',
+                'care_commenced_at'   => sanitize_text_field(wp_unslash((string) $raw_at)),
                 'funding_acknowledge' => ! empty($_POST['jmrs_funding_acknowledge']),
             ]
         );

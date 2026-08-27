@@ -3,6 +3,7 @@
 namespace JMReferral\Homes;
 
 use JMReferral\Permissions\AccessPolicy;
+use JMReferral\Permissions\Capabilities;
 use JMReferral\Referral\CareSetting;
 use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralRepository;
@@ -186,11 +187,14 @@ class OccupancyService
     public function place_resident(array $input, ?int $actor_user_id = null): array|false
     {
         $actor_user_id = $actor_user_id ?? get_current_user_id();
-        $referral_id   = absint($input['referral_id'] ?? 0);
-        $home_id       = absint($input['home_id'] ?? 0);
-        $bedroom_id    = absint($input['bedroom_id'] ?? 0);
-        $move_in_date  = $this->normalize_date((string) ($input['move_in_date'] ?? ''));
-        $notes         = sanitize_textarea_field((string) ($input['notes'] ?? ''));
+
+        // Allowlisted fields only — callers cannot set status, created_by, pipeline, or timestamps.
+        $safe = $this->allowlisted_place_input($input);
+        $referral_id   = absint($safe['referral_id']);
+        $home_id       = absint($safe['home_id']);
+        $bedroom_id    = absint($safe['bedroom_id']);
+        $move_in_date  = $this->normalize_date($safe['move_in_date']);
+        $notes         = sanitize_textarea_field($safe['notes']);
 
         $errors = $this->validate_placement_inputs($referral_id, $home_id, $bedroom_id, $move_in_date, $actor_user_id);
         if (! empty($errors)) {
@@ -712,6 +716,30 @@ class OccupancyService
     }
 
     /**
+     * @param array<string, mixed> $input
+     * @return array{referral_id: int, home_id: int, bedroom_id: int, move_in_date: string, notes: string}
+     */
+    private function allowlisted_place_input(array $input): array
+    {
+        $move_in = $input['move_in_date'] ?? '';
+        if (is_array($move_in) || is_object($move_in)) {
+            $move_in = '';
+        }
+        $notes = $input['notes'] ?? '';
+        if (is_array($notes) || is_object($notes)) {
+            $notes = '';
+        }
+
+        return [
+            'referral_id'  => absint($input['referral_id'] ?? 0),
+            'home_id'      => absint($input['home_id'] ?? 0),
+            'bedroom_id'   => absint($input['bedroom_id'] ?? 0),
+            'move_in_date' => (string) $move_in,
+            'notes'        => (string) $notes,
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     private function validate_placement_inputs(
@@ -722,6 +750,12 @@ class OccupancyService
         int $actor_user_id
     ): array {
         $errors = [];
+
+        if ($actor_user_id <= 0 || ! user_can($actor_user_id, Capabilities::MANAGE_OCCUPANCIES)) {
+            $errors['general'] = __('You do not have permission to place residents.', 'jm-referral-system');
+
+            return $errors;
+        }
 
         if ($referral_id <= 0) {
             $errors['referral_id'] = __('Please select a client.', 'jm-referral-system');

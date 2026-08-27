@@ -1166,10 +1166,13 @@ class ReferralViewController
      */
     private function care_commencement_input_from_request(): array
     {
+        $raw = $_POST['jmrs_care_commenced_at'] ?? '';
+        if (is_array($raw) || is_object($raw)) {
+            $raw = '';
+        }
+
         return [
-            'care_commenced_at'   => isset($_POST['jmrs_care_commenced_at'])
-                ? sanitize_text_field(wp_unslash($_POST['jmrs_care_commenced_at']))
-                : '',
+            'care_commenced_at'   => sanitize_text_field(wp_unslash((string) $raw)),
             'funding_acknowledge' => ! empty($_POST['jmrs_funding_acknowledge']),
         ];
     }

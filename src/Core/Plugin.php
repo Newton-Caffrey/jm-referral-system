@@ -435,6 +435,7 @@ class Plugin
         $transition_planning_service = new \JMReferral\Transition\TransitionPlanningService(
             $pipeline_service,
             $la_decision_repository,
+            $package_cost_repository,
             $occupancy_repository,
             $home_repository,
             $bedroom_repository,

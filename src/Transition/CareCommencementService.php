@@ -17,6 +17,8 @@ use JMReferral\Referral\ReferralService;
  * Explicit care commencement milestone: transition_planning → care_commenced.
  *
  * Does not auto-commence from occupancy, visits, schedules, or care plans.
+ * Record-once via claim_care_commencement. Phase 4H.1: allowlisted input,
+ * hardened date validation, occupancy integrity re-check.
  */
 class CareCommencementService
 {
@@ -75,7 +77,7 @@ class CareCommencementService
     }
 
     /**
-     * @param array<string, mixed> $input
+     * @param array<string, mixed> $input Allowlisted: care_commenced_at, funding_acknowledge
      * @return array{ok: true}|array{ok: false, error: string, message: string}
      */
     public function commence(int $referral_id, array $input): array
@@ -114,15 +116,32 @@ class CareCommencementService
         }
 
         try {
-            return $this->persist_commencement($referral_id, $referral, $input);
+            return $this->persist_commencement($referral_id, $referral, $this->allowlisted_input($input));
         } finally {
             $this->release_lock($referral_id);
         }
     }
 
     /**
-     * @param array<string, mixed> $referral
      * @param array<string, mixed> $input
+     * @return array{care_commenced_at: string, funding_acknowledge: bool}
+     */
+    private function allowlisted_input(array $input): array
+    {
+        $raw_at = $input['care_commenced_at'] ?? '';
+        if (is_array($raw_at) || is_object($raw_at)) {
+            $raw_at = '';
+        }
+
+        return [
+            'care_commenced_at'   => (string) $raw_at,
+            'funding_acknowledge' => ! empty($input['funding_acknowledge']),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $referral
+     * @param array{care_commenced_at: string, funding_acknowledge: bool} $input
      * @return array{ok: true}|array{ok: false, error: string, message: string}
      */
     private function persist_commencement(int $referral_id, array $referral, array $input): array
@@ -138,15 +157,17 @@ class CareCommencementService
             );
         }
 
-        $decision = $this->la_decision_repository->find_current_for_referral($referral_id);
-        $la_approved = is_array($decision)
-            && LaDecision::DECISION_APPROVED === (string) ($decision['decision'] ?? '');
-
+        // Care setting is never taken from the request.
         $care_setting = CareSetting::normalize(
             null === ($fresh['care_setting'] ?? null)
                 ? null
                 : (string) $fresh['care_setting']
         );
+
+        $decision = $this->la_decision_repository->find_current_for_referral($referral_id);
+        $la_approved = is_array($decision)
+            && LaDecision::DECISION_APPROVED === (string) ($decision['decision'] ?? '');
+
         $occupancy = $this->occupancy_repository->current_for_referral($referral_id);
 
         $hard = $this->transition_planning_service->evaluate_hard_requirements(
@@ -169,8 +190,7 @@ class CareCommencementService
         $funding_ok = LaDecision::FUNDING_YES === $funding_int;
 
         if (! $funding_ok) {
-            $ack = ! empty($input['funding_acknowledge']);
-            if (! $ack) {
+            if (empty($input['funding_acknowledge'])) {
                 return $this->fail(
                     'funding_ack_required',
                     __(
@@ -181,11 +201,7 @@ class CareCommencementService
             }
         }
 
-        $commenced_at = $this->normalize_commenced_at(
-            (string) ($input['care_commenced_at'] ?? ''),
-            (string) ($input['care_commenced_date'] ?? ''),
-            (string) ($input['care_commenced_time'] ?? '')
-        );
+        $commenced_at = $this->normalize_commenced_at((string) ($input['care_commenced_at'] ?? ''));
         if (null === $commenced_at) {
             return $this->fail(
                 'validation',
@@ -193,9 +209,20 @@ class CareCommencementService
             );
         }
 
-        $commenced_ts = strtotime($commenced_at);
-        $now_ts = (int) current_time('timestamp');
-        if (false === $commenced_ts || $commenced_ts > $now_ts) {
+        try {
+            $commenced_dt = date_create_immutable($commenced_at, wp_timezone());
+        } catch (\Exception $e) {
+            $commenced_dt = false;
+        }
+        if (false === $commenced_dt) {
+            return $this->fail(
+                'validation',
+                __('Please enter a valid care commencement date and time.', 'jm-referral-system')
+            );
+        }
+
+        $now_dt = date_create_immutable('now', wp_timezone());
+        if (false === $now_dt || $commenced_dt > $now_dt) {
             return $this->fail(
                 'validation',
                 __('Care commencement cannot be recorded in the future.', 'jm-referral-system')
@@ -205,7 +232,7 @@ class CareCommencementService
         if (CareSetting::SUPPORTED_LIVING === $care_setting && is_array($occupancy)) {
             $move_in = trim((string) ($occupancy['move_in_date'] ?? ''));
             if ('' !== $move_in) {
-                $commenced_date = substr($commenced_at, 0, 10);
+                $commenced_date = $commenced_dt->format('Y-m-d');
                 if ($commenced_date < $move_in) {
                     return $this->fail(
                         'move_in_future',
@@ -218,14 +245,16 @@ class CareCommencementService
             }
         }
 
+        // Actor and timestamps are never taken from the request.
         $user_id = get_current_user_id();
+        $store_at = $commenced_dt->format('Y-m-d H:i:s');
 
         global $wpdb;
         $wpdb->query('START TRANSACTION');
 
         $claimed = $this->referral_repository->claim_care_commencement(
             $referral_id,
-            $commenced_at,
+            $store_at,
             $user_id > 0 ? $user_id : null
         );
         if (! $claimed) {
@@ -255,6 +284,7 @@ class CareCommencementService
         }
 
         // Keep broad lifecycle as in_progress (care beginning). Correct unexpected `new` only.
+        // Never set completed. Callers cannot control referral status.
         $status = (string) ($fresh['status'] ?? '');
         $status_result = ['ok' => true, 'changed' => false, 'old_status' => $status, 'new_status' => $status];
         if ('in_progress' !== $status && ! in_array($status, ['completed', 'cancelled'], true)) {
@@ -297,21 +327,17 @@ class CareCommencementService
     }
 
     /**
-     * Accepts datetime-local, or separate date + time fields.
+     * Accepts datetime-local style strings only. Rejects markup and unexpected shapes.
      */
-    private function normalize_commenced_at(string $datetime, string $date, string $time): ?string
+    private function normalize_commenced_at(string $datetime): ?string
     {
         $datetime = trim($datetime);
         if ('' === $datetime) {
-            $date = trim($date);
-            $time = trim($time);
-            if ('' === $date) {
-                return null;
-            }
-            if ('' === $time) {
-                $time = '00:00';
-            }
-            $datetime = $date . ' ' . $time;
+            return null;
+        }
+
+        if (preg_match('/[<>]|[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $datetime)) {
+            return null;
         }
 
         $datetime = str_replace('T', ' ', $datetime);

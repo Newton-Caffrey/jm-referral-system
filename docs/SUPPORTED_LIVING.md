@@ -22,7 +22,7 @@
 | Future visits | Snapshot columns stay NULL; never rewritten on transfer/placement/care-setting/address change |
 | Bedrooms | Never store `referral_id` / `client_id` |
 | Clinical modules | Shared for both care settings (no forked assessment/care plan/MAR/etc.) |
-| Acquisition vs care | Phase 3G: active occupancy is a **hard prerequisite** for Confirm Care Commenced on Supported Living, but placement alone does **not** advance pipeline to `care_commenced`. Ending/transfer later does **not** rewind acquisition. |
+| Acquisition vs care | Phase 3G / **4H.1**: active occupancy is a **hard prerequisite** for Confirm Care Commenced on Supported Living, but placement alone does **not** advance pipeline to `care_commenced`. Ending/transfer later does **not** rewind acquisition. No target-home reservation; future-dated active occupancy still blocks bedroom vacancy on Homes pages (**KNOWN PRODUCT SEMANTIC — NOT CHANGED IN PHASE 4H.1**). |
 
 ---
 
@@ -153,7 +153,8 @@ Transfers end the old row and create a new active row in the same transaction so
 | Transfer | End old (same-day allowed) + create new; log `placement_transferred` |
 | End / move out | Set status ended, move_out_date, ended_by/ended_at; log `placement_ended` |
 
-**Acquisition note (Phase 3G):** Place Resident does not change the acquisition pipeline. On `transition_planning`, Transition Planning shows placement readiness and authorised staff confirm care commencement separately. Future-dated `move_in_date` blocks commencement until that date.
+**Acquisition note (Phase 3G / 4H.1):** Place Resident does not change the acquisition pipeline. On `transition_planning`, Transition Planning shows derived placement readiness and authorised staff confirm care commencement separately. Future-dated `move_in_date` blocks commencement until that date. Occupancy integrity (active home + bedroom belonging to home) is re-checked before commence. Focused UAT **PASS** 2026-08-27 (Supported Living path on referral 10; Own Home **NOT RUN — CODE REVIEWED**).
+
 
 History is newest-first. Ended rows are not hard-deleted.
 

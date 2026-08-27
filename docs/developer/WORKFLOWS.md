@@ -280,19 +280,19 @@ Canonical stage meaning **what JM needs to do next** after a completed `not_suit
 
 ---
 
-## Transition Planning & Care Commencement (Phase 3G)
+## Transition Planning & Care Commencement (Phase 3G / **4H.1**)
 
 Acquisition terminal success — explicit staff confirmation, not inferred from occupancy/visits/schedules.
 
-**Services:** `JMReferral\Transition\TransitionPlanningService` (readiness context), `JMReferral\Transition\CareCommencementService` (mutation)
+**Services:** `JMReferral\Transition\TransitionPlanningService` (derived readiness context), `JMReferral\Transition\CareCommencementService` (mutation)
 
-**Milestone columns (DB `2.28.0`):** `jmrs_referrals.care_commenced_at`, `care_commenced_by` — actual recorded commencement. Distinct from `care_start_date` (preferred/requested intake date on the referral form). No backfill from occupancy/visits/`care_start_date`.
+**Milestone columns (DB `2.28.0`):** `jmrs_referrals.care_commenced_at`, `care_commenced_by` — actual recorded commencement. Distinct from `care_start_date` (preferred/requested intake date on the referral form). No backfill from occupancy/visits/`care_start_date`. No dedicated transition-plan table.
 
-**Pipeline:** `transition_planning` → `care_commenced` via `ReferralPipelineService::transition` only.
+**Pipeline:** `transition_planning` → `care_commenced` via `ReferralPipelineService::transition` only. Place Resident does **not** advance pipeline. Opening the panel / Transition Lead changes / soft-warning acknowledgement alone do **not** advance pipeline.
 
-**Hard requirements:** stage = `transition_planning`; referral mutable; status not `completed`/`cancelled`; approved LA decision row; `care_setting` = `supported_living` or `own_home`; SL requires active occupancy; Own Home must not have active SL occupancy; commencement datetime not future; SL commencement date ≥ occupancy `move_in_date`.
+**Hard requirements:** stage = `transition_planning`; referral mutable; status not `completed`/`cancelled`; not already commenced; approved LA decision; `care_setting` = `supported_living` or `own_home`; SL requires active occupancy with valid active home + bedroom belonging to that home; Own Home must not have active SL occupancy; commencement datetime not future (site timezone); SL commencement date ≥ occupancy `move_in_date`.
 
-**Soft warnings only (do not hard-block):** funding not confirmed / not recorded (requires explicit checkbox ack to continue); care plan not active; care team missing; no active schedule; incomplete Own Home address.
+**Soft warnings only (do not hard-block):** funding not confirmed / not recorded (requires explicit checkbox ack to continue); care plan not active; care team missing; no active schedule; incomplete Own Home address; future move-in date (blocks commence date until that day via hard date check).
 
 **Explicit rule:** Creating occupancy, schedules, care plans, or executing Own-Home visits does **not** advance the pipeline. Staff must use **Confirm Care Commenced**.
 
@@ -302,13 +302,19 @@ Acquisition terminal success — explicit staff confirmation, not inferred from 
 
 **Not Proceeding:** Still available on `transition_planning`. Not offered after `care_commenced` (future discharge is care lifecycle, not acquisition NP).
 
-**Activity:** `care_commenced` — “Care commencement recorded.” plus pipeline stage-change activity. No address/bedroom/funding/clinical narrative.
+**Activity:** `care_commenced` — “Care commencement recorded.” plus pipeline stage-change activity. Placement: `placement_started` / `placement_transferred` / `placement_ended`. Transition lead: `transition_lead_*`. No address/bedroom IDs/funding/clinical narrative in commence activity.
 
-**Permissions:** `AccessPolicy::can_commence_care` (Admin / Manager / Coordinator). Assessor / Support Worker denied. Placement still requires `jmrs_manage_occupancies`. Override not required for normal commencement.
+**Permissions:** `AccessPolicy::can_commence_care` (Admin / Manager / Coordinator). Assessor / Support Worker denied mutate. Placement still requires `jmrs_manage_occupancies`. Transition Lead / Champion / owner membership grant no commence or Place Resident. Override not required for normal commencement. Assessor panel visibility when referral visible: **EXISTING PRODUCT BEHAVIOUR — REQUIRES FUTURE JM CONFIRMATION**.
+
+**Capacity semantics:** Future-dated `status=active` occupancy blocks bedroom vacancy on Homes pages. Management Dashboard separates occupied-now (`move_in_date <= today`) from confirmed future move-ins. **KNOWN PRODUCT SEMANTIC — NOT CHANGED IN PHASE 4H.1.**
+
+**Out of scope (4H.1):** target-home/proposed bedroom fields; reservation statuses; placement-confirmed stage; transition checklist; new meeting types; new emails; schema migration.
 
 **UI:** Shared partial `templates/referrals/partials/transition-planning.php` on portal + WP Admin referral view.
 
 **Deferred:** auto-commence on move-in cron, first-visit auto-commence.
+
+**Focused UAT (4H.1):** **PASS** 2026-08-27 on staging referral 10 (`supported_living` → Place Resident → Confirm Care Commenced → `care_commenced`, status `in_progress`, package Sent, active occupancy retained). Own Home path **NOT RUN — CODE REVIEWED**. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**.
 
 ---
 
