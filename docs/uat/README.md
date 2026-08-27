@@ -16,6 +16,7 @@ User Acceptance Testing materials for **JM Healthcare Referral Platform** / JM R
 | [UAT_PHASE_4F_1_PACKAGE_COSTING_HARDENING.md](UAT_PHASE_4F_1_PACKAGE_COSTING_HARDENING.md) | **Phase 4F.1** package costing hardening + Operations Package Costing metrics (**PASS** 2026-08-27; email send **NOT RUN — CODE REVIEWED**) |
 | [UAT_PHASE_4G_1_LOCAL_AUTHORITY_DECISION_HARDENING.md](UAT_PHASE_4G_1_LOCAL_AUTHORITY_DECISION_HARDENING.md) | **Phase 4G.1** LA decision hardening + Operations outcome metrics (**PASS** 2026-08-27; Declined / Not Proceeding / status-change email **NOT RUN — CODE REVIEWED**) |
 | [UAT_PHASE_4H_1_TRANSITION_AND_CARE_COMMENCEMENT_HARDENING.md](UAT_PHASE_4H_1_TRANSITION_AND_CARE_COMMENCEMENT_HARDENING.md) | **Phase 4H.1** Transition Planning / Care Commencement hardening (**PASS** 2026-08-27; Supported Living manually tested; Own Home **NOT RUN — CODE REVIEWED**) |
+| [UAT_PHASE_4I_1_MANAGEMENT_DASHBOARD_UI_POLISH.md](UAT_PHASE_4I_1_MANAGEMENT_DASHBOARD_UI_POLISH.md) | **Phase 4I.1** Management Operations Dashboard UI/UX polish (visual-only; shared spacing system; **PASS** 2026-08-27) |
 | [../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md](../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md) | **Phase 4B.2.0** meetings UI/workflow audit (design) |
 | [UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md](UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md) | **Phase 4A** accuracy / privacy / existing-data parity (pre-release) |
 | [UAT_MANAGEMENT_DASHBOARD_V1_4.md](UAT_MANAGEMENT_DASHBOARD_V1_4.md) | **v1.4.0 Management Dashboard UAT** (visual + data acceptance) |

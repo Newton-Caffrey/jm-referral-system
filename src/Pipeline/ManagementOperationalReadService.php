@@ -498,6 +498,7 @@ class ManagementOperationalReadService
             $out[]   = [
                 'referral_number' => (string) ($row['referral_number'] ?? ''),
                 'status'          => $status_labels[$status] ?? $status,
+                'status_key'      => $status,
                 'created_label'   => '' !== $created
                     ? (string) mysql2date(get_option('date_format'), $created)
                     : '—',
