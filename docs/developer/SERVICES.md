@@ -172,11 +172,11 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Used by:** Portal `management` route via `PortalController`
 - **Notes:** Read-only GET. One construction in `Plugin::registerStaffPortal()`.
 
-### `ManagementOperationalReadService` (Phase 4D.1 / 4E.1 / **4F.1**)
-- **Purpose:** Scope-aware operational aggregates for Management Dashboard Operations tab: status cards, workflow-stage distribution, unassigned responsibility counts, owner/champion/transition-lead workloads, upcoming/past scheduled meetings (14-day upcoming window), recent referrals (8), recent activity (10), attention extras, **derived assessment metrics**, and **Package Costing metrics** (pipeline `package_cost_required` / `awaiting_la_decision` plus latest-row prepared/sent counts and compact lists).
-- **Deps:** `ReferralRepository`, `ReferralMeetingRepository`, `ReferralActivityRepository`, `WorkflowStageService`, `AccessPolicy`, `UserProvider`, `PipelineAttentionService`, `ReferralAssessmentRepository`, `PackageCostRepository`
+### `ManagementOperationalReadService` (Phase 4D.1 / 4E.1 / 4F.1 / **4G.1**)
+- **Purpose:** Scope-aware operational aggregates for Management Dashboard Operations tab: status cards, workflow-stage distribution, unassigned responsibility counts, owner/champion/transition-lead workloads, upcoming/past scheduled meetings (14-day upcoming window), recent referrals (8), recent activity (10), attention extras, **derived assessment metrics**, **Package Costing metrics**, and **Local Authority Decision outcome counts** (awaiting pipeline + approved / declined / not_proceeding from latest decision row).
+- **Deps:** `ReferralRepository`, `ReferralMeetingRepository`, `ReferralActivityRepository`, `WorkflowStageService`, `AccessPolicy`, `UserProvider`, `PipelineAttentionService`, `ReferralAssessmentRepository`, `PackageCostRepository`, `LaDecisionRepository`
 - **Used by:** `ManagementPipelineBoardService` only
-- **Notes:** Prepared SQL aggregates; latest package = `MAX(id)` per referral (non-unique `referral_id` by design — older rows are not double-counted). Operations lists omit package totals, recipients, submission references, and filenames. No contact PII / meeting URLs / notes / assessment narrative. No mutations, emails, or activity writes on GET. Same commercial gate as pipeline dashboard. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Phase **4F.1** focused UAT **PASS** 2026-08-27 (email send **NOT RUN — CODE REVIEWED**).
+- **Notes:** Prepared SQL aggregates; latest package/decision = `MAX(id)` per referral (non-unique `referral_id` by design — older rows are not double-counted; lack of UNIQUE is an accepted application-level limitation). Operations lists omit package totals, recipients, submission references, filenames, decision notes, funding, and decision references. No contact PII / meeting URLs / notes / assessment narrative. No mutations, emails, or activity writes on GET. Same commercial gate as pipeline dashboard. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Phase **4G.1** focused UAT **PASS** 2026-08-27 (Declined / Not Proceeding / status-change email **NOT RUN — CODE REVIEWED**).
 
 ### `PackageCostService` (Phase 3E / 3E.1 / **4F.1**)
 - **Purpose:** Prepare/update optional GBP Package Cost + linked referral document; send by email or record secure-portal/other submission; advance `package_cost_required` → `awaiting_la_decision` on successful send only.
@@ -184,6 +184,14 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Used by:** `PortalController`, `ReferralViewController` (shared partial `templates/referrals/partials/package-cost.php`)
 - **Public API:** `can_prepare`, `can_send`, `refined_next_action`, `get_panel_context`, `prepare`, `record_sent`
 - **Notes:** Currency forced to GBP. Sent rows terminal/read-only. No-op prepare when total+document unchanged. Document must belong to the referral; attachment paths never from the request. Failed email leaves package prepared (activity `package_cost_email_failed`). No component calculator, VAT, revision, or new email types in 4F.1. Assessor may view panel amounts when referral is visible (**EXISTING PRODUCT BEHAVIOUR — REQUIRES FUTURE JM CONFIRMATION**). Support Worker denied. Focused UAT **PASS** 2026-08-27 (email send **NOT RUN — CODE REVIEWED**).
+
+### `LocalAuthorityDecisionService` (Phase 3F / **4G.1**)
+- **Purpose:** Record-once Local Authority / funding outcome; advance pipeline and lifecycle status; expose read-only panel context including stored notes.
+- **Deps:** `ReferralRepository`, `ReferralService`, `LaDecisionRepository`, `PackageCostRepository`, `ReferralPipelineService`, `ReferralActivityService`, `AccessPolicy`, `UserProvider`
+- **Used by:** `PortalController`, `ReferralViewController` (shared partial `templates/referrals/partials/la-decision.php`)
+- **Public API:** `can_record`, `get_panel_context`, `record`
+- **Notes:** Requires stage `awaiting_la_decision` and current package `status=sent` (package selected server-side; callers cannot supply `package_cost_id`). Outcomes: `approved` → `transition_planning` + `in_progress`; `declined` → `declined` + `cancelled`; `not_proceeding` → `not_proceeding` + `cancelled`. Terminal after record; no edit/reconsideration UI. Allowlisted payload only. Notes displayed escaped on read-only panel; omitted from activity. No LA acknowledgement email; existing assignee `status-changed` notification may fire after COMMIT via `emit_status_change_side_effects`. Assessor may view panel when referral is visible (**EXISTING PRODUCT BEHAVIOUR — REQUIRES FUTURE JM CONFIRMATION**). Support Worker denied. No schema migration in 4G.1. Focused UAT **PASS** 2026-08-27 (Declined / Not Proceeding / status-change email **NOT RUN — CODE REVIEWED**). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**.
+
 ---
 
 ## Notifications

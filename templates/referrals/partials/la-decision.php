@@ -57,8 +57,12 @@ $field = static function ( string $key ) use ( $la_decision_panel ): string {
 	<?php endif; ?>
 
 	<?php if ( $has_decision ) : ?>
+		<p class="jmrs-la-decision__terminal" role="status" style="margin: 0.75em 0; padding: 0.65em 0.85em; border-left: 3px solid #646970; background: #f6f7f7;">
+			<strong><?php echo esc_html__( 'Recorded — read-only.', 'jm-referral-system' ); ?></strong>
+			<?php echo esc_html__( 'This Local Authority decision has been recorded and cannot be edited. There is no reconsideration or reopen workflow in this release.', 'jm-referral-system' ); ?>
+		</p>
 		<p>
-			<strong><?php echo esc_html__( 'Outcome:', 'jm-referral-system' ); ?></strong>
+			<strong><?php echo esc_html__( 'Decision:', 'jm-referral-system' ); ?></strong>
 			<?php echo esc_html( $field( 'decision_label' ) ); ?>
 		</p>
 		<?php if ( '' !== $field( 'decision_at' ) ) : ?>
@@ -66,6 +70,9 @@ $field = static function ( string $key ) use ( $la_decision_panel ): string {
 		<?php endif; ?>
 		<?php if ( '' !== $field( 'recorded_by_name' ) ) : ?>
 			<p><strong><?php echo esc_html__( 'Recorded By:', 'jm-referral-system' ); ?></strong> <?php echo esc_html( $field( 'recorded_by_name' ) ); ?></p>
+		<?php endif; ?>
+		<?php if ( '' !== $field( 'recorded_at' ) ) : ?>
+			<p><strong><?php echo esc_html__( 'Recorded Date:', 'jm-referral-system' ); ?></strong> <?php echo esc_html( $field( 'recorded_at' ) ); ?></p>
 		<?php endif; ?>
 		<?php if ( 'approved' === $field( 'decision' ) ) : ?>
 			<p><strong><?php echo esc_html__( 'Funding Confirmed:', 'jm-referral-system' ); ?></strong> <?php echo esc_html( $field( 'funding_confirmed_label' ) ); ?></p>
@@ -79,7 +86,12 @@ $field = static function ( string $key ) use ( $la_decision_panel ): string {
 		<?php if ( '' !== $field( 'decision_reference' ) ) : ?>
 			<p><strong><?php echo esc_html__( 'Decision Reference:', 'jm-referral-system' ); ?></strong> <?php echo esc_html( $field( 'decision_reference' ) ); ?></p>
 		<?php endif; ?>
-		<p class="description"><?php echo esc_html__( 'Recorded decisions are read-only in normal workflow. Administrative correction uses controlled pipeline override / repair.', 'jm-referral-system' ); ?></p>
+		<?php if ( '' !== trim( $field( 'notes' ) ) ) : ?>
+			<p>
+				<strong><?php echo esc_html__( 'Notes:', 'jm-referral-system' ); ?></strong><br />
+				<span class="jmrs-la-decision__notes" style="white-space: pre-wrap; word-break: break-word;"><?php echo esc_html( $field( 'notes' ) ); ?></span>
+			</p>
+		<?php endif; ?>
 	<?php elseif ( ! empty( $la_decision_panel['is_awaiting'] ) ) : ?>
 		<p>
 			<strong><?php echo esc_html__( 'Current Status:', 'jm-referral-system' ); ?></strong>

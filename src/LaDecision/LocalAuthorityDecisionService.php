@@ -114,6 +114,7 @@ class LocalAuthorityDecisionService
                 ? LaDecision::decision_label((string) ($decision['decision'] ?? ''))
                 : '',
             'decision_at'             => is_array($decision) ? (string) ($decision['decision_at'] ?? '') : '',
+            'recorded_at'             => is_array($decision) ? (string) ($decision['created_at'] ?? '') : '',
             'recorded_by_name'        => $recorded_by > 0 ? $this->user_provider->get_display_name($recorded_by) : '',
             'funding_confirmed'       => $funding_int,
             'funding_confirmed_label' => is_array($decision)
@@ -144,7 +145,13 @@ class LocalAuthorityDecisionService
     }
 
     /**
-     * @param array<string, mixed> $input
+     * Record a Local Authority decision once and advance pipeline/status.
+     *
+     * Callers must pass an allowlisted payload only. package_cost_id, actors,
+     * pipeline stage, and referral status are never taken from the request.
+     *
+     * @param array<string, mixed> $input Allowlisted: decision, decision_at, funding_confirmed,
+     *                                    funding_reference, decision_reference, reason_code, notes
      * @return array{ok: true, decision: string}|array{ok: false, error: string, message: string}
      */
     public function record(int $referral_id, array $input): array
@@ -176,10 +183,35 @@ class LocalAuthorityDecisionService
         }
 
         try {
-            return $this->persist_decision($referral_id, $referral, $input);
+            return $this->persist_decision($referral_id, $referral, $this->allowlisted_input($input));
         } finally {
             $this->release_lock($referral_id);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{
+     *     decision: string,
+     *     decision_at: string,
+     *     funding_confirmed: string,
+     *     funding_reference: string,
+     *     decision_reference: string,
+     *     reason_code: string,
+     *     notes: string
+     * }
+     */
+    private function allowlisted_input(array $input): array
+    {
+        return [
+            'decision'           => (string) ($input['decision'] ?? ''),
+            'decision_at'        => (string) ($input['decision_at'] ?? ''),
+            'funding_confirmed'  => (string) ($input['funding_confirmed'] ?? 'not_recorded'),
+            'funding_reference'  => (string) ($input['funding_reference'] ?? ''),
+            'decision_reference' => (string) ($input['decision_reference'] ?? ''),
+            'reason_code'        => (string) ($input['reason_code'] ?? ''),
+            'notes'              => (string) ($input['notes'] ?? ''),
+        ];
     }
 
     /**
@@ -223,7 +255,14 @@ class LocalAuthorityDecisionService
         }
 
         $reason_code = sanitize_key((string) ($input['reason_code'] ?? ''));
-        $notes = sanitize_textarea_field((string) ($input['notes'] ?? ''));
+        $notes_raw = (string) ($input['notes'] ?? '');
+        if (preg_match('/[<>]|[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $notes_raw)) {
+            return $this->fail(
+                'validation',
+                __('Notes must be plain text without markup.', 'jm-referral-system')
+            );
+        }
+        $notes = sanitize_textarea_field($notes_raw);
         $notes = substr(trim($notes), 0, LaDecision::NOTES_MAX);
         $funding_reference = substr(sanitize_text_field((string) ($input['funding_reference'] ?? '')), 0, 190);
         $decision_reference = substr(sanitize_text_field((string) ($input['decision_reference'] ?? '')), 0, 190);

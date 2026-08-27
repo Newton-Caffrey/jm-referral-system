@@ -4,6 +4,8 @@ namespace JMReferral\Pipeline;
 
 use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\Assessment\ReferralAssessmentService;
+use JMReferral\LaDecision\LaDecision;
+use JMReferral\LaDecision\LaDecisionRepository;
 use JMReferral\Meeting\ReferralMeeting;
 use JMReferral\Meeting\ReferralMeetingRepository;
 use JMReferral\PackageCost\PackageCost;
@@ -16,11 +18,12 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Workflow\WorkflowStageService;
 
 /**
- * Read-only operational Management Dashboard sections (Phase 4D.1 / 4E.1 / 4F.1).
+ * Read-only operational Management Dashboard sections (Phase 4D.1 / 4E.1 / 4F.1 / 4G.1).
  *
  * Scope-aware aggregates only. No mutations. No contact PII.
  * Assessment metrics are derived from scheduled_at + outcome (no status column).
  * Package Costing metrics use pipeline stage + latest package-cost row (MAX id).
+ * LA decision outcome metrics use latest decision row (MAX id); awaiting remains pipeline-based.
  */
 class ManagementOperationalReadService
 {
@@ -38,6 +41,8 @@ class ManagementOperationalReadService
 
     public const PACKAGE_LIST_LIMIT = 8;
 
+    public const LA_DECISION_LIST_LIMIT = 8;
+
     public function __construct(
         private ReferralRepository $referral_repository,
         private ReferralMeetingRepository $meeting_repository,
@@ -47,7 +52,8 @@ class ManagementOperationalReadService
         private UserProvider $user_provider,
         private PipelineAttentionService $attention_service,
         private ReferralAssessmentRepository $assessment_repository,
-        private PackageCostRepository $package_cost_repository
+        private PackageCostRepository $package_cost_repository,
+        private LaDecisionRepository $la_decision_repository
     ) {
     }
 
@@ -91,6 +97,7 @@ class ManagementOperationalReadService
             PipelineStage::AWAITING_LA_DECISION,
             $access
         );
+        $la_decision_counts = $this->la_decision_repository->count_current_decision_for_dashboard($access);
 
         $unassigned = $this->referral_repository->count_unassigned_responsibilities($access);
 
@@ -134,6 +141,13 @@ class ManagementOperationalReadService
                 'prepared_packages' => __('Latest package-cost row status is prepared.', 'jm-referral-system'),
                 'sent_packages'     => __('Latest package-cost row status is sent.', 'jm-referral-system'),
                 'awaiting_la_decision' => __('Current acquisition pipeline stage is Awaiting Local Authority Decision.', 'jm-referral-system'),
+                'la_decisions'      => __(
+                    'Latest Local Authority decision row per referral (highest id). Notes, funding, references and package values are not shown here.',
+                    'jm-referral-system'
+                ),
+                'la_approved'       => __('Latest LA-decision row outcome is approved.', 'jm-referral-system'),
+                'la_declined'       => __('Latest LA-decision row outcome is declined.', 'jm-referral-system'),
+                'la_not_proceeding' => __('Latest LA-decision row outcome is not proceeding.', 'jm-referral-system'),
             ],
             'status_cards'         => [
                 [
@@ -278,6 +292,33 @@ class ManagementOperationalReadService
                     $this->package_cost_repository->list_current_for_dashboard(
                         PackageCost::STATUS_SENT,
                         self::PACKAGE_LIST_LIMIT,
+                        $access
+                    )
+                ),
+            ],
+            'la_decisions'         => [
+                'awaiting_count'       => $awaiting_la_decision,
+                'approved_count'       => (int) ($la_decision_counts['approved'] ?? 0),
+                'declined_count'       => (int) ($la_decision_counts['declined'] ?? 0),
+                'not_proceeding_count' => (int) ($la_decision_counts['not_proceeding'] ?? 0),
+                'approved_list'        => $this->present_la_decisions(
+                    $this->la_decision_repository->list_current_for_dashboard(
+                        LaDecision::DECISION_APPROVED,
+                        self::LA_DECISION_LIST_LIMIT,
+                        $access
+                    )
+                ),
+                'declined_list'        => $this->present_la_decisions(
+                    $this->la_decision_repository->list_current_for_dashboard(
+                        LaDecision::DECISION_DECLINED,
+                        self::LA_DECISION_LIST_LIMIT,
+                        $access
+                    )
+                ),
+                'not_proceeding_list'  => $this->present_la_decisions(
+                    $this->la_decision_repository->list_current_for_dashboard(
+                        LaDecision::DECISION_NOT_PROCEEDING,
+                        self::LA_DECISION_LIST_LIMIT,
                         $access
                     )
                 ),
@@ -571,6 +612,35 @@ class ManagementOperationalReadService
             $out[] = [
                 'referral_number' => (string) ($row['referral_number'] ?? ''),
                 'status_label'    => '' !== $status ? PackageCost::status_label($status) : '',
+                'when_label'      => '' !== $when
+                    ? (string) mysql2date(
+                        get_option('date_format') . ' ' . get_option('time_format'),
+                        $when
+                    )
+                    : '—',
+                'url'             => $referral_id > 0 ? PortalUrls::referral($referral_id) : '',
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Safe LA-decision list rows — no notes, funding, references, or package values.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, string>>
+     */
+    private function present_la_decisions(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            $referral_id = absint($row['referral_id'] ?? 0);
+            $decision    = (string) ($row['decision'] ?? '');
+            $when        = (string) ($row['decision_at'] ?? '');
+            $out[] = [
+                'referral_number' => (string) ($row['referral_number'] ?? ''),
+                'decision_label'  => '' !== $decision ? LaDecision::decision_label($decision) : '',
                 'when_label'      => '' !== $when
                     ? (string) mysql2date(
                         get_option('date_format') . ' ' . get_option('time_format'),

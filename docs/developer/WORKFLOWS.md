@@ -221,7 +221,7 @@ Canonical stage transition on successful submission only:
 
 ---
 
-## Local Authority Decision (Phase 3F)
+## Local Authority Decision (Phase 3F / **4G.1**)
 
 Business milestone — not a sticky “approved” pipeline stage.
 
@@ -232,19 +232,24 @@ Business milestone — not a sticky “approved” pipeline stage.
 | Not Proceeding | → `not_proceeding` (terminal) | → `cancelled` |
 
 **Service:** `JMReferral\LaDecision\LocalAuthorityDecisionService`
-**Table:** `jmrs_referral_la_decisions` (DB `2.26.0`)
 
-**Requirements:** stage = `awaiting_la_decision`; current Package Cost `status=sent`; commercial permission `can_record_la_decision`.
+**Table:** `jmrs_referral_la_decisions` (DB `2.26.0`; unchanged in 4G.1 — Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**)
+
+**Requirements:** stage = `awaiting_la_decision`; current Package Cost `status=sent` (selected server-side; callers cannot supply `package_cost_id`); commercial permission `can_record_la_decision`; no prior decision row.
 
 **Funding (Approved only):** Yes / No / Not Recorded. Missing funding reference does **not** block transition planning. Approval ≠ automatic funding confirmation.
 
-**Immutability:** Normal workflow is record-once / read-only. No casual edit UI. Correction = Manager/Admin pipeline override / controlled repair (deferred full reconsideration).
+**Immutability (4G.1):** Record-once / terminal read-only through normal portal and admin workflows. Form hidden after save; service denies re-record (`already_recorded` + lock). No edit, correction, reconsideration, or reopen UI. Lack of database `UNIQUE(referral_id)` is an accepted application-level limitation. Correction remains Manager/Admin pipeline override only (deferred full reconsideration).
 
-**Activity:** `la_decision_approved` / `la_decision_declined` / `referral_not_proceeding` (no notes/funding refs in timeline). Plus pipeline history + status_changed when status changes.
+**Notes (4G.1):** Optional operational notes (max 500) are stored and displayed escaped on the authorised read-only panel. Notes are **not** copied to activity descriptions, Operations dashboard, URLs, or emails.
 
-**Notifications:** No LA acknowledgement email. Assignees may receive existing `status-changed` email when broad status updates (same pathway as edit form).
+**Activity:** `la_decision_approved` / `la_decision_declined` / `referral_not_proceeding` (no notes/funding/decision refs in timeline). Plus pipeline history + `status_changed` when status changes.
 
-**Permissions:** Same commercial gate as Express Interest / Package Cost (Admin / Manager / Coordinator). Assessor / Support Worker denied. Override not required for normal recording.
+**Notifications:** No LA acknowledgement email. Assignees may receive existing `status-changed` email when broad status updates after COMMIT (`emit_status_change_side_effects` → `notify_status_changed`). Status email does not include decision notes, references, funding, or package totals.
+
+**Permissions:** Same commercial gate as Express Interest / Package Cost (Admin / Manager / Coordinator). Assessor may **view** the decision panel when the referral is visible (**EXISTING PRODUCT BEHAVIOUR — REQUIRES FUTURE JM CONFIRMATION**). Support Worker denied. Owner / Champion / Transition lead membership grants no LA permission. Override not required for normal recording.
+
+**Operations dashboard (4G.1):** Awaiting LA Decision (pipeline-based) plus approved / declined / not-proceeding counts from latest decision row (`MAX(id)`). Compact lists show referral number, decision label, and decision date only — **no** notes, funding, references, or package values. Authority SLA remains deferred. Focused UAT **PASS** 2026-08-27 (Declined / Not Proceeding / status-change email **NOT RUN — CODE REVIEWED**). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**.
 
 ---
 

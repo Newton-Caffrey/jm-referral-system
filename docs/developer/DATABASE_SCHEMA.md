@@ -193,7 +193,7 @@ Do not store clinical narrative here. Human timeline also logs concise `pipeline
 
 **Indexes:** `referral_id`, `package_cost_id`, `decision`, `(referral_id, decision)`, `decision_at`.
 
-**Rules:** Record only when stage = `awaiting_la_decision` and a **sent** Package Cost exists for the referral. Decisions are immutable in normal workflow. Pipeline transitions via `ReferralPipelineService` only (no direct `workflow_stage_id` writes).
+**Rules:** Record only when stage = `awaiting_la_decision` and a **sent** Package Cost exists for the referral (package selected server-side). Decisions are immutable in normal workflow (record-once). Pipeline transitions via `ReferralPipelineService` only (no direct `workflow_stage_id` writes). Schema allows multiple rows per referral; runtime blocks a second create. Lack of `UNIQUE(referral_id)` is an accepted application-level limitation (Phase **4G.1**). No authority-name, decision-document, or approved-amount columns.
 
 ---
 

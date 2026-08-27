@@ -190,4 +190,122 @@ class LaDecisionRepository
 
         return $count > 0;
     }
+
+    /**
+     * Counts of latest LA-decision rows by outcome (approved / declined / not_proceeding).
+     * Older historical rows for the same referral are excluded via MAX(id).
+     *
+     * Limitation: referral_id is non-unique; “current” = highest id per referral.
+     * Absence of UNIQUE(referral_id) is an accepted application-level constraint.
+     *
+     * @return array{approved: int, declined: int, not_proceeding: int}
+     */
+    public function count_current_decision_for_dashboard(?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $decisions = Tables::referral_la_decisions_table();
+        $referrals = Tables::referrals_table();
+
+        $where  = [
+            'r.archived_at IS NULL',
+            'd.decision IN (%s, %s, %s)',
+        ];
+        $params = [
+            LaDecision::DECISION_APPROVED,
+            LaDecision::DECISION_DECLINED,
+            LaDecision::DECISION_NOT_PROCEEDING,
+        ];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT d.decision, COUNT(*) AS total
+            FROM {$decisions} d
+            INNER JOIN (
+                SELECT referral_id, MAX(id) AS max_id
+                FROM {$decisions}
+                GROUP BY referral_id
+            ) latest ON latest.max_id = d.id
+            INNER JOIN {$referrals} r ON r.id = d.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            GROUP BY d.decision';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        $out = [
+            LaDecision::DECISION_APPROVED       => 0,
+            LaDecision::DECISION_DECLINED       => 0,
+            LaDecision::DECISION_NOT_PROCEEDING => 0,
+        ];
+
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $decision = (string) ($row['decision'] ?? '');
+                if (isset($out[$decision])) {
+                    $out[$decision] = (int) ($row['total'] ?? 0);
+                }
+            }
+        }
+
+        return [
+            'approved'       => $out[LaDecision::DECISION_APPROVED],
+            'declined'       => $out[LaDecision::DECISION_DECLINED],
+            'not_proceeding' => $out[LaDecision::DECISION_NOT_PROCEEDING],
+        ];
+    }
+
+    /**
+     * Compact list of current LA decisions for Operations (no notes/refs/funding).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_current_for_dashboard(
+        string $decision,
+        int $limit,
+        ?int $access_assigned_to = null
+    ): array {
+        global $wpdb;
+
+        $limit = max(1, min(50, $limit));
+        if (! LaDecision::is_valid_decision($decision)) {
+            return [];
+        }
+
+        $decisions = Tables::referral_la_decisions_table();
+        $referrals = Tables::referrals_table();
+
+        $where  = [
+            'r.archived_at IS NULL',
+            'd.decision = %s',
+        ];
+        $params = [$decision];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $params[] = $limit;
+
+        $sql = "SELECT d.id, d.referral_id, d.decision, d.decision_at, r.referral_number
+            FROM {$decisions} d
+            INNER JOIN (
+                SELECT referral_id, MAX(id) AS max_id
+                FROM {$decisions}
+                GROUP BY referral_id
+            ) latest ON latest.max_id = d.id
+            INNER JOIN {$referrals} r ON r.id = d.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY d.decision_at DESC, d.id DESC
+            LIMIT %d';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($rows) ? $rows : [];
+    }
 }

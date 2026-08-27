@@ -388,6 +388,10 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 		$pkg_ops         = is_array( $ops['package_costing'] ?? null ) ? $ops['package_costing'] : array();
 		$pkg_prepared    = is_array( $pkg_ops['prepared_list'] ?? null ) ? $pkg_ops['prepared_list'] : array();
 		$pkg_sent        = is_array( $pkg_ops['sent_list'] ?? null ) ? $pkg_ops['sent_list'] : array();
+		$la_ops          = is_array( $ops['la_decisions'] ?? null ) ? $ops['la_decisions'] : array();
+		$la_approved     = is_array( $la_ops['approved_list'] ?? null ) ? $la_ops['approved_list'] : array();
+		$la_declined     = is_array( $la_ops['declined_list'] ?? null ) ? $la_ops['declined_list'] : array();
+		$la_np           = is_array( $la_ops['not_proceeding_list'] ?? null ) ? $la_ops['not_proceeding_list'] : array();
 		$defs            = is_array( $ops['definitions'] ?? null ) ? $ops['definitions'] : array();
 		?>
 		<section class="jmrs-mgmt__view" id="jmrs-view-ops" role="tabpanel" aria-labelledby="jmrs-tab-ops" hidden>
@@ -846,6 +850,114 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 												<td><?php echo esc_html( (string) ( $row['when_label'] ?? '—' ) ); ?></td>
 												<td><span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?></span></td>
 												<td><?php echo esc_html( (string) ( $row['status_label'] ?? '' ) ); ?></td>
+												<td>
+													<?php if ( '' !== (string) ( $row['url'] ?? '' ) ) : ?>
+														<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $row['url'] ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
+													<?php endif; ?>
+												</td>
+											</tr>
+										<?php endforeach; ?>
+									</tbody>
+								</table>
+							</div>
+						<?php endif; ?>
+					</div>
+				</div>
+			</article>
+
+			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#7A4E2D">
+				<div class="jmrs-mgmt__panel-head">
+					<div>
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Local Authority Decisions', 'jm-referral-system' ); ?></h3></div>
+						<p class="jmrs-mgmt__panel-q"><?php echo esc_html( (string) ( $defs['la_decisions'] ?? '' ) ); ?></p>
+					</div>
+				</div>
+				<div class="jmrs-mgmt__unassigned-grid" role="list">
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'Awaiting LA decision', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $la_ops['awaiting_count'] ?? $pkg_ops['awaiting_la_count'] ?? 0 ) ); ?></div>
+						<div class="jmrs-mgmt__fig-note"><?php echo esc_html( (string) ( $defs['awaiting_la_decision'] ?? '' ) ); ?></div>
+					</div>
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'Approved decisions', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $la_ops['approved_count'] ?? 0 ) ); ?></div>
+						<div class="jmrs-mgmt__fig-note"><?php echo esc_html( (string) ( $defs['la_approved'] ?? '' ) ); ?></div>
+					</div>
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'Declined decisions', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $la_ops['declined_count'] ?? 0 ) ); ?></div>
+						<div class="jmrs-mgmt__fig-note"><?php echo esc_html( (string) ( $defs['la_declined'] ?? '' ) ); ?></div>
+					</div>
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'Not proceeding', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $la_ops['not_proceeding_count'] ?? 0 ) ); ?></div>
+						<div class="jmrs-mgmt__fig-note"><?php echo esc_html( (string) ( $defs['la_not_proceeding'] ?? '' ) ); ?></div>
+					</div>
+				</div>
+
+				<div class="jmrs-mgmt__ops-grid jmrs-mgmt__ops-grid--2" style="margin-top:16px;margin-bottom:0;">
+					<div>
+						<h4 class="jmrs-mgmt__subhead"><?php echo esc_html__( 'Approved decisions', 'jm-referral-system' ); ?></h4>
+						<?php if ( [] === $la_approved ) : ?>
+							<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No approved decisions.', 'jm-referral-system' ); ?></div>
+						<?php else : ?>
+							<div class="jmrs-mgmt__tbl-scroll">
+								<table class="jmrs-mgmt__table">
+									<thead>
+										<tr>
+											<th scope="col"><?php echo esc_html__( 'Decision date', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Decision', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Open', 'jm-referral-system' ); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php foreach ( $la_approved as $row ) : ?>
+											<?php if ( ! is_array( $row ) ) { continue; } ?>
+											<tr>
+												<td><?php echo esc_html( (string) ( $row['when_label'] ?? '—' ) ); ?></td>
+												<td><span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?></span></td>
+												<td><?php echo esc_html( (string) ( $row['decision_label'] ?? '' ) ); ?></td>
+												<td>
+													<?php if ( '' !== (string) ( $row['url'] ?? '' ) ) : ?>
+														<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $row['url'] ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
+													<?php endif; ?>
+												</td>
+											</tr>
+										<?php endforeach; ?>
+									</tbody>
+								</table>
+							</div>
+						<?php endif; ?>
+					</div>
+					<div>
+						<h4 class="jmrs-mgmt__subhead"><?php echo esc_html__( 'Declined / not proceeding', 'jm-referral-system' ); ?></h4>
+						<?php
+						$la_closed = array_merge(
+							is_array( $la_declined ) ? $la_declined : array(),
+							is_array( $la_np ) ? $la_np : array()
+						);
+						?>
+						<?php if ( [] === $la_closed ) : ?>
+							<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No declined or not-proceeding decisions.', 'jm-referral-system' ); ?></div>
+						<?php else : ?>
+							<div class="jmrs-mgmt__tbl-scroll">
+								<table class="jmrs-mgmt__table">
+									<thead>
+										<tr>
+											<th scope="col"><?php echo esc_html__( 'Decision date', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Decision', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Open', 'jm-referral-system' ); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php foreach ( $la_closed as $row ) : ?>
+											<?php if ( ! is_array( $row ) ) { continue; } ?>
+											<tr>
+												<td><?php echo esc_html( (string) ( $row['when_label'] ?? '—' ) ); ?></td>
+												<td><span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?></span></td>
+												<td><?php echo esc_html( (string) ( $row['decision_label'] ?? '' ) ); ?></td>
 												<td>
 													<?php if ( '' !== (string) ( $row['url'] ?? '' ) ) : ?>
 														<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $row['url'] ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
