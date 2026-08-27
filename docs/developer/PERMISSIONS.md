@@ -135,13 +135,17 @@ Class: `JMReferral\Permissions\AccessPolicy`.
 | `can_manage_referral_meetings` | Meeting **mutation** capability. Same allow/deny roles as Express Interest (includes archived-mutate gate). Assessor / Support Worker denied. Used for meeting write (4B.2.2), internal attendees (4B.2.3), external participants (4B.2.4); unchanged in **4B.2.5** (focused UAT **PASS** 2026-08-27). Does not control contact/URL visibility. Does not advance pipeline. Attendee/participant membership does **not** grant this capability. |
 | `can_assign_referral_responsibilities` | Responsibility-assignment capability. Manage owner (`assigned_to`), champion, and transition lead via Portal `referral_responsibilities_edit` (**4C.1**, rewrite **1.2.7**; focused UAT **PASS** 2026-08-27). Same commercial roles as Express Interest + mutate/non-archived. Does **not** grant visibility from champion/lead membership. Does not send email or change workflow stage. Same user may hold multiple roles. |
 
-### Pipeline Dashboard (Phase 3H)
+### Pipeline Dashboard (Phase 3H / Management Dashboard 4A / 4D.1)
 
 | Surface | Who |
 | --- | --- |
 | Referral Pipeline / Needs Attention / Active Pipeline Queue | JM Administrator, Referral Manager, Care Coordinator (unrestricted `VIEW_DASHBOARD` + `VIEW_REFERRALS`) |
-| Support Worker dashboard | Scoped care KPIs only — **no** acquisition pipeline commercial surface |
+| Management Dashboard (`/management/`) | Same commercial gate; Support Worker and Assessor denied |
+| Management Dashboard Operations (4D.1) | Same gate; aggregates use `get_assigned_user_constraint()` (null for commercial roles; Support Worker never reaches this surface). Focused UAT **PASS** 2026-08-27. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. |
+| Support Worker dashboard | Scoped care KPIs only — **no** acquisition pipeline / Management Dashboard commercial surface |
 | Assessor | No `VIEW_DASHBOARD` |
+
+Responsibility membership (champion / transition lead / meeting attendance) does **not** grant Management Dashboard access.
 
 Internal targets are configured under Settings → **Pipeline Internal Targets** (`jmrs_manage_settings`). Operational targets only — not contractual SLAs.
 | `can_schedule_assessment` | Same as `can_mutate_referral` (EDIT_REFERRALS + not archived + scope). Assessor allowed. Support Worker denied (no EDIT). Does **not** require `override_pipeline_stage`. |

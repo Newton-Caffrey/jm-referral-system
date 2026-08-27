@@ -40,7 +40,8 @@ class ManagementPipelineBoardService
         private ?HomeService $home_service = null,
         private ?OccupancyService $occupancy_service = null,
         private ?OccupancyRepository $occupancy_repository = null,
-        private ?LaDecisionRepository $la_decision_repository = null
+        private ?LaDecisionRepository $la_decision_repository = null,
+        private ?ManagementOperationalReadService $operational_read_service = null
     ) {
     }
 
@@ -270,9 +271,13 @@ class ManagementPipelineBoardService
             'show_ownership'    => [] !== $ownership,
             'show_team_tab'     => [] !== $ownership,
             'show_funding_tab'  => false,
+            'operational'       => null !== $this->operational_read_service
+                ? $this->operational_read_service->get_operational_payload()
+                : ['show' => false],
             'deferred'          => [
                 'team_performance_full' => true,
                 'funding_authority'     => true,
+                'assessment_scheduling' => true,
             ],
         ];
     }

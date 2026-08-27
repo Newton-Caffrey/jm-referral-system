@@ -7,7 +7,7 @@
 	}
 
 	function selectTab(key) {
-		['pipeline', 'homes', 'team', 'recs'].forEach(function (k) {
+		['pipeline', 'ops', 'homes', 'team', 'recs'].forEach(function (k) {
 			var tab = document.getElementById('jmrs-tab-' + k);
 			var view = document.getElementById('jmrs-view-' + k);
 			if (!tab || !view) {
@@ -19,7 +19,7 @@
 		});
 	}
 
-	['pipeline', 'homes', 'team', 'recs'].forEach(function (k) {
+	['pipeline', 'ops', 'homes', 'team', 'recs'].forEach(function (k) {
 		var tab = document.getElementById('jmrs-tab-' + k);
 		if (tab) {
 			tab.addEventListener('click', function () {

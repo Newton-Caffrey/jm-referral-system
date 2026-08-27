@@ -1364,4 +1364,136 @@ class ReferralRepository
 
         return is_array($results) ? $results : [];
     }
+
+    /**
+     * Unassigned responsibility counts for non-archived, non-terminal referrals (Phase 4D.1).
+     *
+     * @return array{owner: int, champion: int, transition_lead: int}
+     */
+    public function count_unassigned_responsibilities(?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $table = Tables::referrals_table();
+        $where = [
+            'archived_at IS NULL',
+            "status NOT IN ('completed', 'cancelled')",
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $where_sql = implode(' AND ', $where);
+        $sql       = "SELECT
+                SUM(CASE WHEN assigned_to IS NULL OR assigned_to = 0 THEN 1 ELSE 0 END) AS owner_unassigned,
+                SUM(CASE WHEN champion_user_id IS NULL OR champion_user_id = 0 THEN 1 ELSE 0 END) AS champion_unassigned,
+                SUM(CASE WHEN transition_lead_user_id IS NULL OR transition_lead_user_id = 0 THEN 1 ELSE 0 END) AS transition_lead_unassigned
+            FROM {$table}
+            WHERE {$where_sql}";
+
+        if ([] === $params) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- trusted fragments.
+            $row = $wpdb->get_row($sql, ARRAY_A);
+        } else {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $row = $wpdb->get_row($wpdb->prepare($sql, ...$params), ARRAY_A);
+        }
+
+        return [
+            'owner'           => (int) ($row['owner_unassigned'] ?? 0),
+            'champion'        => (int) ($row['champion_unassigned'] ?? 0),
+            'transition_lead' => (int) ($row['transition_lead_unassigned'] ?? 0),
+        ];
+    }
+
+    /**
+     * Workload counts by responsibility field for non-archived, non-terminal referrals.
+     *
+     * @param 'assigned_to'|'champion_user_id'|'transition_lead_user_id' $field
+     * @return array<int, array{user_id: int, count: int}>
+     */
+    public function count_responsibility_workload(string $field, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $allowed = ['assigned_to', 'champion_user_id', 'transition_lead_user_id'];
+        if (! in_array($field, $allowed, true)) {
+            return [];
+        }
+
+        $table = Tables::referrals_table();
+        $where = [
+            'archived_at IS NULL',
+            "status NOT IN ('completed', 'cancelled')",
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $where_sql = implode(' AND ', $where);
+        // Column name is allowlisted above.
+        $sql = "SELECT COALESCE({$field}, 0) AS user_id, COUNT(*) AS total
+            FROM {$table}
+            WHERE {$where_sql}
+            GROUP BY COALESCE({$field}, 0)
+            ORDER BY total DESC, user_id ASC";
+
+        if ([] === $params) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- trusted allowlisted column.
+            $results = $wpdb->get_results($sql, ARRAY_A);
+        } else {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+        }
+
+        if (! is_array($results)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($results as $row) {
+            $out[] = [
+                'user_id' => absint($row['user_id'] ?? 0),
+                'count'   => (int) ($row['total'] ?? 0),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Active operational referral count: non-archived and not completed/cancelled.
+     */
+    public function count_active_operational(?int $access_assigned_to = null): int
+    {
+        global $wpdb;
+
+        $table = Tables::referrals_table();
+        $where = [
+            'archived_at IS NULL',
+            "status NOT IN ('completed', 'cancelled')",
+        ];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = 'SELECT COUNT(*) FROM ' . $table . ' WHERE ' . implode(' AND ', $where);
+
+        if ([] === $params) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- trusted fragments.
+            return (int) $wpdb->get_var($sql);
+        }
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
 }

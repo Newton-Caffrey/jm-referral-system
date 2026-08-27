@@ -98,4 +98,41 @@ class ReferralActivityRepository
 
         return (int) $count;
     }
+
+    /**
+     * Recent activity across visible non-archived referrals (Phase 4D.1 dashboard).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_recent_for_dashboard(int $limit, ?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $limit = max(1, min(50, $limit));
+        $activity  = Tables::referral_activity_table();
+        $referrals = Tables::referrals_table();
+
+        $where = ['r.archived_at IS NULL'];
+        $params = [];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $params[] = $limit;
+
+        $sql = "SELECT a.id, a.referral_id, a.user_id, a.action, a.description, a.created_at,
+                r.referral_number
+            FROM {$activity} a
+            INNER JOIN {$referrals} r ON r.id = a.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            ORDER BY a.created_at DESC, a.id DESC
+            LIMIT %d';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
 }

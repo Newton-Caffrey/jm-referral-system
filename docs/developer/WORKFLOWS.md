@@ -351,6 +351,26 @@ All active acquisition referrals with next action (including Package Cost refine
 
 Commercial pipeline dashboard: Admin / Manager / Coordinator (`VIEW_DASHBOARD` + unrestricted referral access). Support Workers keep scoped care KPIs but **do not** see the acquisition pipeline/Needs Attention surface. Assessor has no dashboard.
 
+### Management Dashboard operations (Phase 4D.1)
+
+Read-only Operations tab on `/management/` via `ManagementOperationalReadService` (composed once into `ManagementPipelineBoardService`).
+
+| Metric | Definition |
+| --- | --- |
+| Active referrals | Non-archived and status not `completed` / `cancelled` |
+| Status cards | Stored statuses only (`new`, `in_progress`, `completed`, `cancelled` counts as applicable); archived excluded |
+| Workflow stages | `WorkflowStageService::get_pipeline_counts` — non-archived with `workflow_stage_id`; canonical stage order |
+| Unassigned responsibilities | Separate counts for empty `assigned_to`, `champion_user_id`, `transition_lead_user_id` on active operational referrals |
+| Workloads | Grouped by owner / champion / transition lead; display names only; Unassigned row; not performance scores |
+| Upcoming meetings | Status `scheduled`, `scheduled_at` in next **14 days** (site timezone), non-archived referral |
+| Past scheduled meetings | Status still `scheduled`, `scheduled_at` earlier than now — labelled past scheduled, not missed/failed |
+| Recent referrals | Latest 8 non-archived by create order |
+| Recent activity | Latest 10 activity rows joined to non-archived referrals; data-minimised descriptions |
+| Assessment KPI | **Deferred** — no reliable standalone scheduling status metric |
+| Stale inactivity rule | **Omitted** — no approved threshold |
+
+No package-costing conversion, authority SLA, placement conversion, revenue, or fabricated targets. No mutations/emails on dashboard GET. Meeting contact PII and online URLs excluded. Responsibility workload is **not** a performance score. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Focused UAT **PASS** 2026-08-27.
+
 ### `next_action_due_at`
 
 Still unused by normal transitions (always null on stage change). Honoured when manually/present and past for overdue attention. Not repurposed as stage-target storage.

@@ -421,4 +421,116 @@ class ReferralMeetingRepository
 
         return $map;
     }
+
+    /**
+     * Scheduled meetings for the Management Dashboard (Phase 4D.1).
+     *
+     * Joins non-archived referrals; optional assigned_to scope; site timezone via $now_mysql.
+     *
+     * @param 'upcoming'|'past' $window
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_scheduled_for_dashboard(
+        string $window,
+        string $now_mysql,
+        ?string $until_mysql,
+        int $limit,
+        ?int $access_assigned_to = null
+    ): array {
+        global $wpdb;
+
+        $limit = max(1, min(50, $limit));
+        $meetings  = Tables::referral_meetings_table();
+        $referrals = Tables::referrals_table();
+
+        $where = [
+            'm.status = %s',
+            'm.scheduled_at IS NOT NULL',
+            'r.archived_at IS NULL',
+        ];
+        $params = [ReferralMeeting::STATUS_SCHEDULED];
+
+        if ('upcoming' === $window) {
+            $where[]  = 'm.scheduled_at >= %s';
+            $params[] = $now_mysql;
+            if (null !== $until_mysql && '' !== $until_mysql) {
+                $where[]  = 'm.scheduled_at <= %s';
+                $params[] = $until_mysql;
+            }
+            $order = 'm.scheduled_at ASC, m.id ASC';
+        } else {
+            $where[]  = 'm.scheduled_at < %s';
+            $params[] = $now_mysql;
+            $order    = 'm.scheduled_at DESC, m.id DESC';
+        }
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $params[] = $limit;
+
+        $sql = "SELECT m.id, m.referral_id, m.meeting_type, m.status, m.scheduled_at,
+                r.referral_number
+            FROM {$meetings} m
+            INNER JOIN {$referrals} r ON r.id = m.referral_id
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY {$order}
+            LIMIT %d";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Count scheduled meetings for dashboard window.
+     *
+     * @param 'upcoming'|'past' $window
+     */
+    public function count_scheduled_for_dashboard(
+        string $window,
+        string $now_mysql,
+        ?string $until_mysql,
+        ?int $access_assigned_to = null
+    ): int {
+        global $wpdb;
+
+        $meetings  = Tables::referral_meetings_table();
+        $referrals = Tables::referrals_table();
+
+        $where = [
+            'm.status = %s',
+            'm.scheduled_at IS NOT NULL',
+            'r.archived_at IS NULL',
+        ];
+        $params = [ReferralMeeting::STATUS_SCHEDULED];
+
+        if ('upcoming' === $window) {
+            $where[]  = 'm.scheduled_at >= %s';
+            $params[] = $now_mysql;
+            if (null !== $until_mysql && '' !== $until_mysql) {
+                $where[]  = 'm.scheduled_at <= %s';
+                $params[] = $until_mysql;
+            }
+        } else {
+            $where[]  = 'm.scheduled_at < %s';
+            $params[] = $now_mysql;
+        }
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT COUNT(*)
+            FROM {$meetings} m
+            INNER JOIN {$referrals} r ON r.id = m.referral_id
+            WHERE " . implode(' AND ', $where);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
 }

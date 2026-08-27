@@ -666,7 +666,125 @@
 	font-size: 13px;
 }
 
+/* Phase 4D.1 — Operations tab */
+.jmrs-mgmt__figures--ops {
+	margin-bottom: 16px;
+}
+
+.jmrs-mgmt__ops-panel {
+	margin-bottom: 16px;
+}
+
+.jmrs-mgmt__stage-bars {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.jmrs-mgmt__stage-bar-meta {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 6px 12px;
+	margin-bottom: 4px;
+}
+
+.jmrs-mgmt__stage-bar-name {
+	font-weight: 600;
+	color: var(--jmrs-mgmt-ink);
+}
+
+.jmrs-mgmt__stage-bar-count {
+	font-size: 13px;
+	color: var(--jmrs-mgmt-ink-soft);
+	font-variant-numeric: tabular-nums;
+}
+
+.jmrs-mgmt__stage-bar-track {
+	height: 8px;
+	background: #e8ecf1;
+	border-radius: 999px;
+	overflow: hidden;
+}
+
+.jmrs-mgmt__stage-bar-fill {
+	display: block;
+	height: 100%;
+	min-width: 0;
+	background: #2b4c7e;
+	border-radius: 999px;
+}
+
+.jmrs-mgmt__unassigned-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.jmrs-mgmt__unassigned {
+	padding: 12px 14px;
+	background: #f7f9fb;
+	border: 1px solid var(--jmrs-mgmt-line);
+	border-radius: 8px;
+}
+
+.jmrs-mgmt__ops-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.jmrs-mgmt__ops-grid--2 {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.jmrs-mgmt__activity {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.jmrs-mgmt__activity-item {
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--jmrs-mgmt-line);
+}
+
+.jmrs-mgmt__activity-item:last-child {
+	border-bottom: 0;
+	padding-bottom: 0;
+}
+
+.jmrs-mgmt__activity-main {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 10px;
+	align-items: baseline;
+}
+
+.jmrs-mgmt__activity-desc {
+	color: var(--jmrs-mgmt-ink);
+}
+
+.jmrs-mgmt__activity-meta {
+	margin-top: 4px;
+	font-size: 12.5px;
+	color: var(--jmrs-mgmt-ink-soft);
+}
+
 @media (max-width: 900px) {
+	.jmrs-mgmt__ops-grid,
+	.jmrs-mgmt__ops-grid--2,
+	.jmrs-mgmt__unassigned-grid {
+		grid-template-columns: 1fr;
+	}
+
 	.jmrs-mgmt__funnel-legend {
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		row-gap: 12px;

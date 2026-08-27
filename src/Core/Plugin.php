@@ -875,6 +875,17 @@ class Plugin
         $controller->set_occupancy_service($occupancy_service);
         $controller->set_service_location_resolver($service_location_resolver);
 
+        $meeting_repository_for_ops = new \JMReferral\Meeting\ReferralMeetingRepository();
+        $operational_read = new \JMReferral\Pipeline\ManagementOperationalReadService(
+            $repository,
+            $meeting_repository_for_ops,
+            $activity_repository,
+            $this->workflow_stage_service,
+            $this->access_policy,
+            $this->user_provider,
+            $pipeline_attention_service
+        );
+
         $management_board = new \JMReferral\Pipeline\ManagementPipelineBoardService(
             $pipeline_attention_service,
             $repository,
@@ -886,7 +897,8 @@ class Plugin
             $home_service,
             $occupancy_service,
             $occupancy_repository,
-            new \JMReferral\LaDecision\LaDecisionRepository()
+            new \JMReferral\LaDecision\LaDecisionRepository(),
+            $operational_read
         );
         $controller->set_management_board_service($management_board);
 

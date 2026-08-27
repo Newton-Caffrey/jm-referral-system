@@ -73,7 +73,7 @@ Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_e
 | `/{base}/homes/{id}/bedrooms/new/` | `bedroom_new` |
 | `/{base}/homes/{id}/bedrooms/{id}/edit/` | `bedroom_edit` |
 
-Management Dashboard board (`ManagementPipelineBoardService`, Phase 4A): read-only; row DTOs use `client_initials` (not full `client_name`); Here Now uses `waiting_days` from current stage entry; All Who Reached uses `first_reached_label` from stage history; KPIs/ownership/PPV/occupancy splits are uncapped aggregates; table rows may be capped with `rows_note`. See `docs/uat/UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md`.
+Management Dashboard board (`ManagementPipelineBoardService`, Phase 4A + **4D.1**): read-only; row DTOs use `client_initials` (not full `client_name`); Here Now uses `waiting_days` from current stage entry; All Who Reached uses `first_reached_label` from stage history; KPIs/ownership/PPV/occupancy splits are uncapped aggregates; table rows may be capped with `rows_note`. **Operations tab** (`ManagementOperationalReadService`): real stored JMRS data — status cards, canonical workflow-stage bars, unassigned responsibility counts, responsibility workloads (not performance scores), upcoming (**14 days**) / past scheduled meetings (objectively labelled), recent referrals (8) / activity (10); privacy excludes contact PII and meeting URLs; scope-aware aggregates; archived excluded; GET read-only; no emails. No new route. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Focused UAT **PASS** 2026-08-27. See `docs/uat/UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md` and `docs/uat/UAT_PHASE_4D_1_MANAGEMENT_DASHBOARD.md`.
 
 ```mermaid
 flowchart TD

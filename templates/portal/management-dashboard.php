@@ -33,6 +33,10 @@ $mode       = (string) ( $board['mode'] ?? 'now' );
 $show_homes = ! empty( $board['show_homes'] );
 $show_own   = ! empty( $board['show_ownership'] );
 $actions_high = absint( $board['actions_high'] ?? 0 );
+$ops          = is_array( $board['operational'] ?? null ) ? $board['operational'] : array();
+$show_ops     = ! empty( $ops['show'] );
+$ops_attn     = is_array( $ops['needs_attention_extra'] ?? null ) ? $ops['needs_attention_extra'] : array();
+$ops_attn_n   = count( $ops_attn );
 
 $now_url     = \JMReferral\Portal\PortalUrls::management_with_args( array( 'jmrs_mgmt_mode' => 'now' ) );
 $reached_url = \JMReferral\Portal\PortalUrls::management_with_args( array( 'jmrs_mgmt_mode' => 'reached' ) );
@@ -100,6 +104,9 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 
 	<nav class="jmrs-mgmt__tabs jmrs-mgmt__no-print" role="tablist" aria-label="<?php echo esc_attr__( 'Management dashboard views', 'jm-referral-system' ); ?>">
 		<button type="button" class="jmrs-mgmt__tab" role="tab" id="jmrs-tab-pipeline" aria-controls="jmrs-view-pipeline" aria-selected="true"><?php echo esc_html__( 'Pipeline stages', 'jm-referral-system' ); ?></button>
+		<?php if ( $show_ops ) : ?>
+			<button type="button" class="jmrs-mgmt__tab" role="tab" id="jmrs-tab-ops" aria-controls="jmrs-view-ops" aria-selected="false"><?php echo esc_html__( 'Operations', 'jm-referral-system' ); ?></button>
+		<?php endif; ?>
 		<?php if ( $show_homes ) : ?>
 			<button type="button" class="jmrs-mgmt__tab" role="tab" id="jmrs-tab-homes" aria-controls="jmrs-view-homes" aria-selected="false"><?php echo esc_html__( 'Homes & capacity', 'jm-referral-system' ); ?></button>
 		<?php endif; ?>
@@ -108,8 +115,8 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 		<?php endif; ?>
 		<button type="button" class="jmrs-mgmt__tab" role="tab" id="jmrs-tab-recs" aria-controls="jmrs-view-recs" aria-selected="false">
 			<?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?>
-			<?php if ( $actions_high > 0 ) : ?>
-				<span class="jmrs-mgmt__badge"><?php echo esc_html( (string) $actions_high ); ?></span>
+			<?php if ( ( $actions_high + $ops_attn_n ) > 0 ) : ?>
+				<span class="jmrs-mgmt__badge"><?php echo esc_html( (string) ( $actions_high + $ops_attn_n ) ); ?></span>
 			<?php endif; ?>
 		</button>
 		<div class="jmrs-mgmt__toolbar">
@@ -361,6 +368,354 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 		<?php endforeach; ?>
 	</section>
 
+	<?php if ( $show_ops ) : ?>
+		<?php
+		$status_cards    = is_array( $ops['status_cards'] ?? null ) ? $ops['status_cards'] : array();
+		$workflow_stages = is_array( $ops['workflow_stages'] ?? null ) ? $ops['workflow_stages'] : array();
+		$unassigned      = is_array( $ops['unassigned'] ?? null ) ? $ops['unassigned'] : array();
+		$workloads       = is_array( $ops['workloads'] ?? null ) ? $ops['workloads'] : array();
+		$wl_owners       = is_array( $workloads['owners'] ?? null ) ? $workloads['owners'] : array();
+		$wl_champions    = is_array( $workloads['champions'] ?? null ) ? $workloads['champions'] : array();
+		$wl_leads        = is_array( $workloads['transition_leads'] ?? null ) ? $workloads['transition_leads'] : array();
+		$upcoming_mtgs   = is_array( $ops['upcoming_meetings'] ?? null ) ? $ops['upcoming_meetings'] : array();
+		$past_mtgs       = is_array( $ops['past_meetings'] ?? null ) ? $ops['past_meetings'] : array();
+		$recent_refs     = is_array( $ops['recent_referrals'] ?? null ) ? $ops['recent_referrals'] : array();
+		$recent_act      = is_array( $ops['recent_activity'] ?? null ) ? $ops['recent_activity'] : array();
+		$defs            = is_array( $ops['definitions'] ?? null ) ? $ops['definitions'] : array();
+		?>
+		<section class="jmrs-mgmt__view" id="jmrs-view-ops" role="tabpanel" aria-labelledby="jmrs-tab-ops" hidden>
+			<div class="jmrs-mgmt__card-head">
+				<h2><?php echo esc_html__( 'Operational overview', 'jm-referral-system' ); ?></h2>
+				<span class="jmrs-mgmt__hint">
+					<?php echo esc_html( (string) ( $defs['active'] ?? '' ) ); ?>
+					<?php if ( ! empty( $defs['upcoming_meetings'] ) ) : ?>
+						· <?php echo esc_html( (string) $defs['upcoming_meetings'] ); ?>
+					<?php endif; ?>
+				</span>
+			</div>
+
+			<section class="jmrs-mgmt__figures jmrs-mgmt__figures--ops" aria-label="<?php echo esc_attr__( 'Operational status cards', 'jm-referral-system' ); ?>">
+				<?php foreach ( $status_cards as $card ) : ?>
+					<?php if ( ! is_array( $card ) ) { continue; } ?>
+					<div class="jmrs-mgmt__fig">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html( (string) ( $card['label'] ?? '' ) ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) ( $card['value'] ?? '0' ) ); ?></div>
+						<div class="jmrs-mgmt__fig-note"><?php echo esc_html( (string) ( $card['note'] ?? '' ) ); ?></div>
+					</div>
+				<?php endforeach; ?>
+			</section>
+
+			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#2B4C7E">
+				<div class="jmrs-mgmt__panel-head">
+					<div>
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Workflow stage distribution', 'jm-referral-system' ); ?></h3></div>
+						<p class="jmrs-mgmt__panel-q"><?php echo esc_html__( 'Visible non-archived referrals by current workflow stage.', 'jm-referral-system' ); ?></p>
+					</div>
+				</div>
+				<?php if ( [] === $workflow_stages ) : ?>
+					<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No referrals in this workflow stage.', 'jm-referral-system' ); ?></div>
+				<?php else : ?>
+					<ul class="jmrs-mgmt__stage-bars" role="list">
+						<?php foreach ( $workflow_stages as $stage_row ) : ?>
+							<?php
+							if ( ! is_array( $stage_row ) ) {
+								continue;
+							}
+							$scount = absint( $stage_row['count'] ?? 0 );
+							$spct   = absint( $stage_row['pct'] ?? 0 );
+							$sname  = (string) ( $stage_row['name'] ?? '' );
+							?>
+							<li class="jmrs-mgmt__stage-bar">
+								<div class="jmrs-mgmt__stage-bar-meta">
+									<span class="jmrs-mgmt__stage-bar-name"><?php echo esc_html( $sname ); ?></span>
+									<span class="jmrs-mgmt__stage-bar-count">
+										<?php
+										echo esc_html(
+											sprintf(
+												/* translators: %d: referral count */
+												_n( '%d referral', '%d referrals', $scount, 'jm-referral-system' ),
+												$scount
+											)
+										);
+										?>
+									</span>
+								</div>
+								<div class="jmrs-mgmt__stage-bar-track" role="presentation">
+									<span class="jmrs-mgmt__stage-bar-fill" style="width:<?php echo esc_attr( (string) $spct ); ?>%"></span>
+								</div>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+			</article>
+
+			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#B4791A">
+				<div class="jmrs-mgmt__panel-head">
+					<div>
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Unassigned responsibilities', 'jm-referral-system' ); ?></h3></div>
+						<p class="jmrs-mgmt__panel-q"><?php echo esc_html__( 'Active non-archived referrals missing a responsibility role. Not labelled overdue.', 'jm-referral-system' ); ?></p>
+					</div>
+				</div>
+				<div class="jmrs-mgmt__unassigned-grid" role="list">
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'No Referral owner', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $unassigned['owner'] ?? 0 ) ); ?></div>
+					</div>
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'No Champion', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $unassigned['champion'] ?? 0 ) ); ?></div>
+					</div>
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'No Transition lead', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $unassigned['transition_lead'] ?? 0 ) ); ?></div>
+					</div>
+				</div>
+			</article>
+
+			<div class="jmrs-mgmt__ops-grid">
+				<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#3F7D3A">
+					<div class="jmrs-mgmt__panel-head">
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Workload — Referral owners', 'jm-referral-system' ); ?></h3></div>
+					</div>
+					<?php if ( [] === $wl_owners ) : ?>
+						<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No active referrals in scope.', 'jm-referral-system' ); ?></div>
+					<?php else : ?>
+						<div class="jmrs-mgmt__tbl-scroll">
+							<table class="jmrs-mgmt__table">
+								<thead>
+									<tr>
+										<th scope="col"><?php echo esc_html__( 'Staff member', 'jm-referral-system' ); ?></th>
+										<th scope="col" class="jmrs-mgmt__num"><?php echo esc_html__( 'Referrals', 'jm-referral-system' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $wl_owners as $row ) : ?>
+										<?php if ( ! is_array( $row ) ) { continue; } ?>
+										<tr>
+											<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['label'] ?? '' ) ); ?></td>
+											<td class="jmrs-mgmt__num"><?php echo esc_html( (string) absint( $row['count'] ?? 0 ) ); ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
+					<?php endif; ?>
+				</article>
+
+				<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#3F7D3A">
+					<div class="jmrs-mgmt__panel-head">
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Workload — Champions', 'jm-referral-system' ); ?></h3></div>
+					</div>
+					<?php if ( [] === $wl_champions ) : ?>
+						<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No active referrals in scope.', 'jm-referral-system' ); ?></div>
+					<?php else : ?>
+						<div class="jmrs-mgmt__tbl-scroll">
+							<table class="jmrs-mgmt__table">
+								<thead>
+									<tr>
+										<th scope="col"><?php echo esc_html__( 'Staff member', 'jm-referral-system' ); ?></th>
+										<th scope="col" class="jmrs-mgmt__num"><?php echo esc_html__( 'Referrals', 'jm-referral-system' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $wl_champions as $row ) : ?>
+										<?php if ( ! is_array( $row ) ) { continue; } ?>
+										<tr>
+											<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['label'] ?? '' ) ); ?></td>
+											<td class="jmrs-mgmt__num"><?php echo esc_html( (string) absint( $row['count'] ?? 0 ) ); ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
+					<?php endif; ?>
+				</article>
+
+				<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#3F7D3A">
+					<div class="jmrs-mgmt__panel-head">
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Workload — Transition leads', 'jm-referral-system' ); ?></h3></div>
+					</div>
+					<?php if ( [] === $wl_leads ) : ?>
+						<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No active referrals in scope.', 'jm-referral-system' ); ?></div>
+					<?php else : ?>
+						<div class="jmrs-mgmt__tbl-scroll">
+							<table class="jmrs-mgmt__table">
+								<thead>
+									<tr>
+										<th scope="col"><?php echo esc_html__( 'Staff member', 'jm-referral-system' ); ?></th>
+										<th scope="col" class="jmrs-mgmt__num"><?php echo esc_html__( 'Referrals', 'jm-referral-system' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $wl_leads as $row ) : ?>
+										<?php if ( ! is_array( $row ) ) { continue; } ?>
+										<tr>
+											<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['label'] ?? '' ) ); ?></td>
+											<td class="jmrs-mgmt__num"><?php echo esc_html( (string) absint( $row['count'] ?? 0 ) ); ?></td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
+					<?php endif; ?>
+				</article>
+			</div>
+
+			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#2B4C7E">
+				<div class="jmrs-mgmt__panel-head">
+					<div>
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Upcoming meetings', 'jm-referral-system' ); ?></h3></div>
+						<p class="jmrs-mgmt__panel-q"><?php echo esc_html( (string) ( $defs['upcoming_meetings'] ?? '' ) ); ?></p>
+					</div>
+				</div>
+				<?php if ( [] === $upcoming_mtgs ) : ?>
+					<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No upcoming meetings.', 'jm-referral-system' ); ?></div>
+				<?php else : ?>
+					<div class="jmrs-mgmt__tbl-scroll">
+						<table class="jmrs-mgmt__table">
+							<thead>
+								<tr>
+									<th scope="col"><?php echo esc_html__( 'When', 'jm-referral-system' ); ?></th>
+									<th scope="col"><?php echo esc_html__( 'Type', 'jm-referral-system' ); ?></th>
+									<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+									<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+									<th scope="col"><?php echo esc_html__( 'Open', 'jm-referral-system' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $upcoming_mtgs as $mtg ) : ?>
+									<?php if ( ! is_array( $mtg ) ) { continue; } ?>
+									<tr>
+										<td><?php echo esc_html( (string) ( $mtg['scheduled_label'] ?? '—' ) ); ?></td>
+										<td><?php echo esc_html( (string) ( $mtg['meeting_type'] ?? '' ) ); ?></td>
+										<td><span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $mtg['referral_number'] ?? '' ) ); ?></span></td>
+										<td><?php echo esc_html( (string) ( $mtg['status_label'] ?? '' ) ); ?></td>
+										<td>
+											<?php if ( '' !== (string) ( $mtg['detail_url'] ?? '' ) ) : ?>
+												<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $mtg['detail_url'] ); ?>"><?php echo esc_html__( 'View meeting', 'jm-referral-system' ); ?></a>
+											<?php endif; ?>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					</div>
+				<?php endif; ?>
+			</article>
+
+			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#B03030">
+				<div class="jmrs-mgmt__panel-head">
+					<div>
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Past scheduled meetings', 'jm-referral-system' ); ?></h3></div>
+						<p class="jmrs-mgmt__panel-q"><?php echo esc_html( (string) ( $defs['past_meetings'] ?? '' ) ); ?></p>
+					</div>
+				</div>
+				<?php if ( [] === $past_mtgs ) : ?>
+					<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No past scheduled meetings.', 'jm-referral-system' ); ?></div>
+				<?php else : ?>
+					<div class="jmrs-mgmt__tbl-scroll">
+						<table class="jmrs-mgmt__table">
+							<thead>
+								<tr>
+									<th scope="col"><?php echo esc_html__( 'Scheduled', 'jm-referral-system' ); ?></th>
+									<th scope="col"><?php echo esc_html__( 'Type', 'jm-referral-system' ); ?></th>
+									<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+									<th scope="col"><?php echo esc_html__( 'Open', 'jm-referral-system' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $past_mtgs as $mtg ) : ?>
+									<?php if ( ! is_array( $mtg ) ) { continue; } ?>
+									<tr>
+										<td><?php echo esc_html( (string) ( $mtg['scheduled_label'] ?? '—' ) ); ?></td>
+										<td><?php echo esc_html( (string) ( $mtg['meeting_type'] ?? '' ) ); ?></td>
+										<td><span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $mtg['referral_number'] ?? '' ) ); ?></span></td>
+										<td>
+											<?php if ( '' !== (string) ( $mtg['detail_url'] ?? '' ) ) : ?>
+												<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $mtg['detail_url'] ); ?>"><?php echo esc_html__( 'View meeting', 'jm-referral-system' ); ?></a>
+											<?php endif; ?>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					</div>
+				<?php endif; ?>
+			</article>
+
+			<div class="jmrs-mgmt__ops-grid jmrs-mgmt__ops-grid--2">
+				<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#5B6B7B">
+					<div class="jmrs-mgmt__panel-head">
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Recent referrals', 'jm-referral-system' ); ?></h3></div>
+					</div>
+					<?php if ( [] === $recent_refs ) : ?>
+						<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No recent referrals.', 'jm-referral-system' ); ?></div>
+					<?php else : ?>
+						<div class="jmrs-mgmt__tbl-scroll">
+							<table class="jmrs-mgmt__table">
+								<thead>
+									<tr>
+										<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+										<th scope="col"><?php echo esc_html__( 'Status', 'jm-referral-system' ); ?></th>
+										<th scope="col"><?php echo esc_html__( 'Created', 'jm-referral-system' ); ?></th>
+										<th scope="col"><?php echo esc_html__( 'Open', 'jm-referral-system' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $recent_refs as $ref ) : ?>
+										<?php if ( ! is_array( $ref ) ) { continue; } ?>
+										<tr>
+											<td><span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $ref['referral_number'] ?? '' ) ); ?></span></td>
+											<td><?php echo esc_html( (string) ( $ref['status'] ?? '' ) ); ?></td>
+											<td><?php echo esc_html( (string) ( $ref['created_label'] ?? '—' ) ); ?></td>
+											<td>
+												<?php if ( '' !== (string) ( $ref['url'] ?? '' ) ) : ?>
+													<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $ref['url'] ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
+												<?php endif; ?>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
+					<?php endif; ?>
+				</article>
+
+				<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#5B6B7B">
+					<div class="jmrs-mgmt__panel-head">
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Recent activity', 'jm-referral-system' ); ?></h3></div>
+					</div>
+					<?php if ( [] === $recent_act ) : ?>
+						<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No recent activity available.', 'jm-referral-system' ); ?></div>
+					<?php else : ?>
+						<ul class="jmrs-mgmt__activity" role="list">
+							<?php foreach ( $recent_act as $act ) : ?>
+								<?php if ( ! is_array( $act ) ) { continue; } ?>
+								<li class="jmrs-mgmt__activity-item">
+									<div class="jmrs-mgmt__activity-main">
+										<?php if ( '' !== (string) ( $act['url'] ?? '' ) ) : ?>
+											<a class="jmrs-mgmt__link jmrs-mgmt__ref" href="<?php echo esc_url( (string) $act['url'] ); ?>"><?php echo esc_html( (string) ( $act['referral_number'] ?? '' ) ); ?></a>
+										<?php else : ?>
+											<span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $act['referral_number'] ?? '' ) ); ?></span>
+										<?php endif; ?>
+										<span class="jmrs-mgmt__activity-desc"><?php echo esc_html( (string) ( $act['description'] ?? '' ) ); ?></span>
+									</div>
+									<div class="jmrs-mgmt__activity-meta">
+										<?php if ( '' !== (string) ( $act['actor'] ?? '' ) ) : ?>
+											<span><?php echo esc_html( (string) $act['actor'] ); ?></span>
+											<span aria-hidden="true"> · </span>
+										<?php endif; ?>
+										<span><?php echo esc_html( (string) ( $act['when_label'] ?? '' ) ); ?></span>
+									</div>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+					<?php endif; ?>
+				</article>
+			</div>
+		</section>
+	<?php endif; ?>
+
 	<?php if ( $show_homes ) : ?>
 		<section class="jmrs-mgmt__view" id="jmrs-view-homes" role="tabpanel" aria-labelledby="jmrs-tab-homes" hidden>
 			<div class="jmrs-mgmt__card-head">
@@ -451,9 +806,10 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 
 	<section class="jmrs-mgmt__view" id="jmrs-view-recs" role="tabpanel" aria-labelledby="jmrs-tab-recs" hidden>
 		<div class="jmrs-mgmt__card-head">
-			<h2><?php echo esc_html__( 'Recommended actions', 'jm-referral-system' ); ?></h2>
+			<h2><?php echo esc_html__( 'Needs attention', 'jm-referral-system' ); ?></h2>
+			<span class="jmrs-mgmt__hint"><?php echo esc_html__( 'Objective items from stored pipeline and meeting data only.', 'jm-referral-system' ); ?></span>
 		</div>
-		<?php if ( [] === $actions ) : ?>
+		<?php if ( [] === $actions && [] === $ops_attn ) : ?>
 			<div class="jmrs-mgmt__rec jmrs-mgmt__rec--low">
 				<div class="jmrs-mgmt__rec-head">
 					<h4><?php echo esc_html__( 'Nothing needs attention', 'jm-referral-system' ); ?></h4>
@@ -462,6 +818,32 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 				<p><?php echo esc_html__( 'No Needs Attention items for the current pipeline filters.', 'jm-referral-system' ); ?></p>
 			</div>
 		<?php else : ?>
+			<?php if ( [] !== $ops_attn ) : ?>
+				<div class="jmrs-mgmt__card-head">
+					<h3><?php echo esc_html__( 'Past scheduled meetings', 'jm-referral-system' ); ?></h3>
+				</div>
+				<?php foreach ( $ops_attn as $attn ) : ?>
+					<?php if ( ! is_array( $attn ) ) { continue; } ?>
+					<?php
+					$attn_url = (string) ( $attn['url'] ?? '' );
+					$is_meeting_attn = '' !== $attn_url;
+					?>
+					<div class="jmrs-mgmt__rec jmrs-mgmt__rec--med">
+						<div class="jmrs-mgmt__rec-head">
+							<h4><?php echo esc_html( (string) ( $attn['title'] ?? '' ) ); ?></h4>
+							<span class="jmrs-mgmt__pill jmrs-mgmt__pill--warn">
+								<?php echo esc_html( $is_meeting_attn ? __( 'Scheduled', 'jm-referral-system' ) : __( 'Unassigned', 'jm-referral-system' ) ); ?>
+							</span>
+						</div>
+						<?php if ( '' !== (string) ( $attn['detail'] ?? '' ) ) : ?>
+							<p><?php echo esc_html( (string) $attn['detail'] ); ?></p>
+						<?php endif; ?>
+						<?php if ( $is_meeting_attn ) : ?>
+							<p><a class="jmrs-mgmt__link" href="<?php echo esc_url( $attn_url ); ?>"><?php echo esc_html__( 'Open meeting', 'jm-referral-system' ); ?></a></p>
+						<?php endif; ?>
+					</div>
+				<?php endforeach; ?>
+			<?php endif; ?>
 			<?php foreach ( $actions as $action ) : ?>
 				<?php
 				if ( ! is_array( $action ) ) {
