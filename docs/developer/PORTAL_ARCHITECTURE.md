@@ -20,7 +20,7 @@ Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clin
 | `ClinicalDispatcher` | Routes clinical portal actions to focused handlers |
 | `ClinicalAccess` | Shared referral gates + breadcrumbs for clinical handlers |
 | Handlers | `CarePlanReviewHandler`, `MedicationHandler`, `CareTeamHandler`, `ScheduleHandler`, `VisitHandler` |
-| `MeetingsHandler` | Referral meetings list/detail (4B.2.1), write workflows (4B.2.2), **internal** attendees (4B.2.3), **external** participants (4B.2.4). Mutations use `can_manage_referral_meetings` + service lifecycle. Contacts via `can_view_referral_meeting_contacts` (Assessor never sees email/telephone in markup). Support Worker denied meetings. |
+| `MeetingsHandler` | Referral meetings list/detail (4B.2.1), write workflows (4B.2.2), **internal** attendees (4B.2.3), **external** participants (4B.2.4), **4B.2.5 polish** (focused UAT **PASS** 2026-08-27; no new routes). Mutations use `can_manage_referral_meetings` + service lifecycle. Contacts via `can_view_referral_meeting_contacts` (Assessor never sees email/telephone in markup). Support Worker denied meetings. Constructed once in `Plugin::registerStaffPortal()`. |
 | `HomesHandler` | Supported living homes & bedrooms via shared `HomeService` / `BedroomService` |
 | `PortalAccess` / `PortalNavigation` / `PortalAssets` | Eligibility, nav, CSS/JS |
 

@@ -128,7 +128,7 @@ $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? 
 	<?php if ( empty( $internal ) ) : ?>
 		<p><?php echo esc_html__( 'No internal attendees.', 'jm-referral-system' ); ?></p>
 	<?php else : ?>
-		<div class="jmrs-portal-table-wrap">
+		<div class="jmrs-portal-table-wrap jmrs-meetings-table-wrap">
 			<table class="jmrs-portal-table">
 				<thead>
 					<tr>
@@ -190,7 +190,7 @@ $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? 
 	<?php if ( empty( $external ) ) : ?>
 		<p><?php echo esc_html__( 'No external participants.', 'jm-referral-system' ); ?></p>
 	<?php else : ?>
-		<div class="jmrs-portal-table-wrap">
+		<div class="jmrs-portal-table-wrap jmrs-meetings-table-wrap">
 			<table class="jmrs-portal-table">
 				<thead>
 					<tr>

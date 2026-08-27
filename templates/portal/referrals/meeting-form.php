@@ -27,6 +27,8 @@ $submit_draft     = ! empty( $submit_draft );
 $submit_scheduled = ! empty( $submit_scheduled );
 $submit_label     = (string) ( $submit_label ?? __( 'Save', 'jm-referral-system' ) );
 $status           = (string) ( $status ?? '' );
+$mode             = (string) ( $mode ?? '' );
+$require_schedule = $submit_scheduled || 'schedule' === $mode || 'reschedule' === $mode;
 
 $val = static function ( array $data, string $key ): string {
 	return (string) ( $data[ $key ] ?? '' );
@@ -83,8 +85,9 @@ $field_error = static function ( array $errors, string $key ): void {
 					<label for="jmrs_meeting_type">
 						<?php echo esc_html__( 'Meeting type', 'jm-referral-system' ); ?>
 						<span class="jmrs-required" aria-hidden="true">*</span>
+						<span class="screen-reader-text"><?php echo esc_html__( 'required', 'jm-referral-system' ); ?></span>
 					</label>
-					<select name="jmrs_meeting_type" id="jmrs_meeting_type" required aria-describedby="<?php echo isset( $errors['meeting_type'] ) ? 'jmrs-meeting-error-meeting_type' : ''; ?>">
+					<select name="jmrs_meeting_type" id="jmrs_meeting_type" required<?php echo isset( $errors['meeting_type'] ) ? ' aria-invalid="true" aria-describedby="jmrs-meeting-error-meeting_type"' : ''; ?>>
 						<option value=""><?php echo esc_html__( 'Select type', 'jm-referral-system' ); ?></option>
 						<?php foreach ( $type_labels as $type_value => $type_label ) : ?>
 							<option value="<?php echo esc_attr( (string) $type_value ); ?>" <?php selected( $val( $data, 'meeting_type' ), (string) $type_value ); ?>>
@@ -101,8 +104,9 @@ $field_error = static function ( array $errors, string $key ): void {
 					<label for="jmrs_meeting_purpose">
 						<?php echo esc_html__( 'Purpose', 'jm-referral-system' ); ?>
 						<span class="jmrs-required" aria-hidden="true">*</span>
+						<span class="screen-reader-text"><?php echo esc_html__( 'required', 'jm-referral-system' ); ?></span>
 					</label>
-					<input type="text" name="jmrs_meeting_purpose" id="jmrs_meeting_purpose" maxlength="255" required value="<?php echo esc_attr( $val( $data, 'purpose' ) ); ?>" />
+					<input type="text" name="jmrs_meeting_purpose" id="jmrs_meeting_purpose" maxlength="255" required aria-required="true" value="<?php echo esc_attr( $val( $data, 'purpose' ) ); ?>"<?php echo isset( $errors['purpose'] ) ? ' aria-invalid="true" aria-describedby="jmrs-meeting-error-purpose"' : ''; ?> />
 					<?php $field_error( $errors, 'purpose' ); ?>
 				</div>
 			<?php endif; ?>
@@ -117,13 +121,13 @@ $field_error = static function ( array $errors, string $key ): void {
 					?>
 				</p>
 				<div class="jmrs-portal-field">
-					<label for="jmrs_meeting_scheduled_date"><?php echo esc_html__( 'Scheduled date', 'jm-referral-system' ); ?><?php echo $submit_scheduled || 'schedule' === (string) ( $mode ?? '' ) || 'reschedule' === (string) ( $mode ?? '' ) ? ' <span class="jmrs-required" aria-hidden="true">*</span>' : ''; ?></label>
-					<input type="date" name="jmrs_meeting_scheduled_date" id="jmrs_meeting_scheduled_date" value="<?php echo esc_attr( $val( $data, 'scheduled_date' ) ); ?>" />
+					<label for="jmrs_meeting_scheduled_date"><?php echo esc_html__( 'Scheduled date', 'jm-referral-system' ); ?><?php echo $require_schedule ? ' <span class="jmrs-required" aria-hidden="true">*</span><span class="screen-reader-text">' . esc_html__( 'required', 'jm-referral-system' ) . '</span>' : ''; ?></label>
+					<input type="date" name="jmrs_meeting_scheduled_date" id="jmrs_meeting_scheduled_date" value="<?php echo esc_attr( $val( $data, 'scheduled_date' ) ); ?>"<?php echo $require_schedule ? ' required aria-required="true"' : ''; ?><?php echo isset( $errors['scheduled_at'] ) ? ' aria-invalid="true" aria-describedby="jmrs-meeting-error-scheduled_at"' : ''; ?> />
 					<?php $field_error( $errors, 'scheduled_at' ); ?>
 				</div>
 				<div class="jmrs-portal-field">
-					<label for="jmrs_meeting_scheduled_time"><?php echo esc_html__( 'Start time', 'jm-referral-system' ); ?></label>
-					<input type="time" name="jmrs_meeting_scheduled_time" id="jmrs_meeting_scheduled_time" value="<?php echo esc_attr( $val( $data, 'scheduled_time' ) ); ?>" />
+					<label for="jmrs_meeting_scheduled_time"><?php echo esc_html__( 'Start time', 'jm-referral-system' ); ?><?php echo $require_schedule ? ' <span class="jmrs-required" aria-hidden="true">*</span><span class="screen-reader-text">' . esc_html__( 'required', 'jm-referral-system' ) . '</span>' : ''; ?></label>
+					<input type="time" name="jmrs_meeting_scheduled_time" id="jmrs_meeting_scheduled_time" value="<?php echo esc_attr( $val( $data, 'scheduled_time' ) ); ?>"<?php echo $require_schedule ? ' required aria-required="true"' : ''; ?> />
 				</div>
 				<div class="jmrs-portal-field">
 					<label for="jmrs_meeting_scheduled_end_date"><?php echo esc_html__( 'End date (optional)', 'jm-referral-system' ); ?></label>
@@ -138,8 +142,8 @@ $field_error = static function ( array $errors, string $key ): void {
 
 			<?php if ( $show_location ) : ?>
 				<div class="jmrs-portal-field">
-					<label for="jmrs_meeting_location_type"><?php echo esc_html__( 'Location type', 'jm-referral-system' ); ?></label>
-					<select name="jmrs_meeting_location_type" id="jmrs_meeting_location_type">
+					<label for="jmrs_meeting_location_type"><?php echo esc_html__( 'Location type', 'jm-referral-system' ); ?><?php echo $require_schedule ? ' <span class="jmrs-required" aria-hidden="true">*</span><span class="screen-reader-text">' . esc_html__( 'required', 'jm-referral-system' ) . '</span>' : ''; ?></label>
+					<select name="jmrs_meeting_location_type" id="jmrs_meeting_location_type"<?php echo $require_schedule ? ' required aria-required="true"' : ''; ?><?php echo isset( $errors['location_type'] ) ? ' aria-invalid="true" aria-describedby="jmrs-meeting-error-location_type"' : ''; ?>>
 						<option value=""><?php echo esc_html__( 'Select location type', 'jm-referral-system' ); ?></option>
 						<?php foreach ( $location_labels as $loc_value => $loc_label ) : ?>
 							<option value="<?php echo esc_attr( (string) $loc_value ); ?>" <?php selected( $val( $data, 'location_type' ), (string) $loc_value ); ?>>

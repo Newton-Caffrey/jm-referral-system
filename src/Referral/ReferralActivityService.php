@@ -695,6 +695,11 @@ class ReferralActivityService
         $this->log($referral_id, 'meeting_updated', __('Meeting updated.', 'jm-referral-system'));
     }
 
+    public function log_meeting_scheduled(int $referral_id): void
+    {
+        $this->log($referral_id, 'meeting_scheduled', __('Meeting scheduled.', 'jm-referral-system'));
+    }
+
     public function log_meeting_rescheduled(int $referral_id): void
     {
         $this->log($referral_id, 'meeting_rescheduled', __('Meeting rescheduled.', 'jm-referral-system'));

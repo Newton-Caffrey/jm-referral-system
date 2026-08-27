@@ -74,7 +74,7 @@ $heading = $is_add
 	<?php endif; ?>
 </section>
 
-<form class="jmrs-portal-form" method="post" action="<?php echo esc_url( $form_action ); ?>" novalidate>
+<form class="jmrs-portal-form jmrs-meeting-attendee-form" method="post" action="<?php echo esc_url( $form_action ); ?>" novalidate>
 	<?php wp_nonce_field( 'jmrs_save_meeting_attendee_' . $referral_id, 'jmrs_meeting_attendee_nonce' ); ?>
 	<input type="hidden" name="jmrs_referral_id" value="<?php echo esc_attr( (string) $referral_id ); ?>" />
 	<input type="hidden" name="jmrs_meeting_id" value="<?php echo esc_attr( (string) $meeting_id ); ?>" />
@@ -169,7 +169,7 @@ $heading = $is_add
 			<?php
 			echo esc_html(
 				$is_add
-					? __( 'Add attendee', 'jm-referral-system' )
+					? __( 'Add internal attendee', 'jm-referral-system' )
 					: ( $is_correct
 						? __( 'Save attendance', 'jm-referral-system' )
 						: __( 'Save changes', 'jm-referral-system' ) )

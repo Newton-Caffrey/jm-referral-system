@@ -698,10 +698,17 @@ class MeetingsHandler
                 return;
             }
             $form_key = 'attendee_edit_' . $attendee_id;
-            $this->persist_form_state($referral_id, $form_key, $meeting_id, [
+            $sticky   = [
                 'meeting_role'      => (string) $input['meeting_role'],
                 'attendance_status' => (string) $input['attendance_status'],
-            ], $result['field_errors'] ?? [
+            ];
+            if (! $full_edit) {
+                $existing = $this->attendee_repository->find($attendee_id);
+                if (null !== $existing) {
+                    $sticky['meeting_role'] = (string) ($existing['meeting_role'] ?? '');
+                }
+            }
+            $this->persist_form_state($referral_id, $form_key, $meeting_id, $sticky, $result['field_errors'] ?? [
                 'form' => $this->attendee_error_message((string) ($result['error'] ?? 'validation')),
             ]);
             wp_safe_redirect(PortalUrls::referral_meeting_internal_attendee_edit($referral_id, $meeting_id, $attendee_id));
@@ -977,11 +984,21 @@ class MeetingsHandler
                 return;
             }
             $form_key = 'ext_attendee_edit_' . $attendee_id;
+            $sticky   = $this->sticky_external_form_data($input);
+            if (! $full_edit) {
+                // Correction forms have no identity inputs; blank POST must not wipe sticky display.
+                // Only managers reach this path; contact fields may be shown per existing policy.
+                $existing = $this->attendee_repository->find($attendee_id);
+                if (null !== $existing) {
+                    $sticky = $this->external_attendee_to_form_data($existing, true);
+                    $sticky['attendance_status'] = (string) ($input['attendance_status'] ?? '');
+                }
+            }
             $this->persist_form_state(
                 $referral_id,
                 $form_key,
                 $meeting_id,
-                $this->sticky_external_form_data($input),
+                $sticky,
                 $result['field_errors'] ?? [
                     'form' => $this->attendee_error_message((string) ($result['error'] ?? 'validation')),
                 ]
@@ -1127,7 +1144,9 @@ class MeetingsHandler
 
         wp_safe_redirect(add_query_arg(
             'jmrs_meeting_notice',
-            $is_draft ? 'scheduled' : 'rescheduled',
+            $is_draft
+                ? 'scheduled'
+                : (empty($result['changed']) ? 'unchanged' : 'rescheduled'),
             PortalUrls::referral_meeting($referral_id, $meeting_id)
         ));
         exit;

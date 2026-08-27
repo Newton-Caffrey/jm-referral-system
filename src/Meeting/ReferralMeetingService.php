@@ -107,7 +107,7 @@ class ReferralMeetingService
      * Draft → scheduled.
      *
      * @param array<string, mixed> $input
-     * @return array{ok: true}|array{ok: false, error: string, field_errors?: array<string, string>}
+     * @return array{ok: true, changed?: bool}|array{ok: false, error: string, field_errors?: array<string, string>}
      */
     public function schedule(int $meeting_id, array $input, ?int $actor_user_id = null): array
     {
@@ -146,16 +146,16 @@ class ReferralMeetingService
             return ['ok' => false, 'error' => 'persist_failed'];
         }
 
-        $this->activity_service->log_meeting_rescheduled($ctx['referral_id']);
+        $this->activity_service->log_meeting_scheduled($ctx['referral_id']);
 
-        return ['ok' => true];
+        return ['ok' => true, 'changed' => true];
     }
 
     /**
      * Scheduled → scheduled (datetime/location).
      *
      * @param array<string, mixed> $input
-     * @return array{ok: true}|array{ok: false, error: string, field_errors?: array<string, string>}
+     * @return array{ok: true, changed?: bool}|array{ok: false, error: string, field_errors?: array<string, string>}
      */
     public function reschedule(int $meeting_id, array $input, ?int $actor_user_id = null): array
     {
@@ -182,6 +182,10 @@ class ReferralMeetingService
 
         $fields = $this->apply_location_side_effects($fields);
 
+        if (! $this->details_changed($meeting, $fields)) {
+            return ['ok' => true, 'changed' => false];
+        }
+
         $ok = $this->meeting_repository->update($meeting_id, array_merge($fields, [
             'status'       => ReferralMeeting::STATUS_SCHEDULED,
             'completed_at' => null,
@@ -196,7 +200,7 @@ class ReferralMeetingService
 
         $this->activity_service->log_meeting_rescheduled($ctx['referral_id']);
 
-        return ['ok' => true];
+        return ['ok' => true, 'changed' => true];
     }
 
     /**

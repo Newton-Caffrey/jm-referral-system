@@ -1641,6 +1641,12 @@ body.admin-bar.jmrs-portal-body {
 	overflow-x: auto;
 }
 
+.jmrs-meetings-table-wrap .jmrs-portal-table td,
+.jmrs-meeting-attendee-form .jmrs-portal-readonly {
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
 @media print {
 	.jmrs-portal-sidebar,
 	.jmrs-portal-nav-toggle,

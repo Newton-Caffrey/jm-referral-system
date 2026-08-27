@@ -88,7 +88,7 @@ $val = static function ( array $data, string $key ): string {
 			<?php echo esc_html__( 'Confirm complete', 'jm-referral-system' ); ?>
 		</button>
 		<?php if ( '' !== $cancel_url ) : ?>
-			<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $cancel_url ); ?>"><?php echo esc_html__( 'Back', 'jm-referral-system' ); ?></a>
+			<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $cancel_url ); ?>"><?php echo esc_html__( 'Back to meeting', 'jm-referral-system' ); ?></a>
 		<?php endif; ?>
 	</div>
 </form>

@@ -4,7 +4,17 @@
 **Baseline commit:** `b930611c00e5d6651bd4a36da6618b4148d5b0dc` (Phase 4B.1 checkpoint)  
 **Product:** 1.4.0 · **Database:** 2.29.0 · **Portal rewrite:** 1.2.2 (baseline) → **1.2.3** (Phase 4B.2.1)
 
-**Status:** Audit approved; Phase 4B.2.1–4B.2.3 checkpointed. Phase 4B.2.4 external participant management: rewrite **1.2.6**; Batches 1–3 manual staging UAT **PASS** (2026-08-27); Batch 4 (cancelled/archived/scheduled-removal) **NOT RUN — CODE REVIEWED** — **PARTIAL MANUAL UAT ACCEPTED** with **NON-BLOCKING DOCUMENTED UAT RISK**. Phase 4B.2.5 not started.
+**Status:** Audit approved; Phase 4B.2.1–4B.2.3 checkpointed. Phase 4B.2.4 external participant management: rewrite **1.2.6**; Batches 1–3 manual staging UAT **PASS** (2026-08-27); Batch 4 (cancelled/archived/scheduled-removal) **NOT RUN — CODE REVIEWED** — **PARTIAL MANUAL UAT ACCEPTED** with **NON-BLOCKING DOCUMENTED UAT RISK**. Phase 4B.2.5 final polish: Product **1.4.0** · DB **2.29.0** · rewrite **1.2.6**; no new routes/schema; focused manual staging UAT **PASS** (2026-08-27). 4B.2.4 Batch 4 residual risk remains documented (4B.2.5 cancelled-route smoke does not replace Batch 4).
+
+### Phase 4B.2.5 implementation notes (final polish)
+
+| Topic | Decision / fact |
+| --- | --- |
+| Versions | Product **1.4.0** · DB **2.29.0** · rewrite **1.2.6** (unchanged) |
+| Focused UAT | **PASS** 2026-08-27 (meeting **19** on referral **7**; synthetic `Phase 4B.2.5%` data cleaned; referral 7 retained) |
+| Defects fixed | Attendance-correction sticky identity; reschedule no-op; draft→schedule uses `meeting_scheduled`; a11y/responsive polish |
+| Manual confirms | Identical reschedule no activity; correction identity visible after validation failure; warning count 2; ~375px PASS |
+| Explicit non-goals | No new routes/capabilities; no emails; no schema; no dashboard/workflow changes; no attendee-based access |
 
 ### Phase 4B.2.4 implementation notes (external participants)
 
