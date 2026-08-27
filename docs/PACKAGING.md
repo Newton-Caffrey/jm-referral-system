@@ -6,7 +6,7 @@ How to build the distributable plugin archive for WordPress.
 
 **Planned artifact (v1.5.0):** `jm-referral-system-1.5.0.zip`
 
-**Do not create the ZIP until packaging is explicitly requested after Phase 4J.1 regression.**
+Create the release ZIP only when packaging is explicitly requested after release evidence acceptance and final documentation updates.
 
 ---
 

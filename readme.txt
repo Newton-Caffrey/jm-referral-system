@@ -35,7 +35,7 @@ Upgrade from product 1.4.0. Back up the site, database, and current plugin direc
 
 = 1.5.0 =
 
-Release candidate — not production-deployed until Phase 4J.1 regression and packaging sign-off.
+Feature release from v1.4.0. Cumulative Phase 4B–4I UAT accepted as regression evidence; release-preparation UAT passed 2026-08-27. Full duplicate lifecycle replay not performed. Final staging smoke required before production.
 
 * Meetings, internal attendees, and external participants
 * Owner, Champion, and Transition Lead responsibilities

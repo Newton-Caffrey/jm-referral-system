@@ -7,13 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Release-candidate preparation for **1.5.0** is documented under `[1.5.0]` below. Production packaging and Phase 4J.1 regression remain outstanding.
+## [1.5.0] - 2026-08-27
 
-## [1.5.0] - Unreleased (release candidate)
+Feature release for production upgrade from **v1.4.0**. Product `1.5.0`. Database schema `2.29.0` (additive migration from production `2.28.0`). Portal rewrite `1.2.7`.
 
-Feature release preparing production upgrade from **v1.4.0**. Product `1.5.0`. Database schema `2.29.0` (additive migration from production `2.28.0`). Portal rewrite `1.2.7`.
-
-**Status:** release-candidate preparation — not production-deployed. Full Phase 4J.1 regression is required before production.
+**Release evidence:** Feature-by-feature focused UAT from Phases **4B–4I** is accepted as cumulative regression evidence. Release-preparation UAT (Phase **4J.0.1**) passed **2026-08-27**. A full duplicate end-to-end lifecycle replay was **not** performed. Final staging smoke using the production ZIP remains required before production deployment. **Production has not yet been deployed.**
 
 Scope covers Phase 4A–4I work implemented after tagged `v1.4.0`: meetings, responsibilities, Management Operations dashboard, commercial workflow hardening, and Operations UI polish.
 
@@ -67,9 +65,9 @@ Scope covers Phase 4A–4I work implemented after tagged `v1.4.0`: meetings, res
 - Chart.js prefers a local vendor file; audited package falls back to jsDelivr when the local file is absent
 - Management Dashboard Google Fonts require network access where that enqueue runs
 
-Paths that remain code-reviewed-only until Phase 4J.1 include Package Cost email send, LA Declined / Not Proceeding, LA-related status-change email, Own Home care commencement, and remaining meeting external-participant edge cases.
+Paths previously listed as code-reviewed-only in focused phases (Package Cost email send, LA Declined / Not Proceeding, LA-related status-change email, Own Home care commencement, remaining meeting external-participant edge cases) remain environment-dependent or deferred manual risks and must be covered by final staging smoke / operator verification where applicable. They were not re-run as a full duplicate lifecycle in packaging.
 
-See `docs/RELEASE_NOTES_v1.5.0.md`, `docs/RELEASE_CHECKLIST.md`, and `docs/uat/UAT_PHASE_4J_0_1_RELEASE_CANDIDATE_PREPARATION.md`.
+See `docs/RELEASE_NOTES_v1.5.0.md`, `docs/RELEASE_CHECKLIST.md`, and UAT records under `docs/uat/`.
 
 ## [1.4.0] - 2026-08-11
 

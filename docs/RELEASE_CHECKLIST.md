@@ -1,12 +1,13 @@
 # Release Checklist — JM Referral System
 
-**Current target release:** `1.5.0` (release candidate — not production-deployed)
+**Current target release:** `1.5.0` (artifact packaging — production not deployed)
 **Product version:** `1.5.0` (`jm-referral-system.php` / `JMRS_VERSION`)
 **Database schema:** `2.29.0` (`Migrator::DB_VERSION` / option `jmrs_db_version`)
 **Portal rewrite:** `1.2.7` (`PortalRouter::REWRITE_VERSION`)
 **Release notes:** `CHANGELOG.md` `[1.5.0]`; `docs/RELEASE_NOTES_v1.5.0.md`
-**RC preparation UAT:** `docs/uat/UAT_PHASE_4J_0_1_RELEASE_CANDIDATE_PREPARATION.md`
-**Full regression:** Phase **4J.1** (not started in Phase 4J.0.1)
+**RC preparation UAT:** `docs/uat/UAT_PHASE_4J_0_1_RELEASE_CANDIDATE_PREPARATION.md` (**PASS** 2026-08-27)
+**Regression evidence:** Phases **4B–4I** focused UAT accepted as cumulative evidence; full duplicate lifecycle replay **not** required for packaging
+**Final staging smoke:** required before production (see `docs/RELEASE_NOTES_v1.5.0.md` §7)
 
 Use this checklist before promoting a build to production. Tick items on staging with synthetic or anonymised data first. **Do not mark items passed unless manually confirmed.**
 
@@ -31,25 +32,16 @@ JMRS supports role-based access, audit activity, retention workflows, and privat
 
 ---
 
-## PHASE 4J.1 REGRESSION
+## PHASE 4J.1 / CUMULATIVE REGRESSION EVIDENCE
 
-**Do not mark passed until Phase 4J.1 is executed.**
+Feature-by-feature UAT from Phases **4B–4I** is **accepted** as cumulative release evidence. A full duplicate lifecycle replay was **not** performed for packaging. Release-preparation UAT (**4J.0.1**) passed **2026-08-27**.
 
-- [ ] Upgrade from production-like **v1.4.0** / DB **2.28.0** → product **1.5.0** / DB **2.29.0**
-- [ ] Clean activation on fresh WordPress install
-- [ ] Role / capability matrix (JM Admin, Referral Manager, Care Coordinator, Assessor, Support Worker, WP Admin)
-- [ ] Complete fresh-referral lifecycle (interest → assessment → package → LA → transition → commence)
-- [ ] Email delivery (including Package Cost send and LA-related status-change)
-- [ ] LA Declined and LA Not Proceeding paths
-- [ ] Own Home care commencement path
-- [ ] Meeting external-participant remaining edge cases
-- [ ] Assessment Not Suitable path
-- [ ] Private documents on target host
-- [ ] Dashboards and reports (including Chart.js availability)
-- [ ] Responsive and print tests
-- [ ] Archive and duplicate / terminal protections
-- [ ] IDOR and direct POST protections
+Remaining packaging gates:
 
+- [ ] Final staging smoke using exact `jm-referral-system-1.5.0.zip` (see release notes §7)
+- [ ] Production not deployed until smoke signed off
+
+Previously code-reviewed-only paths (Package email, LA Declined/Not Proceeding, status-change email, Own Home commence, meeting Batch 4 leftovers) remain documented limitations / smoke risks — do not claim they were fully re-executed in a duplicate lifecycle.
 ---
 
 ## PACKAGE

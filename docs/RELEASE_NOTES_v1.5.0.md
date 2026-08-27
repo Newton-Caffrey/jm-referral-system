@@ -3,8 +3,9 @@
 **Product version:** 1.5.0  
 **Database schema:** 2.29.0  
 **Portal rewrite:** 1.2.7  
-**Proposed Git tag:** `v1.5.0` (not created in this preparation phase)  
-**Production status:** **Not yet released** — release-candidate documentation only  
+**Git tag:** `v1.5.0`  
+**Artifact:** `jm-referral-system-1.5.0.zip`  
+**Production status:** **Not yet deployed** — release artifact packaging complete; final staging smoke required before production  
 **Upgrade from:** production **v1.4.0** (DB `2.28.0`, rewrite `1.2.2`)
 
 ---
@@ -90,31 +91,48 @@ Historical **v1.4.0** release notes remain the record of the original Management
 - No proposed-home reservation, transition checklist, or target-bedroom reservation workflow
 - No correction / reopen workflow for terminal commercial records
 
-### Front-end dependencies (honest RC state)
+### Front-end dependencies
 
-- Management / reporting Chart.js: loads local `assets/vendor/chart.umd.min.js` when present; the audited tree currently lacks that file and falls back to jsDelivr Chart.js 4.4.6. Phase 4J.1 must verify chart availability. Vendoring an approved Chart.js build remains a deferred hardening option (requires version, licence, provenance, and approval).
+- Management / reporting Chart.js: loads local `assets/vendor/chart.umd.min.js` when present; the packaged tree currently lacks that file and falls back to jsDelivr Chart.js 4.4.6. Verify chart availability during final staging smoke. Vendoring an approved Chart.js build remains a deferred hardening option (requires version, licence, provenance, and approval).
 - Management Dashboard Google Fonts enqueue requires network access where that route loads fonts.
 
 ---
 
-## 6. Regression status
+## 6. Regression and release evidence
 
-**Full Phase 4J.1 regression is still required before production.**
+**Accepted cumulative evidence:** Feature-by-feature focused UAT from Phases **4B–4I** is accepted as cumulative release regression evidence. Release-preparation UAT (Phase **4J.0.1**) passed **2026-08-27**. A full duplicate end-to-end lifecycle replay was **not** performed for packaging.
 
-Manual paths that must be exercised (including previously code-reviewed-only items):
+**Still required before production:** final staging smoke using the exact `jm-referral-system-1.5.0.zip` (activation/upgrade sanity, portal/dashboard opens, existing data present, SMTP test, private-document authorised/unauthorised checks, no PHP/JS console errors, mobile dashboard smoke). Production has **not** been deployed.
 
-- Package Cost email send
-- LA Declined
-- LA Not Proceeding
-- LA-related status-change email
-- Own Home care commencement
-- Meeting external-participant remaining edge cases (4B.2.4 Batch 4 leftovers)
-- Assessment Not Suitable path
-- Upgrade migration `2.28.0` → `2.29.0`
-- Private-document access on the target host
-- Chart.js dashboard / report availability
+**Known limitations preserved:** Assessor visibility decisions require future JM confirmation; Own Home path was code-reviewed but not manually exercised during Phase 4H; Package and LA email paths depend on SMTP/`wp_mail`; private-document protection must be verified on the target host; Chart.js currently has a CDN fallback; Homes and Management use different future-occupancy presentation semantics; PPV has no billing-frequency model; terminal commercial records have no correction/reopen workflow.
 
-Do not treat focused Phase 4B–4I UAT alone as production sign-off for this release.
+This release does **not** claim GDPR, CQC, NHS, or medical-device certification.
+
+---
+
+## 7. Final staging smoke checklist
+
+- [ ] Upload the exact ZIP to staging
+- [ ] Replace without uninstalling
+- [ ] Activate successfully
+- [ ] Plugins screen shows 1.5.0
+- [ ] DB remains 2.29.0
+- [ ] Rewrite remains 1.2.7
+- [ ] Staff Portal opens
+- [ ] One existing referral opens
+- [ ] Management Dashboard opens
+- [ ] Operations tab opens
+- [ ] Meetings opens
+- [ ] Homes and Capacity opens
+- [ ] Existing data remains present
+- [ ] Page refresh creates no activity
+- [ ] SMTP test email succeeds
+- [ ] Authorised private-document download succeeds
+- [ ] Unauthorised private-document access is denied
+- [ ] No PHP warning or JavaScript console error
+- [ ] Mobile dashboard smoke test passes
+
+Do **not** require another complete lifecycle replay.
 
 ---
 
@@ -126,4 +144,5 @@ Do not treat focused Phase 4B–4I UAT alone as production sign-off for this rel
 - `docs/INSTALLATION_GUIDE.md`
 - `docs/KNOWN_LIMITATIONS.md`
 - `docs/uat/UAT_PHASE_4J_0_1_RELEASE_CANDIDATE_PREPARATION.md`
+- `docs/uat/UAT_PHASE_4J_1_FULL_RELEASE_CANDIDATE_REGRESSION.md`
 - Historical: `docs/RELEASE_NOTES_v1.4.0.md`
