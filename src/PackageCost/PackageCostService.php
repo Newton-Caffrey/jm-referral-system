@@ -210,9 +210,12 @@ class PackageCostService
     /**
      * Prepare or update Package Cost (does not advance pipeline).
      *
-     * @param array<string, mixed> $input
+     * Sent packages are terminal. Currency is always forced to GBP.
+     * Callers must pass an allowlisted payload only (package_total).
+     *
+     * @param array<string, mixed> $input Allowlisted keys only: package_total
      * @param array<string, mixed>|null $file $_FILES entry or null when keeping existing document
-     * @return array{ok: true, id: int}|array{ok: false, error: string, message: string, field_errors?: array<string, string>}
+     * @return array{ok: true, id: int, unchanged?: bool}|array{ok: false, error: string, message: string, field_errors?: array<string, string>}
      */
     public function prepare(int $referral_id, array $input, ?array $file = null): array
     {
@@ -222,6 +225,14 @@ class PackageCostService
         }
 
         if (! $this->can_prepare($referral)) {
+            $current_denied = $this->package_cost_repository->find_current_for_referral($referral_id);
+            if (null !== $current_denied && PackageCost::is_sent((string) ($current_denied['status'] ?? ''))) {
+                return $this->fail(
+                    'already_sent',
+                    __('This Package Cost has already been sent and cannot be overwritten.', 'jm-referral-system')
+                );
+            }
+
             return $this->fail(
                 'access_denied',
                 __('You do not have permission to prepare a Package Cost for this referral.', 'jm-referral-system')
@@ -236,6 +247,7 @@ class PackageCostService
             );
         }
 
+        // Explicit allowlist — ignore currency/status/actor/pipeline keys from callers.
         $total_result = $this->normalize_package_total((string) ($input['package_total'] ?? ''));
         if (! empty($total_result['error'])) {
             return [
@@ -290,6 +302,11 @@ class PackageCostService
                 'message'      => __('A Package Cost document is required.', 'jm-referral-system'),
                 'field_errors' => ['document' => __('A Package Cost document is required.', 'jm-referral-system')],
             ];
+        } elseif (! $this->document_belongs_to_referral($document_id, $referral_id)) {
+            return $this->fail(
+                'document_mismatch',
+                __('The Package Cost document could not be verified for this referral.', 'jm-referral-system')
+            );
         }
 
         $user_id = get_current_user_id();
@@ -297,11 +314,26 @@ class PackageCostService
         $is_update = null !== $current && PackageCost::is_prepared((string) ($current['status'] ?? ''));
 
         if ($is_update) {
+            $existing_total = null !== ($current['package_total'] ?? null) && '' !== (string) $current['package_total']
+                ? (string) $current['package_total']
+                : null;
+            $new_total = $total_result['value'];
+            $same_total = $this->package_totals_equal($existing_total, $new_total);
+            $same_document = ! $has_new_file && $document_id === $existing_document_id;
+
+            if ($same_total && $same_document) {
+                return [
+                    'ok'        => true,
+                    'id'        => absint($current['id'] ?? 0),
+                    'unchanged' => true,
+                ];
+            }
+
             $saved = $this->package_cost_repository->update(
                 absint($current['id'] ?? 0),
                 [
                     'document_id'   => $document_id,
-                    'package_total' => $total_result['value'],
+                    'package_total' => $new_total,
                     'currency'      => PackageCost::CURRENCY_GBP,
                     'status'        => PackageCost::STATUS_PREPARED,
                     'updated_at'    => $now,
@@ -314,7 +346,7 @@ class PackageCostService
 
             $this->activity_service->log_package_cost_updated($referral_id);
 
-            return ['ok' => true, 'id' => absint($current['id'] ?? 0)];
+            return ['ok' => true, 'id' => absint($current['id'] ?? 0), 'unchanged' => false];
         }
 
         $id = $this->package_cost_repository->create(
@@ -337,13 +369,16 @@ class PackageCostService
 
         $this->activity_service->log_package_cost_prepared($referral_id);
 
-        return ['ok' => true, 'id' => $id];
+        return ['ok' => true, 'id' => $id, 'unchanged' => false];
     }
 
     /**
      * Submit Package Cost (email send or manual record) and advance pipeline.
      *
-     * @param array<string, mixed> $input
+     * Sent packages are terminal. Does not accept package_total, currency, status,
+     * document paths, or pipeline fields from the caller.
+     *
+     * @param array<string, mixed> $input Allowlisted: send_method, recipient, submission_reference, confirmed
      * @return array{ok: true, method?: string}|array{ok: false, error: string, message: string}
      */
     public function record_sent(int $referral_id, array $input): array
@@ -373,16 +408,38 @@ class PackageCostService
             return $this->fail('not_prepared', __('Prepare the Package Cost before recording submission.', 'jm-referral-system'));
         }
 
+        if (PackageCost::is_sent((string) ($current['status'] ?? ''))) {
+            return $this->fail(
+                'already_sent',
+                __('This Package Cost has already been sent.', 'jm-referral-system')
+            );
+        }
+
+        $document_id = absint($current['document_id'] ?? 0);
+        if ($document_id <= 0 || ! $this->document_belongs_to_referral($document_id, $referral_id)) {
+            return $this->fail(
+                'attachment_missing',
+                __('The Package Cost document could not be found. Please re-prepare the Package Cost.', 'jm-referral-system')
+            );
+        }
+
         $method = sanitize_key((string) ($input['send_method'] ?? ''));
         if (! PackageCost::is_valid_send_method($method)) {
             return $this->fail('invalid_method', __('Please select a valid submission method.', 'jm-referral-system'));
         }
 
+        $safe_input = [
+            'send_method'          => $method,
+            'recipient'            => (string) ($input['recipient'] ?? ''),
+            'submission_reference' => (string) ($input['submission_reference'] ?? ''),
+            'confirmed'            => ! empty($input['confirmed']),
+        ];
+
         if (PackageCost::METHOD_EMAIL === $method) {
             return $this->send_by_email($referral_id, $referral, $current);
         }
 
-        return $this->record_manual_submission($referral_id, $referral, $current, $method, $input);
+        return $this->record_manual_submission($referral_id, $referral, $current, $method, $safe_input);
     }
 
     /**
@@ -698,31 +755,100 @@ class PackageCostService
     }
 
     /**
+     * Normalises optional package_total to a DECIMAL(12,2)-compatible string or null.
+     * Blank → null. Zero allowed. Negatives, scientific notation, HTML, and excess precision rejected.
+     * Does not use floating-point arithmetic for the stored value.
+     *
      * @return array{value: string|null, error?: string}
      */
     private function normalize_package_total(string $raw): array
     {
-        $raw = trim(str_replace([',', '£', ' '], ['', '', ''], $raw));
+        $raw = trim($raw);
         if ('' === $raw) {
             return ['value' => null];
         }
 
-        if (! preg_match('/^\d+(\.\d{1,2})?$/', $raw)) {
+        // Reject markup / control characters before stripping currency decoration.
+        if (preg_match('/[<>&]|[\x00-\x1F\x7F]/', $raw)) {
             return [
                 'value' => null,
                 'error' => __('Please enter a valid package total (e.g. 2450.00).', 'jm-referral-system'),
             ];
         }
 
-        $value = (float) $raw;
-        if ($value < 0 || $value > 9999999999.99) {
+        // Strip GBP symbol, thousands commas, and spaces (including UTF-8 £).
+        $cleaned = str_replace(["\xC2\xA3", '£', ',', ' '], ['', '', '', ''], $raw);
+        $cleaned = trim($cleaned);
+
+        if ('' === $cleaned) {
+            return ['value' => null];
+        }
+
+        // Reject scientific notation and any non decimal-digit form.
+        if (! preg_match('/^\d+(\.\d{1,2})?$/', $cleaned)) {
+            return [
+                'value' => null,
+                'error' => __('Please enter a valid package total (e.g. 2450.00).', 'jm-referral-system'),
+            ];
+        }
+
+        $parts     = explode('.', $cleaned, 2);
+        $int_part  = ltrim($parts[0], '0');
+        if ('' === $int_part) {
+            $int_part = '0';
+        }
+        $frac_part = isset($parts[1]) ? $parts[1] : '';
+
+        // DECIMAL(12,2): max 10 digits before the decimal point.
+        if (strlen($int_part) > 10) {
             return [
                 'value' => null,
                 'error' => __('Package total is out of the allowed range.', 'jm-referral-system'),
             ];
         }
 
-        return ['value' => number_format($value, 2, '.', '')];
+        if ('' === $frac_part) {
+            $frac_part = '00';
+        } elseif (1 === strlen($frac_part)) {
+            $frac_part .= '0';
+        }
+
+        return ['value' => $int_part . '.' . $frac_part];
+    }
+
+    /**
+     * Compare optional DECIMAL strings without float conversion.
+     */
+    private function package_totals_equal(?string $a, ?string $b): bool
+    {
+        if (null === $a && null === $b) {
+            return true;
+        }
+        if (null === $a || null === $b) {
+            return false;
+        }
+
+        $na = $this->normalize_package_total($a);
+        $nb = $this->normalize_package_total($b);
+        if (! empty($na['error']) || ! empty($nb['error'])) {
+            return false;
+        }
+
+        return ($na['value'] ?? null) === ($nb['value'] ?? null);
+    }
+
+    private function document_belongs_to_referral(int $document_id, int $referral_id): bool
+    {
+        if ($document_id <= 0 || $referral_id <= 0) {
+            return false;
+        }
+
+        $document = $this->document_repository->find($document_id);
+        if (! is_array($document)) {
+            return false;
+        }
+
+        return absint($document['referral_id'] ?? 0) === $referral_id;
     }
 
     /**

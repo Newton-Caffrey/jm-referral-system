@@ -1061,7 +1061,7 @@ class ReferralViewController
             'referral_id' => $referral_id,
         ];
         if (! empty($result['ok'])) {
-            $args['jmrs_package_cost'] = 'prepared';
+            $args['jmrs_package_cost'] = ! empty($result['unchanged']) ? 'unchanged' : 'prepared';
         } else {
             $args['jmrs_package_cost'] = '0';
             $args['jmrs_package_cost_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));
@@ -1443,6 +1443,10 @@ class ReferralViewController
             if ('prepared' === $status) {
                 echo '<div class="notice notice-success is-dismissible"><p>';
                 echo esc_html__('Package Cost prepared. Next action: Send package cost to Local Authority.', 'jm-referral-system');
+                echo '</p></div>';
+            } elseif ('unchanged' === $status) {
+                echo '<div class="notice notice-info is-dismissible"><p>';
+                echo esc_html__('No changes were made to the Package Cost.', 'jm-referral-system');
                 echo '</p></div>';
             } elseif ('emailed' === $status) {
                 echo '<div class="notice notice-success is-dismissible"><p>';

@@ -884,7 +884,8 @@ class Plugin
             $this->access_policy,
             $this->user_provider,
             $pipeline_attention_service,
-            $assessment_repository
+            $assessment_repository,
+            new \JMReferral\PackageCost\PackageCostRepository()
         );
 
         $management_board = new \JMReferral\Pipeline\ManagementPipelineBoardService(

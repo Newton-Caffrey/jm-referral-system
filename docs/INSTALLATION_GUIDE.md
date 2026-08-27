@@ -135,7 +135,7 @@ Details: `docs/PUBLIC_REFERRAL_GUIDE.md` and `docs/PUBLIC_REFERRAL_INTAKE.md`.
 5. Visit `https://yoursite.example/staff-portal/`
 6. Keep **Redirect JMRS Staff Away From wp-admin** **off** until thoroughly tested.
 
-Management Dashboard (`/management/`, Phase 4A + **4D.1** + **4E.1**): commercial roles only; Operations tab uses real scope-aware JMRS aggregates (14-day upcoming meetings/assessments; archived excluded; GET read-only). Completed assessments are clinical/scheduling read-only (4E.1). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Phase 4E.1 focused UAT **PASS** 2026-08-27.
+Management Dashboard (`/management/`, Phase 4A + **4D.1** + **4E.1** + **4F.1**): commercial roles only; Operations tab uses real scope-aware JMRS aggregates (14-day upcoming meetings/assessments; Package Costing counts from pipeline stage + latest package-cost row; archived excluded; GET read-only). Completed assessments are clinical/scheduling read-only (4E.1). Sent Package Costs are terminal/read-only (4F.1). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Phase 4F.1 focused UAT **PASS** 2026-08-27 (email send **NOT RUN — CODE REVIEWED**).
 
 Details: `docs/STAFF_PORTAL.md` and `docs/STAFF_USER_GUIDE.md`.
 

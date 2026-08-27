@@ -59,6 +59,13 @@ $render_prepare_form = $can_prepare && $show_prepare_form;
 		<?php echo esc_html( $field( 'status_label' ) ); ?>
 	</p>
 
+	<?php if ( $is_sent ) : ?>
+		<p class="jmrs-package-cost__terminal" role="status" style="margin: 0.75em 0; padding: 0.65em 0.85em; border-left: 3px solid #646970; background: #f6f7f7;">
+			<strong><?php echo esc_html__( 'Sent — read-only.', 'jm-referral-system' ); ?></strong>
+			<?php echo esc_html__( 'This Package Cost has been submitted and cannot be edited. There is no reopen or revision workflow in this release.', 'jm-referral-system' ); ?>
+		</p>
+	<?php endif; ?>
+
 	<?php if ( $is_prepared || $is_sent ) : ?>
 		<?php if ( '' !== $field( 'prepared_at' ) ) : ?>
 			<p><strong><?php echo esc_html__( 'Prepared:', 'jm-referral-system' ); ?></strong> <?php echo esc_html( $field( 'prepared_at' ) ); ?></p>

@@ -176,7 +176,7 @@ Portal: schedule panel on referral view; clinical create/edit on assessment rout
 
 ---
 
-## Package Cost (Phase 3E / 3E.1)
+## Package Cost (Phase 3E / 3E.1 / **4F.1**)
 
 Business milestones **Package Cost Prepared** and **Package Cost Sent** — not pipeline stages.
 
@@ -186,32 +186,38 @@ Canonical stage transition on successful submission only:
 
 **Service:** `JMReferral\PackageCost\PackageCostService`
 
-**Table:** `jmrs_referral_package_costs` (schema unchanged in 3E.1; DB remains `2.25.0`)
+**Table:** `jmrs_referral_package_costs` (schema unchanged through 4F.1; Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**)
 
-**Document:** reuses `ReferralDocumentService` / private storage (PDF/DOC/DOCX). No separate file store. Attachments for email are resolved server-side from the Package Cost’s current `document_id` only — never from request-supplied paths or public URLs.
+**Document:** reuses `ReferralDocumentService` / private storage (PDF/DOC/DOCX). No separate file store. Attachments for email are resolved server-side from the Package Cost’s current `document_id` only — never from request-supplied paths or public URLs. Linked documents must belong to the same referral.
 
 | Action | Effect |
 | --- | --- |
-| Prepare / update | Upload/replace document, optional GBP total; status=`prepared`; **no** email; **no** pipeline change |
-| Email send | JMRS sends via `NotificationService::notify_package_cost_sent` with private attachment; on mailer accept → status=`sent`, `send_method=email`, recipient snapshot; transition via `ReferralPipelineService` |
-| Secure Portal / Other | External submission + confirmation checkbox; status=`sent`; transition (no `EmailNotificationService` call) |
+| Prepare / update | Upload/replace document, optional GBP total; status=`prepared`; **no** email; **no** pipeline change. Identical re-submit is a no-op (no `updated_at` bump, no `package_cost_updated`). |
+| Email send | JMRS sends via `NotificationService::notify_package_cost_sent` with private attachment; on mailer accept → status=`sent`, `send_method=email`, recipient snapshot; transition via `ReferralPipelineService`. Email body does **not** include package total. |
+| Secure Portal / Other | External submission + confirmation checkbox; status=`sent`; transition (no `wp_mail` / `EmailNotificationService` call) |
 
 **Send methods:**
 
 - **Email** — automated by JMRS. Requires valid `referrer_email`. Button: “Send Package Cost by Email”. UI Email Status “Sent” means `wp_mail` accepted the message, not delivery proof.
 - **Secure Portal / Other** — record-only after staff confirmation.
 
-**Failure:** mailer failure or unreadable attachment leaves Package Cost `prepared` and pipeline `package_cost_required`. Activity `package_cost_email_failed`. Retry allowed.
+**Terminal policy (4F.1):** `status=sent` is read-only through normal portal/admin workflows. Service and handlers deny edits to total, document, currency, actors, send metadata, and status. UI shows a Sent/read-only notice and hides prepare/send forms. No reopen, withdraw, or revision workflow.
+
+**Amount model:** Optional manual `package_total` DECIMAL(12,2); currency forced to **GBP**; blank allowed; zero allowed; negatives / excess precision / scientific notation / markup rejected; stored as normalised decimal string (no float arithmetic for persistence).
+
+**Failure:** mailer failure or unreadable attachment leaves Package Cost `prepared` and pipeline `package_cost_required`. Activity `package_cost_email_failed`. Retry allowed. Failed email is **not** marked sent.
 
 **Duplicate-send mitigation:** option lock (`add_option`) around the email path; re-check `status=prepared` before SMTP; conditional SQL claim `WHERE status=prepared` before transition. Ordinary double-submit / refresh does not double-advance. Rare concurrent SMTP race remains possible without a full outbox.
 
-**Mail-then-DB edge case:** SMTP accept cannot join the DB transaction. If persistence fails after accept, Package Cost may remain `prepared` while the email was already handed to the mailer — no outbox/reconciliation in 3E.1.
+**Mail-then-DB edge case:** SMTP accept cannot join the DB transaction. If persistence fails after accept, Package Cost may remain `prepared` while the email was already handed to the mailer — no outbox/reconciliation.
 
 **Next action (derived):** not prepared → Prepare package cost; prepared → Send package cost to Local Authority; `awaiting_la_decision` → Await/follow up Local Authority decision.
 
-**Permissions:** `AccessPolicy::can_manage_package_cost` (same commercial roles as Express Interest). Assessor may view; Support Worker denied. Override cap not required.
+**Permissions:** `AccessPolicy::can_manage_package_cost` (same commercial roles as Express Interest). Preparing also requires `jmrs_upload_documents`. Assessor may **view** package panel amounts when the referral is visible (**EXISTING PRODUCT BEHAVIOUR — REQUIRES FUTURE JM CONFIRMATION**). Support Worker denied. Owner / Champion / Transition lead membership grants no package permission. Archived referrals remain read-only. Override cap not required.
 
-**Deferred:** structured costing calculator, auto PDF generation, delivery/read tracking, mail outbox, revision workflow.
+**Operations dashboard (4F.1):** Package Costing section — package cost required / prepared / sent / awaiting LA decision counts (latest package row by `MAX(id)`; non-archived; scoped). Lists show referral number, status, prepared/sent date only — **no** totals, recipients, references, or filenames. Commercial PPV KPI on the board remains unchanged. Conversion / revenue metrics remain deferred. Focused UAT **PASS** 2026-08-27 (email send **NOT RUN — CODE REVIEWED**). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**.
+
+**Deferred:** structured costing calculator, VAT, multi-currency UI, auto PDF generation, delivery/read tracking, mail outbox, revision/withdrawal workflow, Assessor amount-visibility product decision.
 
 ---
 

@@ -1695,6 +1695,12 @@ class PortalController implements PortalViewHost
                 'message' => __('Package Cost prepared. Next action: Send package cost to Local Authority.', 'jm-referral-system'),
             ];
         }
+        if ('unchanged' === $status) {
+            return [
+                'type'    => 'info',
+                'message' => __('No changes were made to the Package Cost.', 'jm-referral-system'),
+            ];
+        }
         if ('emailed' === $status) {
             return [
                 'type'    => 'success',
@@ -1765,7 +1771,7 @@ class PortalController implements PortalViewHost
 
         $args = [];
         if (! empty($result['ok'])) {
-            $args['jmrs_package_cost'] = 'prepared';
+            $args['jmrs_package_cost'] = ! empty($result['unchanged']) ? 'unchanged' : 'prepared';
         } else {
             $args['jmrs_package_cost'] = '0';
             $args['jmrs_package_cost_error'] = sanitize_key((string) ($result['error'] ?? 'failed'));

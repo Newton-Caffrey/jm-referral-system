@@ -3,6 +3,7 @@
 namespace JMReferral\PackageCost;
 
 use JMReferral\Database\Tables;
+use JMReferral\Pipeline\PipelineStage;
 
 class PackageCostRepository
 {
@@ -287,6 +288,157 @@ class PackageCostRepository
         $total = $wpdb->get_var($wpdb->prepare($sql, ...$params));
 
         return (float) $total;
+    }
+
+    /**
+     * Count non-archived referrals currently on a canonical pipeline slug.
+     */
+    public function count_referrals_on_pipeline_slug(string $slug, ?int $access_assigned_to = null): int
+    {
+        global $wpdb;
+
+        if (! PipelineStage::is_canonical($slug)) {
+            return 0;
+        }
+
+        $referrals = Tables::referrals_table();
+        $stages    = Tables::workflow_stages_table();
+
+        $where  = [
+            'r.archived_at IS NULL',
+            's.is_pipeline_stage = 1',
+            's.slug = %s',
+        ];
+        $params = [$slug];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT COUNT(*)
+            FROM {$referrals} r
+            INNER JOIN {$stages} s ON s.id = r.workflow_stage_id
+            WHERE " . implode(' AND ', $where);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
+
+    /**
+     * Counts of latest package-cost rows by status (prepared / sent).
+     * Older historical rows for the same referral are excluded via MAX(id).
+     *
+     * Limitation: referral_id is non-unique; “current” = highest id per referral.
+     *
+     * @return array{prepared: int, sent: int}
+     */
+    public function count_current_status_for_dashboard(?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $pc        = Tables::referral_package_costs_table();
+        $referrals = Tables::referrals_table();
+
+        $where  = [
+            'r.archived_at IS NULL',
+            'pc.status IN (%s, %s)',
+        ];
+        $params = [PackageCost::STATUS_PREPARED, PackageCost::STATUS_SENT];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT pc.status, COUNT(*) AS total
+            FROM {$pc} pc
+            INNER JOIN (
+                SELECT referral_id, MAX(id) AS max_id
+                FROM {$pc}
+                GROUP BY referral_id
+            ) latest ON latest.max_id = pc.id
+            INNER JOIN {$referrals} r ON r.id = pc.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            GROUP BY pc.status';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        $out = [
+            PackageCost::STATUS_PREPARED => 0,
+            PackageCost::STATUS_SENT     => 0,
+        ];
+
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $status = (string) ($row['status'] ?? '');
+                if (isset($out[$status])) {
+                    $out[$status] = (int) ($row['total'] ?? 0);
+                }
+            }
+        }
+
+        return [
+            'prepared' => $out[PackageCost::STATUS_PREPARED],
+            'sent'     => $out[PackageCost::STATUS_SENT],
+        ];
+    }
+
+    /**
+     * Compact list of current packages for Operations dashboard (no amounts / recipients).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_current_for_dashboard(
+        string $status,
+        int $limit,
+        ?int $access_assigned_to = null
+    ): array {
+        global $wpdb;
+
+        $limit = max(1, min(50, $limit));
+        if (! in_array($status, [PackageCost::STATUS_PREPARED, PackageCost::STATUS_SENT], true)) {
+            return [];
+        }
+
+        $pc        = Tables::referral_package_costs_table();
+        $referrals = Tables::referrals_table();
+
+        $where  = [
+            'r.archived_at IS NULL',
+            'pc.status = %s',
+        ];
+        $params = [$status];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $order = PackageCost::STATUS_SENT === $status
+            ? 'pc.sent_at DESC, pc.id DESC'
+            : 'pc.prepared_at DESC, pc.id DESC';
+
+        $params[] = $limit;
+
+        $sql = "SELECT pc.id, pc.referral_id, pc.status, pc.prepared_at, pc.sent_at,
+                r.referral_number
+            FROM {$pc} pc
+            INNER JOIN (
+                SELECT referral_id, MAX(id) AS max_id
+                FROM {$pc}
+                GROUP BY referral_id
+            ) latest ON latest.max_id = pc.id
+            INNER JOIN {$referrals} r ON r.id = pc.referral_id
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY {$order}
+            LIMIT %d";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($rows) ? $rows : [];
     }
 
     /**

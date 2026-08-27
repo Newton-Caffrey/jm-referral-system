@@ -6,6 +6,8 @@ use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\Assessment\ReferralAssessmentService;
 use JMReferral\Meeting\ReferralMeeting;
 use JMReferral\Meeting\ReferralMeetingRepository;
+use JMReferral\PackageCost\PackageCost;
+use JMReferral\PackageCost\PackageCostRepository;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Portal\PortalUrls;
 use JMReferral\Referral\ReferralActivityRepository;
@@ -14,10 +16,11 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Workflow\WorkflowStageService;
 
 /**
- * Read-only operational Management Dashboard sections (Phase 4D.1 / 4E.1).
+ * Read-only operational Management Dashboard sections (Phase 4D.1 / 4E.1 / 4F.1).
  *
  * Scope-aware aggregates only. No mutations. No contact PII.
  * Assessment metrics are derived from scheduled_at + outcome (no status column).
+ * Package Costing metrics use pipeline stage + latest package-cost row (MAX id).
  */
 class ManagementOperationalReadService
 {
@@ -33,6 +36,8 @@ class ManagementOperationalReadService
 
     public const ASSESSMENT_LIST_LIMIT = 8;
 
+    public const PACKAGE_LIST_LIMIT = 8;
+
     public function __construct(
         private ReferralRepository $referral_repository,
         private ReferralMeetingRepository $meeting_repository,
@@ -41,7 +46,8 @@ class ManagementOperationalReadService
         private AccessPolicy $access_policy,
         private UserProvider $user_provider,
         private PipelineAttentionService $attention_service,
-        private ReferralAssessmentRepository $assessment_repository
+        private ReferralAssessmentRepository $assessment_repository,
+        private PackageCostRepository $package_cost_repository
     ) {
     }
 
@@ -75,6 +81,16 @@ class ManagementOperationalReadService
         $past_assessments      = $this->assessment_repository->count_for_dashboard('past_scheduled', $now, $access);
         $completed_assessments = $this->assessment_repository->count_for_dashboard('completed', $now, $access);
         $outcome_counts        = $this->assessment_repository->count_outcomes_for_dashboard($access);
+
+        $package_status_counts = $this->package_cost_repository->count_current_status_for_dashboard($access);
+        $package_cost_required = $this->package_cost_repository->count_referrals_on_pipeline_slug(
+            PipelineStage::PACKAGE_COST_REQUIRED,
+            $access
+        );
+        $awaiting_la_decision  = $this->package_cost_repository->count_referrals_on_pipeline_slug(
+            PipelineStage::AWAITING_LA_DECISION,
+            $access
+        );
 
         $unassigned = $this->referral_repository->count_unassigned_responsibilities($access);
 
@@ -110,6 +126,14 @@ class ManagementOperationalReadService
                 'scheduled_assessments' => __('Outcome pending with scheduled_at now or in the future.', 'jm-referral-system'),
                 'past_assessments'  => __('Outcome pending with scheduled_at earlier than now.', 'jm-referral-system'),
                 'completed_assessments' => __('Outcome is suitable, suitable with conditions, or not suitable.', 'jm-referral-system'),
+                'package_costing'   => __(
+                    'Pipeline stage counts plus latest package-cost row per referral (highest id). Amounts and recipients are not shown here.',
+                    'jm-referral-system'
+                ),
+                'package_cost_required' => __('Current acquisition pipeline stage is Package Cost to Prepare.', 'jm-referral-system'),
+                'prepared_packages' => __('Latest package-cost row status is prepared.', 'jm-referral-system'),
+                'sent_packages'     => __('Latest package-cost row status is sent.', 'jm-referral-system'),
+                'awaiting_la_decision' => __('Current acquisition pipeline stage is Awaiting Local Authority Decision.', 'jm-referral-system'),
             ],
             'status_cards'         => [
                 [
@@ -234,6 +258,26 @@ class ManagementOperationalReadService
                         $now,
                         null,
                         self::ASSESSMENT_LIST_LIMIT,
+                        $access
+                    )
+                ),
+            ],
+            'package_costing'      => [
+                'required_count'   => $package_cost_required,
+                'prepared_count'   => (int) ($package_status_counts['prepared'] ?? 0),
+                'sent_count'       => (int) ($package_status_counts['sent'] ?? 0),
+                'awaiting_la_count'=> $awaiting_la_decision,
+                'prepared_list'    => $this->present_packages(
+                    $this->package_cost_repository->list_current_for_dashboard(
+                        PackageCost::STATUS_PREPARED,
+                        self::PACKAGE_LIST_LIMIT,
+                        $access
+                    )
+                ),
+                'sent_list'        => $this->present_packages(
+                    $this->package_cost_repository->list_current_for_dashboard(
+                        PackageCost::STATUS_SENT,
+                        self::PACKAGE_LIST_LIMIT,
                         $access
                     )
                 ),
@@ -502,6 +546,37 @@ class ManagementOperationalReadService
                     )
                     : '—',
                 'assessor_name'   => $assessor,
+                'url'             => $referral_id > 0 ? PortalUrls::referral($referral_id) : '',
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Safe package-costing list rows — no amounts, recipients, references, or filenames.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, string>>
+     */
+    private function present_packages(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            $referral_id = absint($row['referral_id'] ?? 0);
+            $status      = (string) ($row['status'] ?? '');
+            $when        = PackageCost::STATUS_SENT === $status
+                ? (string) ($row['sent_at'] ?? '')
+                : (string) ($row['prepared_at'] ?? '');
+            $out[] = [
+                'referral_number' => (string) ($row['referral_number'] ?? ''),
+                'status_label'    => '' !== $status ? PackageCost::status_label($status) : '',
+                'when_label'      => '' !== $when
+                    ? (string) mysql2date(
+                        get_option('date_format') . ' ' . get_option('time_format'),
+                        $when
+                    )
+                    : '—',
                 'url'             => $referral_id > 0 ? PortalUrls::referral($referral_id) : '',
             ];
         }

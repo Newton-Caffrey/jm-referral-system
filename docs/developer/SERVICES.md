@@ -172,12 +172,18 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Used by:** Portal `management` route via `PortalController`
 - **Notes:** Read-only GET. One construction in `Plugin::registerStaffPortal()`.
 
-### `ManagementOperationalReadService` (Phase 4D.1 / 4E.1)
-- **Purpose:** Scope-aware operational aggregates for Management Dashboard Operations tab: status cards, workflow-stage distribution, unassigned responsibility counts, owner/champion/transition-lead workloads, upcoming/past scheduled meetings (14-day upcoming window), recent referrals (8), recent activity (10), attention extras, and **derived assessment metrics** (scheduled / past scheduled / completed + outcome distribution; 14-day upcoming list).
-- **Deps:** `ReferralRepository`, `ReferralMeetingRepository`, `ReferralActivityRepository`, `WorkflowStageService`, `AccessPolicy`, `UserProvider`, `PipelineAttentionService`, `ReferralAssessmentRepository`
+### `ManagementOperationalReadService` (Phase 4D.1 / 4E.1 / **4F.1**)
+- **Purpose:** Scope-aware operational aggregates for Management Dashboard Operations tab: status cards, workflow-stage distribution, unassigned responsibility counts, owner/champion/transition-lead workloads, upcoming/past scheduled meetings (14-day upcoming window), recent referrals (8), recent activity (10), attention extras, **derived assessment metrics**, and **Package Costing metrics** (pipeline `package_cost_required` / `awaiting_la_decision` plus latest-row prepared/sent counts and compact lists).
+- **Deps:** `ReferralRepository`, `ReferralMeetingRepository`, `ReferralActivityRepository`, `WorkflowStageService`, `AccessPolicy`, `UserProvider`, `PipelineAttentionService`, `ReferralAssessmentRepository`, `PackageCostRepository`
 - **Used by:** `ManagementPipelineBoardService` only
-- **Notes:** Prepared SQL aggregates; no N+1 user lookups (`get_display_names_by_ids`). No contact PII / meeting URLs / notes / assessment narrative. Assessment status remains derived (`scheduled_at` + `outcome`). No mutations, emails, or activity writes on GET. Same commercial gate as pipeline dashboard. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Phase **4E.1** focused UAT **PASS** 2026-08-27.
+- **Notes:** Prepared SQL aggregates; latest package = `MAX(id)` per referral (non-unique `referral_id` by design — older rows are not double-counted). Operations lists omit package totals, recipients, submission references, and filenames. No contact PII / meeting URLs / notes / assessment narrative. No mutations, emails, or activity writes on GET. Same commercial gate as pipeline dashboard. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Phase **4F.1** focused UAT **PASS** 2026-08-27 (email send **NOT RUN — CODE REVIEWED**).
 
+### `PackageCostService` (Phase 3E / 3E.1 / **4F.1**)
+- **Purpose:** Prepare/update optional GBP Package Cost + linked referral document; send by email or record secure-portal/other submission; advance `package_cost_required` → `awaiting_la_decision` on successful send only.
+- **Deps:** `ReferralRepository`, `PackageCostRepository`, `ReferralDocumentService`, `ReferralDocumentRepository`, `ReferralPipelineService`, `ReferralActivityService`, `AccessPolicy`, `UserProvider`, `NotificationService`
+- **Used by:** `PortalController`, `ReferralViewController` (shared partial `templates/referrals/partials/package-cost.php`)
+- **Public API:** `can_prepare`, `can_send`, `refined_next_action`, `get_panel_context`, `prepare`, `record_sent`
+- **Notes:** Currency forced to GBP. Sent rows terminal/read-only. No-op prepare when total+document unchanged. Document must belong to the referral; attachment paths never from the request. Failed email leaves package prepared (activity `package_cost_email_failed`). No component calculator, VAT, revision, or new email types in 4F.1. Assessor may view panel amounts when referral is visible (**EXISTING PRODUCT BEHAVIOUR — REQUIRES FUTURE JM CONFIRMATION**). Support Worker denied. Focused UAT **PASS** 2026-08-27 (email send **NOT RUN — CODE REVIEWED**).
 ---
 
 ## Notifications
