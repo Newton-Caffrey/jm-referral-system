@@ -547,6 +547,16 @@ $archived_display = '' !== $archived_at
 	?>
 	<h2 id="jmrs-assessment"><?php echo esc_html( $assessment_heading ); ?></h2>
 
+	<?php
+	$assessment_completed_admin = null !== $assessment
+		&& \JMReferral\Assessment\ReferralAssessmentService::is_completed_assessment( $assessment );
+	?>
+	<?php if ( $assessment_completed_admin ) : ?>
+		<div class="notice notice-info inline" role="status">
+			<p><?php echo esc_html__( 'This assessment has been completed and is read-only.', 'jm-referral-system' ); ?></p>
+		</div>
+	<?php endif; ?>
+
 	<?php if ( ! $can_edit_assessment ) : ?>
 		<?php if ( null === $assessment ) : ?>
 			<p><?php echo esc_html__( 'No assessment recorded yet.', 'jm-referral-system' ); ?></p>

@@ -883,7 +883,8 @@ class Plugin
             $this->workflow_stage_service,
             $this->access_policy,
             $this->user_provider,
-            $pipeline_attention_service
+            $pipeline_attention_service,
+            $assessment_repository
         );
 
         $management_board = new \JMReferral\Pipeline\ManagementPipelineBoardService(

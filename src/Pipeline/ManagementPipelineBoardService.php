@@ -277,7 +277,7 @@ class ManagementPipelineBoardService
             'deferred'          => [
                 'team_performance_full' => true,
                 'funding_authority'     => true,
-                'assessment_scheduling' => true,
+                'assessment_scheduling' => false,
             ],
         ];
     }

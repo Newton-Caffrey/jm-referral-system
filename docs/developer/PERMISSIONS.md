@@ -148,7 +148,7 @@ Class: `JMReferral\Permissions\AccessPolicy`.
 Responsibility membership (champion / transition lead / meeting attendance) does **not** grant Management Dashboard access.
 
 Internal targets are configured under Settings → **Pipeline Internal Targets** (`jmrs_manage_settings`). Operational targets only — not contractual SLAs.
-| `can_schedule_assessment` | Same as `can_mutate_referral` (EDIT_REFERRALS + not archived + scope). Assessor allowed. Support Worker denied (no EDIT). Does **not** require `override_pipeline_stage`. |
+| `can_schedule_assessment` | Same as `can_mutate_referral` (EDIT_REFERRALS + not archived + scope). Assessor allowed. Support Worker denied (no EDIT). Does **not** require `override_pipeline_stage`. Phase **4E.1:** completed assessments (non-pending outcome) additionally block schedule/reschedule/needs-rescheduling and clinical save. Assessor membership alone grants no access. Focused UAT **PASS** 2026-08-27. |
 | `should_scope_to_assigned` | True for `jmrs_support_worker` without unrestricted access |
 | `get_assigned_user_constraint` | User ID when scoped; else `null` (used by list/dashboard queries) |
 

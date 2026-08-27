@@ -1081,10 +1081,24 @@ class PortalController implements PortalViewHost
             && Capabilities::current_user_can(Capabilities::RESTORE_REFERRALS)
             && $this->access_policy->can_view_referral($referral);
 
+        $assessment_completed = ReferralAssessmentService::is_completed_assessment($assessment);
+
         $can_edit_assessment = ! $is_archived
             && Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
             && $this->access_policy->can_edit_referral($referral)
-            && $this->access_policy->can_mutate_referral($referral);
+            && $this->access_policy->can_mutate_referral($referral)
+            && ! $assessment_completed;
+
+        $can_open_assessment = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            && $this->access_policy->can_edit_referral($referral)
+            && (
+                $can_edit_assessment
+                || (
+                    $assessment_completed
+                    && null !== $assessment
+                    && $this->access_policy->can_view_referral($referral)
+                )
+            );
 
         $can_manage_care_plan = ! $is_archived
             && Capabilities::current_user_can(Capabilities::MANAGE_CARE_PLANS)
@@ -1211,7 +1225,8 @@ class PortalController implements PortalViewHost
             'assessor_name'              => $assessor_name,
             'assessment_outcomes'        => ReferralAssessmentService::outcome_labels(),
             'can_edit_assessment'        => $can_edit_assessment,
-            'assessment_url'             => $can_edit_assessment
+            'assessment_completed'       => $assessment_completed,
+            'assessment_url'             => $can_open_assessment
                 ? PortalUrls::referral_assessment($referral_id)
                 : '',
             'can_view_care_plan'         => $can_view_care_plan,
@@ -2215,23 +2230,39 @@ class PortalController implements PortalViewHost
             null === $referral
             || ! $this->access_policy->can_view_referral($referral)
             || ! $this->access_policy->can_edit_referral($referral)
-            || ! $this->access_policy->can_mutate_referral($referral)
         ) {
             $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
 
             return;
         }
 
+        $assessment = $this->assessment_repository->find_by_referral($referral_id);
+        $is_completed = ReferralAssessmentService::is_completed_assessment($assessment);
+
+        if (! $is_completed && ! $this->access_policy->can_mutate_referral($referral)) {
+            $this->render_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return;
+        }
+
         if (isset($_POST['jmrs_save_assessment'])) {
+            if ($is_completed || ! $this->access_policy->can_mutate_referral($referral)) {
+                $this->render_error(
+                    '403',
+                    __('This assessment has been completed and is read-only.', 'jm-referral-system'),
+                    403
+                );
+
+                return;
+            }
             $this->handle_assessment_post($referral_id);
 
             return;
         }
 
-        $assessment = $this->assessment_repository->find_by_referral($referral_id);
         $form_state = ReferralAssessmentController::get_form_state($referral_id);
-        $errors     = $form_state['errors'];
-        $data       = ! empty($form_state['data'])
+        $errors     = $is_completed ? [] : $form_state['errors'];
+        $data       = ! empty($form_state['data']) && ! $is_completed
             ? $form_state['data']
             : ReferralAssessmentService::map_to_form_data($assessment);
 
@@ -2242,9 +2273,21 @@ class PortalController implements PortalViewHost
         $view_label      = '' !== $referral_number
             ? $referral_number
             : __('Referral', 'jm-referral-system');
-        $page_title = null === $assessment
-            ? __('Create Assessment', 'jm-referral-system')
-            : __('Edit Assessment', 'jm-referral-system');
+        if ($is_completed) {
+            $page_title = __('View Assessment', 'jm-referral-system');
+        } else {
+            $page_title = null === $assessment
+                ? __('Create Assessment', 'jm-referral-system')
+                : __('Edit Assessment', 'jm-referral-system');
+        }
+
+        $assessor_name = '';
+        if (null !== $assessment) {
+            $assessor_user_id = absint($assessment['assessor_user_id'] ?? 0);
+            $assessor_name    = $assessor_user_id > 0
+                ? $this->user_provider->get_display_name($assessor_user_id)
+                : '';
+        }
 
         $view = [
             'referral'             => $referral,
@@ -2255,6 +2298,8 @@ class PortalController implements PortalViewHost
             'form_action'          => PortalUrls::referral_assessment($referral_id),
             'cancel_url'           => PortalUrls::referral($referral_id),
             'is_create'            => null === $assessment,
+            'is_completed_readonly'=> $is_completed,
+            'assessor_name'        => $assessor_name,
         ];
 
         $this->render_page(

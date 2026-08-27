@@ -47,8 +47,11 @@ class ReferralAssessmentController
 
         if (! $result['success']) {
             if (! empty($result['forbidden']) || ! empty($result['not_found'])) {
-                wp_die(esc_html__('You do not have permission to save an assessment for this referral.', 'jm-referral-system'));
+            if (! empty($result['completed'])) {
+                wp_die(esc_html__('This assessment has been completed and is read-only.', 'jm-referral-system'));
             }
+            wp_die(esc_html__('You do not have permission to save an assessment for this referral.', 'jm-referral-system'));
+        }
 
             $this->store_form_state($referral_id, $result['data'], $result['errors']);
             $this->redirect_to_view($referral_id);
@@ -91,7 +94,7 @@ class ReferralAssessmentController
             ];
         }
 
-        if (! $this->access_policy->can_edit_referral($referral)) {
+        if (! $this->access_policy->can_mutate_referral($referral)) {
             return [
                 'success'   => false,
                 'data'      => [],
@@ -99,6 +102,21 @@ class ReferralAssessmentController
                 'created'   => false,
                 'not_found' => false,
                 'forbidden' => true,
+            ];
+        }
+
+        $existing = $this->assessment_service->get_for_referral($referral_id);
+        if (ReferralAssessmentService::is_completed_assessment($existing)) {
+            return [
+                'success'   => false,
+                'data'      => [],
+                'errors'    => [
+                    'completed' => __('This assessment has been completed and is read-only.', 'jm-referral-system'),
+                ],
+                'created'   => false,
+                'not_found' => false,
+                'forbidden' => true,
+                'completed' => true,
             ];
         }
 
@@ -119,13 +137,16 @@ class ReferralAssessmentController
         }
 
         if (isset($result['errors']) && is_array($result['errors'])) {
+            $completed = isset($result['errors']['completed']);
+
             return [
                 'success'   => false,
-                'data'      => $data,
+                'data'      => $completed ? [] : $data,
                 'errors'    => $result['errors'],
                 'created'   => false,
                 'not_found' => false,
-                'forbidden' => false,
+                'forbidden' => $completed,
+                'completed' => $completed,
             ];
         }
 

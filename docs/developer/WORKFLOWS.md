@@ -140,6 +140,8 @@ Correction while still on review: `assessment_review_required` → (suitable / s
 
 **Completion semantics:** `is_completed_assessment()` = outcome ∈ {suitable, suitable_with_conditions, not_suitable}. Saving with outcome=`pending` does **not** advance the pipeline. Re-saving an already-completed assessment does not duplicate history/transitions.
 
+**Phase 4E.1 terminal policy:** Once outcome is non-pending, clinical fields and scheduling become **read-only** in service/controller and UI. No reopen/correction workflow. No separate Cancel Appointment (Needs Rescheduling remains for pending scheduled appointments only). No assessment emails. Assessor assignment grants no access. Dashboard Operations metrics are **derived** from `scheduled_at` + `outcome` (no status column). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Focused UAT **PASS** 2026-08-27 (not-suitable second-referral and admin completed-view **NOT RUN — CODE REVIEWED**).
+
 ---
 
 ## Referral meetings & responsibilities (Phase 4B.1 data foundation)
@@ -366,7 +368,7 @@ Read-only Operations tab on `/management/` via `ManagementOperationalReadService
 | Past scheduled meetings | Status still `scheduled`, `scheduled_at` earlier than now — labelled past scheduled, not missed/failed |
 | Recent referrals | Latest 8 non-archived by create order |
 | Recent activity | Latest 10 activity rows joined to non-archived referrals; data-minimised descriptions |
-| Assessment KPI | **Deferred** — no reliable standalone scheduling status metric |
+| Assessment KPI | Derived Operations metrics (Phase **4E.1**): scheduled / past scheduled / completed + outcome distribution from `scheduled_at` + `outcome`; archived excluded; no narrative/contacts |
 | Stale inactivity rule | **Omitted** — no approved threshold |
 
 No package-costing conversion, authority SLA, placement conversion, revenue, or fabricated targets. No mutations/emails on dashboard GET. Meeting contact PII and online URLs excluded. Responsibility workload is **not** a performance score. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Focused UAT **PASS** 2026-08-27.

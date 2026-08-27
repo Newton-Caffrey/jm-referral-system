@@ -35,6 +35,11 @@ class AssessmentSchedulingService
             return false;
         }
 
+        $assessment = $this->assessment_repository->find_by_referral(absint($referral['id'] ?? 0));
+        if (ReferralAssessmentService::is_completed_assessment($assessment)) {
+            return false;
+        }
+
         return PipelineStage::ASSESSMENT_TO_SCHEDULE === $this->pipeline_service->current_stage_slug($referral);
     }
 
@@ -44,6 +49,11 @@ class AssessmentSchedulingService
     public function can_reschedule(array $referral): bool
     {
         if (! $this->access_policy->can_schedule_assessment($referral)) {
+            return false;
+        }
+
+        $assessment = $this->assessment_repository->find_by_referral(absint($referral['id'] ?? 0));
+        if (ReferralAssessmentService::is_completed_assessment($assessment)) {
             return false;
         }
 
@@ -82,7 +92,7 @@ class AssessmentSchedulingService
             $time = $m[2];
         }
 
-        $can_reschedule = $this->can_reschedule($referral) && ! $clinically_completed;
+        $can_reschedule = $this->can_reschedule($referral);
 
         return [
             'can_schedule'              => $this->can_schedule($referral),
@@ -149,6 +159,14 @@ class AssessmentSchedulingService
 
         if (! $this->access_policy->can_schedule_assessment($referral)) {
             return $this->fail('access_denied', __('You do not have permission to schedule an assessment for this referral.', 'jm-referral-system'));
+        }
+
+        $existing_for_gate = $this->assessment_repository->find_by_referral($referral_id);
+        if (ReferralAssessmentService::is_completed_assessment($existing_for_gate)) {
+            return $this->fail(
+                'assessment_completed',
+                __('This assessment has been completed and is read-only.', 'jm-referral-system')
+            );
         }
 
         if (PipelineStage::ASSESSMENT_TO_SCHEDULE !== $this->pipeline_service->current_stage_slug($referral)) {
@@ -275,6 +293,13 @@ class AssessmentSchedulingService
             return $this->fail('no_assessment', __('No assessment appointment exists to reschedule.', 'jm-referral-system'));
         }
 
+        if (ReferralAssessmentService::is_completed_assessment($existing)) {
+            return $this->fail(
+                'assessment_completed',
+                __('This assessment has been completed and is read-only.', 'jm-referral-system')
+            );
+        }
+
         $validated = $this->validate_appointment_input($input);
         if (! empty($validated['errors'])) {
             return [
@@ -325,6 +350,14 @@ class AssessmentSchedulingService
             return $this->fail(
                 'wrong_stage',
                 __('Needs Rescheduling is only available when the pipeline stage is Assessment Scheduled.', 'jm-referral-system')
+            );
+        }
+
+        $existing = $this->assessment_repository->find_by_referral($referral_id);
+        if (ReferralAssessmentService::is_completed_assessment($existing)) {
+            return $this->fail(
+                'assessment_completed',
+                __('This assessment has been completed and is read-only.', 'jm-referral-system')
             );
         }
 

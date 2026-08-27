@@ -261,10 +261,11 @@ class ReferralViewController
 
         $document_errors = ReferralDocumentController::get_errors($referral_id);
 
-        $can_edit_assessment = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
-            && $can_mutate;
-
         $assessment           = $this->assessment_repository->find_by_referral($referral_id);
+        $can_edit_assessment = Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            && $can_mutate
+            && ! ReferralAssessmentService::is_completed_assessment($assessment);
+
         $assessment_form_state = ReferralAssessmentController::get_form_state($referral_id);
         $assessment_errors    = $assessment_form_state['errors'];
         $assessment_data      = ! empty($assessment_form_state['data'])

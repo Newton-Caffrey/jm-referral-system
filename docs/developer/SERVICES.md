@@ -71,8 +71,14 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 ## Assessment & care plans
 
 ### `ReferralAssessmentService`
-- **Purpose:** Load/save assessment; form mapping helpers.
-- **Deps:** Assessment + referral repos, activity, AccessPolicy
+- **Purpose:** Load/save clinical assessment; form mapping helpers; pipeline advance on first non-pending outcome.
+- **Deps:** Assessment + referral repos, activity, AccessPolicy, optional `ReferralPipelineService`
+- **Notes (4E.1):** Completed = outcome ≠ `pending`. Service rejects clinical mutations on completed assessments (no reopen). Assessor assignment grants no access. Focused UAT **PASS** 2026-08-27 (not-suitable second-referral / admin completed-view **NOT RUN — CODE REVIEWED**). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**.
+
+### `AssessmentSchedulingService`
+- **Purpose:** Schedule / reschedule / needs-rescheduling for assessment appointments; advances acquisition pipeline when scheduling.
+- **Deps:** Referral + assessment repos, pipeline, activity, AccessPolicy, `UserProvider`
+- **Notes (4E.1):** Completed assessments reject schedule/reschedule/needs-rescheduling. No Cancel Appointment action. No emails. Focused UAT **PASS** 2026-08-27.
 
 ### `ReferralCarePlanService`
 - **Purpose:** Generate from assessment, blank plan, save/activate content.
@@ -166,11 +172,11 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Used by:** Portal `management` route via `PortalController`
 - **Notes:** Read-only GET. One construction in `Plugin::registerStaffPortal()`.
 
-### `ManagementOperationalReadService` (Phase 4D.1)
-- **Purpose:** Scope-aware operational aggregates for Management Dashboard Operations tab: status cards, workflow-stage distribution, unassigned responsibility counts, owner/champion/transition-lead workloads, upcoming/past scheduled meetings (14-day upcoming window), recent referrals (8), recent activity (10), attention extras.
-- **Deps:** `ReferralRepository`, `ReferralMeetingRepository`, `ReferralActivityRepository`, `WorkflowStageService`, `AccessPolicy`, `UserProvider`, `PipelineAttentionService`
+### `ManagementOperationalReadService` (Phase 4D.1 / 4E.1)
+- **Purpose:** Scope-aware operational aggregates for Management Dashboard Operations tab: status cards, workflow-stage distribution, unassigned responsibility counts, owner/champion/transition-lead workloads, upcoming/past scheduled meetings (14-day upcoming window), recent referrals (8), recent activity (10), attention extras, and **derived assessment metrics** (scheduled / past scheduled / completed + outcome distribution; 14-day upcoming list).
+- **Deps:** `ReferralRepository`, `ReferralMeetingRepository`, `ReferralActivityRepository`, `WorkflowStageService`, `AccessPolicy`, `UserProvider`, `PipelineAttentionService`, `ReferralAssessmentRepository`
 - **Used by:** `ManagementPipelineBoardService` only
-- **Notes:** Prepared SQL aggregates; no N+1 user lookups (`get_display_names_by_ids`). No contact PII / meeting URLs / notes. Assessment scheduling KPI **deferred**. No mutations, emails, or activity writes on GET. Same commercial gate as pipeline dashboard (`VIEW_DASHBOARD` + `VIEW_REFERRALS`, not Support Worker scoped). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Focused UAT **PASS** 2026-08-27.
+- **Notes:** Prepared SQL aggregates; no N+1 user lookups (`get_display_names_by_ids`). No contact PII / meeting URLs / notes / assessment narrative. Assessment status remains derived (`scheduled_at` + `outcome`). No mutations, emails, or activity writes on GET. Same commercial gate as pipeline dashboard. Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**. Phase **4E.1** focused UAT **PASS** 2026-08-27.
 
 ---
 

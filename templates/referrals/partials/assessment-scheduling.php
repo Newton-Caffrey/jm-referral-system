@@ -58,6 +58,12 @@ $form_is_reschedule = ! $can_schedule && ( $show_reschedule_form || $can_resched
 <div class="jmrs-assessment-scheduling" style="margin: 1.25em 0; padding: 1em 1.25em; border: 1px solid #2271b1; background: #f0f6fc;">
 	<h2 style="margin-top: 0;"><?php echo esc_html__( 'Assessment Appointment', 'jm-referral-system' ); ?></h2>
 
+	<?php if ( ! empty( $scheduling_panel['assessment_completed'] ) ) : ?>
+		<p class="description" role="status">
+			<?php echo esc_html__( 'This assessment has been completed and is read-only. Scheduling cannot be changed.', 'jm-referral-system' ); ?>
+		</p>
+	<?php endif; ?>
+
 	<?php if ( $show_appointment_card && ! $can_schedule ) : ?>
 		<p>
 			<strong><?php echo esc_html__( 'Status:', 'jm-referral-system' ); ?></strong>

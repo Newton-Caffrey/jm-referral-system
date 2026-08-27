@@ -1,6 +1,6 @@
 <?php
 /**
- * Portal assessment create/edit form.
+ * Portal assessment create/edit form, or read-only completed view (Phase 4E.1).
  *
  * Field names match admin so ReferralAssessmentController::attempt_save() can be reused.
  *
@@ -17,6 +17,8 @@ $outcome_options = is_array( $outcome_options ?? null ) ? $outcome_options : arr
 $form_action     = (string) ( $form_action ?? '' );
 $cancel_url      = (string) ( $cancel_url ?? '' );
 $is_create       = ! empty( $is_create );
+$is_completed_readonly = ! empty( $is_completed_readonly );
+$assessor_name   = (string) ( $assessor_name ?? '' );
 $referral        = is_array( $referral ?? null ) ? $referral : array();
 $referral_id     = absint( $referral['id'] ?? 0 );
 
@@ -29,6 +31,10 @@ $field_error = static function ( array $errors, string $key ): void {
 		return;
 	}
 	echo '<p class="jmrs-portal-field-error">' . esc_html( (string) $errors[ $key ] ) . '</p>';
+};
+
+$has_value = static function ( string $value ): bool {
+	return '' !== trim( $value );
 };
 
 $long_sections = array(
@@ -52,6 +58,130 @@ $long_sections = array(
 		'family_support' => __( 'Family Support', 'jm-referral-system' ),
 	),
 );
+
+$outcome_key   = $val( $data, 'outcome' );
+$outcome_label = isset( $outcome_options[ $outcome_key ] )
+	? (string) $outcome_options[ $outcome_key ]
+	: $outcome_key;
+
+if ( $is_completed_readonly ) :
+	?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--info" role="status">
+		<p><?php echo esc_html__( 'This assessment has been completed and is read-only.', 'jm-referral-system' ); ?></p>
+	</div>
+
+	<section class="jmrs-portal-section">
+		<h2 class="jmrs-portal-section__title"><?php echo esc_html__( 'Assessment Overview', 'jm-referral-system' ); ?></h2>
+		<dl class="jmrs-portal-summary">
+			<div>
+				<dt><?php echo esc_html__( 'Assessment Date', 'jm-referral-system' ); ?></dt>
+				<dd>
+					<?php
+					$date = $val( $data, 'assessment_date' );
+					echo '' !== $date
+						? esc_html( mysql2date( get_option( 'date_format' ), $date ) )
+						: esc_html__( 'Not recorded', 'jm-referral-system' );
+					?>
+				</dd>
+			</div>
+			<div>
+				<dt><?php echo esc_html__( 'Assessor', 'jm-referral-system' ); ?></dt>
+				<dd><?php echo esc_html( '' !== $assessor_name ? $assessor_name : __( 'Not recorded', 'jm-referral-system' ) ); ?></dd>
+			</div>
+			<div>
+				<dt><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></dt>
+				<dd><?php echo esc_html( '' !== $outcome_label ? $outcome_label : __( 'Not recorded', 'jm-referral-system' ) ); ?></dd>
+			</div>
+			<div>
+				<dt><?php echo esc_html__( 'Next Review Date', 'jm-referral-system' ); ?></dt>
+				<dd>
+					<?php
+					$nrd = $val( $data, 'next_review_date' );
+					echo $has_value( $nrd )
+						? esc_html( mysql2date( get_option( 'date_format' ), $nrd ) )
+						: esc_html__( 'Not recorded', 'jm-referral-system' );
+					?>
+				</dd>
+			</div>
+		</dl>
+	</section>
+
+	<?php foreach ( $long_sections as $section_title => $fields ) : ?>
+		<?php
+		$visible = array();
+		foreach ( $fields as $field_key => $field_label ) {
+			$field_value = $val( $data, $field_key );
+			if ( $has_value( $field_value ) ) {
+				$visible[ $field_key ] = array(
+					'label' => $field_label,
+					'value' => $field_value,
+				);
+			}
+		}
+		?>
+		<?php if ( ! empty( $visible ) ) : ?>
+			<section class="jmrs-portal-section">
+				<h2 class="jmrs-portal-section__title"><?php echo esc_html( (string) $section_title ); ?></h2>
+				<dl class="jmrs-portal-summary">
+					<?php foreach ( $visible as $item ) : ?>
+						<div>
+							<dt><?php echo esc_html( (string) $item['label'] ); ?></dt>
+							<dd><?php echo nl2br( esc_html( (string) $item['value'] ) ); ?></dd>
+						</div>
+					<?php endforeach; ?>
+				</dl>
+			</section>
+		<?php endif; ?>
+	<?php endforeach; ?>
+
+	<?php
+	$package_fields = array(
+		'visit_frequency'       => array( __( 'Visit Frequency', 'jm-referral-system' ), false ),
+		'visit_duration'        => array( __( 'Visit Duration', 'jm-referral-system' ), false ),
+		'preferred_visit_times' => array( __( 'Preferred Visit Times', 'jm-referral-system' ), true ),
+		'summary'               => array( __( 'Summary', 'jm-referral-system' ), true ),
+		'recommendations'       => array( __( 'Recommendations', 'jm-referral-system' ), true ),
+	);
+	$package_visible = array();
+	foreach ( $package_fields as $field_key => $meta ) {
+		$field_value = $val( $data, $field_key );
+		if ( $has_value( $field_value ) ) {
+			$package_visible[] = array(
+				'label' => $meta[0],
+				'value' => $field_value,
+				'nl2br' => $meta[1],
+			);
+		}
+	}
+	?>
+	<?php if ( ! empty( $package_visible ) ) : ?>
+		<section class="jmrs-portal-section">
+			<h2 class="jmrs-portal-section__title"><?php echo esc_html__( 'Care Package and Summary', 'jm-referral-system' ); ?></h2>
+			<dl class="jmrs-portal-summary">
+				<?php foreach ( $package_visible as $item ) : ?>
+					<div>
+						<dt><?php echo esc_html( (string) $item['label'] ); ?></dt>
+						<dd>
+							<?php
+							echo ! empty( $item['nl2br'] )
+								? nl2br( esc_html( (string) $item['value'] ) )
+								: esc_html( (string) $item['value'] );
+							?>
+						</dd>
+					</div>
+				<?php endforeach; ?>
+			</dl>
+		</section>
+	<?php endif; ?>
+
+	<p class="jmrs-portal-actions">
+		<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $cancel_url ); ?>">
+			<?php echo esc_html__( 'Back to Referral', 'jm-referral-system' ); ?>
+		</a>
+	</p>
+	<?php
+	return;
+endif;
 ?>
 <?php if ( ! empty( $errors ) ) : ?>
 	<div class="jmrs-portal-notice jmrs-portal-notice--error" role="alert">
@@ -79,9 +209,9 @@ $long_sections = array(
 			<div class="jmrs-portal-field">
 				<label for="jmrs_assessment_outcome"><?php echo esc_html__( 'Outcome', 'jm-referral-system' ); ?></label>
 				<select name="jmrs_assessment_outcome" id="jmrs_assessment_outcome">
-					<?php foreach ( $outcome_options as $outcome_value => $outcome_label ) : ?>
+					<?php foreach ( $outcome_options as $outcome_value => $outcome_option_label ) : ?>
 						<option value="<?php echo esc_attr( (string) $outcome_value ); ?>" <?php selected( $val( $data, 'outcome' ), (string) $outcome_value ); ?>>
-							<?php echo esc_html( (string) $outcome_label ); ?>
+							<?php echo esc_html( (string) $outcome_option_label ); ?>
 						</option>
 					<?php endforeach; ?>
 				</select>

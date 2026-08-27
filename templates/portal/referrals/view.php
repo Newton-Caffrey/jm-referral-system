@@ -90,6 +90,7 @@ $clinical_notice            = is_array( $clinical_notice ?? null ) ? $clinical_n
 $archived_list_url          = (string) ( $archived_list_url ?? '' );
 $referral_id                = absint( $referral['id'] ?? 0 );
 $can_edit_assessment        = ! empty( $can_edit_assessment );
+$assessment_completed       = ! empty( $assessment_completed );
 $assessment_url             = (string) ( $assessment_url ?? '' );
 $can_manage_care_plan       = ! empty( $can_manage_care_plan );
 $care_plan_url              = (string) ( $care_plan_url ?? '' );
@@ -561,14 +562,20 @@ $summary_fields = array(
 		$outcome_badge     = $assessment_outcomes[ $outcome_key_badge ] ?? $outcome_key_badge;
 		$section_badge     = '' !== $outcome_badge ? (string) $outcome_badge : null;
 	}
-	$section_actions = ( $can_edit_assessment && '' !== $assessment_url )
-		? array(
-			array(
+	$section_actions = array();
+	if ( '' !== $assessment_url ) {
+		if ( $can_edit_assessment ) {
+			$section_actions[] = array(
 				null === $assessment ? __( 'Create Assessment', 'jm-referral-system' ) : __( 'Edit Assessment', 'jm-referral-system' ),
 				$assessment_url,
-			),
-		)
-		: array();
+			);
+		} elseif ( $assessment_completed && null !== $assessment ) {
+			$section_actions[] = array(
+				__( 'View Assessment', 'jm-referral-system' ),
+				$assessment_url,
+			);
+		}
+	}
 	include $jmrs_partials_path . 'section-header.php';
 	?>
 	<?php if ( null === $assessment ) : ?>

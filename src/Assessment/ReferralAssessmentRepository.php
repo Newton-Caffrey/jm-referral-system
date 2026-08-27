@@ -245,4 +245,172 @@ class ReferralAssessmentRepository
 
         return $formats;
     }
+
+    /**
+     * Dashboard assessment window counts (Phase 4E.1).
+     *
+     * Joins non-archived referrals; optional assigned_to scope.
+     *
+     * @param 'scheduled'|'past_scheduled'|'completed' $window
+     */
+    public function count_for_dashboard(string $window, string $now_mysql, ?int $access_assigned_to = null): int
+    {
+        global $wpdb;
+
+        $assessments = Tables::referral_assessments_table();
+        $referrals   = Tables::referrals_table();
+
+        $where  = ['r.archived_at IS NULL'];
+        $params = [];
+
+        if ('scheduled' === $window) {
+            $where[]  = 'a.outcome = %s';
+            $params[] = ReferralAssessmentService::OUTCOME_PENDING;
+            $where[]  = 'a.scheduled_at IS NOT NULL';
+            $where[]  = 'a.scheduled_at >= %s';
+            $params[] = $now_mysql;
+        } elseif ('past_scheduled' === $window) {
+            $where[]  = 'a.outcome = %s';
+            $params[] = ReferralAssessmentService::OUTCOME_PENDING;
+            $where[]  = 'a.scheduled_at IS NOT NULL';
+            $where[]  = 'a.scheduled_at < %s';
+            $params[] = $now_mysql;
+        } elseif ('completed' === $window) {
+            $where[] = 'a.outcome IN (%s, %s, %s)';
+            $params[] = ReferralAssessmentService::OUTCOME_SUITABLE;
+            $params[] = ReferralAssessmentService::OUTCOME_SUITABLE_WITH_CONDITIONS;
+            $params[] = ReferralAssessmentService::OUTCOME_NOT_SUITABLE;
+        } else {
+            return 0;
+        }
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT COUNT(*)
+            FROM {$assessments} a
+            INNER JOIN {$referrals} r ON r.id = a.referral_id
+            WHERE " . implode(' AND ', $where);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
+
+    /**
+     * Completed outcome distribution for dashboard (excludes pending).
+     *
+     * @return array<string, int> outcome => count
+     */
+    public function count_outcomes_for_dashboard(?int $access_assigned_to = null): array
+    {
+        global $wpdb;
+
+        $assessments = Tables::referral_assessments_table();
+        $referrals   = Tables::referrals_table();
+
+        $where  = [
+            'r.archived_at IS NULL',
+            'a.outcome IN (%s, %s, %s)',
+        ];
+        $params = [
+            ReferralAssessmentService::OUTCOME_SUITABLE,
+            ReferralAssessmentService::OUTCOME_SUITABLE_WITH_CONDITIONS,
+            ReferralAssessmentService::OUTCOME_NOT_SUITABLE,
+        ];
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $sql = "SELECT a.outcome, COUNT(*) AS total
+            FROM {$assessments} a
+            INNER JOIN {$referrals} r ON r.id = a.referral_id
+            WHERE " . implode(' AND ', $where) . '
+            GROUP BY a.outcome';
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+        $out     = [
+            ReferralAssessmentService::OUTCOME_SUITABLE                 => 0,
+            ReferralAssessmentService::OUTCOME_SUITABLE_WITH_CONDITIONS => 0,
+            ReferralAssessmentService::OUTCOME_NOT_SUITABLE             => 0,
+        ];
+
+        if (! is_array($results)) {
+            return $out;
+        }
+
+        foreach ($results as $row) {
+            $outcome = (string) ($row['outcome'] ?? '');
+            if (isset($out[$outcome])) {
+                $out[$outcome] = (int) ($row['total'] ?? 0);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Safe list rows for scheduled/past scheduled assessments.
+     *
+     * @param 'upcoming'|'past' $window
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_scheduled_for_dashboard(
+        string $window,
+        string $now_mysql,
+        ?string $until_mysql,
+        int $limit,
+        ?int $access_assigned_to = null
+    ): array {
+        global $wpdb;
+
+        $limit       = max(1, min(50, $limit));
+        $assessments = Tables::referral_assessments_table();
+        $referrals   = Tables::referrals_table();
+
+        $where  = [
+            'r.archived_at IS NULL',
+            'a.outcome = %s',
+            'a.scheduled_at IS NOT NULL',
+        ];
+        $params = [ReferralAssessmentService::OUTCOME_PENDING];
+
+        if ('upcoming' === $window) {
+            $where[]  = 'a.scheduled_at >= %s';
+            $params[] = $now_mysql;
+            if (null !== $until_mysql && '' !== $until_mysql) {
+                $where[]  = 'a.scheduled_at <= %s';
+                $params[] = $until_mysql;
+            }
+            $order = 'a.scheduled_at ASC, a.id ASC';
+        } else {
+            $where[]  = 'a.scheduled_at < %s';
+            $params[] = $now_mysql;
+            $order    = 'a.scheduled_at DESC, a.id DESC';
+        }
+
+        if (null !== $access_assigned_to && $access_assigned_to > 0) {
+            $where[]  = 'r.assigned_to = %d';
+            $params[] = $access_assigned_to;
+        }
+
+        $params[] = $limit;
+
+        $sql = "SELECT a.id, a.referral_id, a.assessor_user_id, a.scheduled_at, a.outcome,
+                r.referral_number
+            FROM {$assessments} a
+            INNER JOIN {$referrals} r ON r.id = a.referral_id
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY {$order}
+            LIMIT %d";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $results = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($results) ? $results : [];
+    }
 }

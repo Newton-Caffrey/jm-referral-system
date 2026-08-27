@@ -175,19 +175,43 @@ class ReferralAssessmentService
      * - not_suitable from assessment_scheduled → assessment_review_required
      * - pending edit while on review does not rewind the pipeline
      *
+     * Phase 4E.1: completed assessments (outcome !== pending) reject all clinical mutations.
+     *
      * @param array<string, string> $input Sanitized form data.
      * @return array{id: int, created: bool, pipeline_advanced?: bool}|array{errors: array<string, string>}|false
      */
     public function save(int $referral_id, array $input): array|false
     {
-        $errors = $this->validate($referral_id, $input);
+        $referral = $this->referral_repository->find($referral_id);
+
+        if ($referral_id <= 0 || null === $referral) {
+            return ['errors' => [
+                'referral_id' => __('Referral not found.', 'jm-referral-system'),
+            ]];
+        }
+
+        if (! Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)
+            || ! $this->access_policy->can_mutate_referral($referral)
+        ) {
+            return ['errors' => [
+                'permission' => __('You do not have permission to save an assessment for this referral.', 'jm-referral-system'),
+            ]];
+        }
+
+        $existing = $this->assessment_repository->find_by_referral($referral_id);
+        if (self::is_completed_assessment($existing)) {
+            return ['errors' => [
+                'completed' => __('This assessment has been completed and is read-only.', 'jm-referral-system'),
+            ]];
+        }
+
+        $errors = $this->validate($input);
 
         if (! empty($errors)) {
             return ['errors' => $errors];
         }
 
-        $existing = $this->assessment_repository->find_by_referral($referral_id);
-        $was_completed = self::is_completed_assessment($existing);
+        $was_completed = false;
         $now      = current_time('mysql');
         $payload  = $this->build_payload($input, $now);
 
@@ -386,26 +410,9 @@ class ReferralAssessmentService
      * @param array<string, string> $input
      * @return array<string, string>
      */
-    private function validate(int $referral_id, array $input): array
+    private function validate(array $input): array
     {
         $errors = [];
-
-        if (! Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)) {
-            $errors['permission'] = __('You do not have permission to save assessments.', 'jm-referral-system');
-            return $errors;
-        }
-
-        $referral = $this->referral_repository->find($referral_id);
-
-        if ($referral_id <= 0 || null === $referral) {
-            $errors['referral_id'] = __('Referral not found.', 'jm-referral-system');
-            return $errors;
-        }
-
-        if (! $this->access_policy->can_mutate_referral($referral)) {
-            $errors['permission'] = __('You do not have permission to save an assessment for this referral.', 'jm-referral-system');
-            return $errors;
-        }
 
         $assessment_date = trim((string) ($input['assessment_date'] ?? ''));
         if ('' === $assessment_date) {

@@ -381,6 +381,10 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 		$past_mtgs       = is_array( $ops['past_meetings'] ?? null ) ? $ops['past_meetings'] : array();
 		$recent_refs     = is_array( $ops['recent_referrals'] ?? null ) ? $ops['recent_referrals'] : array();
 		$recent_act      = is_array( $ops['recent_activity'] ?? null ) ? $ops['recent_activity'] : array();
+		$assess_ops      = is_array( $ops['assessments'] ?? null ) ? $ops['assessments'] : array();
+		$assess_upcoming = is_array( $assess_ops['upcoming_list'] ?? null ) ? $assess_ops['upcoming_list'] : array();
+		$assess_past     = is_array( $assess_ops['past_list'] ?? null ) ? $assess_ops['past_list'] : array();
+		$assess_outcomes = is_array( $assess_ops['outcomes'] ?? null ) ? $assess_ops['outcomes'] : array();
 		$defs            = is_array( $ops['definitions'] ?? null ) ? $ops['definitions'] : array();
 		?>
 		<section class="jmrs-mgmt__view" id="jmrs-view-ops" role="tabpanel" aria-labelledby="jmrs-tab-ops" hidden>
@@ -641,6 +645,115 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 						</table>
 					</div>
 				<?php endif; ?>
+			</article>
+
+			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#3F7D3A">
+				<div class="jmrs-mgmt__panel-head">
+					<div>
+						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Assessments', 'jm-referral-system' ); ?></h3></div>
+						<p class="jmrs-mgmt__panel-q"><?php echo esc_html( (string) ( $defs['assessment'] ?? '' ) ); ?></p>
+					</div>
+				</div>
+				<div class="jmrs-mgmt__unassigned-grid" role="list">
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'Scheduled assessments', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $assess_ops['scheduled_count'] ?? 0 ) ); ?></div>
+						<div class="jmrs-mgmt__fig-note"><?php echo esc_html( (string) ( $defs['scheduled_assessments'] ?? '' ) ); ?></div>
+					</div>
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'Past scheduled assessments', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $assess_ops['past_count'] ?? 0 ) ); ?></div>
+						<div class="jmrs-mgmt__fig-note"><?php echo esc_html( (string) ( $defs['past_assessments'] ?? '' ) ); ?></div>
+					</div>
+					<div class="jmrs-mgmt__unassigned" role="listitem">
+						<div class="jmrs-mgmt__fig-lab"><?php echo esc_html__( 'Completed assessments', 'jm-referral-system' ); ?></div>
+						<div class="jmrs-mgmt__fig-val"><?php echo esc_html( (string) absint( $assess_ops['completed_count'] ?? 0 ) ); ?></div>
+						<div class="jmrs-mgmt__fig-note"><?php echo esc_html( (string) ( $defs['completed_assessments'] ?? '' ) ); ?></div>
+					</div>
+				</div>
+				<?php if ( [] !== $assess_outcomes ) : ?>
+					<h4 class="jmrs-mgmt__subhead"><?php echo esc_html__( 'Outcome distribution', 'jm-referral-system' ); ?></h4>
+					<ul class="jmrs-mgmt__outcome-list" role="list">
+						<?php foreach ( $assess_outcomes as $oc ) : ?>
+							<?php if ( ! is_array( $oc ) ) { continue; } ?>
+							<li>
+								<span><?php echo esc_html( (string) ( $oc['label'] ?? '' ) ); ?></span>
+								<span class="jmrs-mgmt__num"><?php echo esc_html( (string) absint( $oc['count'] ?? 0 ) ); ?></span>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+
+				<div class="jmrs-mgmt__ops-grid jmrs-mgmt__ops-grid--2" style="margin-top:16px;margin-bottom:0;">
+					<div>
+						<h4 class="jmrs-mgmt__subhead"><?php echo esc_html__( 'Upcoming scheduled assessments', 'jm-referral-system' ); ?></h4>
+						<?php if ( [] === $assess_upcoming ) : ?>
+							<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No upcoming scheduled assessments.', 'jm-referral-system' ); ?></div>
+						<?php else : ?>
+							<div class="jmrs-mgmt__tbl-scroll">
+								<table class="jmrs-mgmt__table">
+									<thead>
+										<tr>
+											<th scope="col"><?php echo esc_html__( 'When', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Assessor', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Open', 'jm-referral-system' ); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php foreach ( $assess_upcoming as $row ) : ?>
+											<?php if ( ! is_array( $row ) ) { continue; } ?>
+											<tr>
+												<td><?php echo esc_html( (string) ( $row['scheduled_label'] ?? '—' ) ); ?></td>
+												<td><span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?></span></td>
+												<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['assessor_name'] ?? '' ) ); ?></td>
+												<td>
+													<?php if ( '' !== (string) ( $row['url'] ?? '' ) ) : ?>
+														<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $row['url'] ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
+													<?php endif; ?>
+												</td>
+											</tr>
+										<?php endforeach; ?>
+									</tbody>
+								</table>
+							</div>
+						<?php endif; ?>
+					</div>
+					<div>
+						<h4 class="jmrs-mgmt__subhead"><?php echo esc_html__( 'Past scheduled assessments', 'jm-referral-system' ); ?></h4>
+						<?php if ( [] === $assess_past ) : ?>
+							<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No past scheduled assessments.', 'jm-referral-system' ); ?></div>
+						<?php else : ?>
+							<div class="jmrs-mgmt__tbl-scroll">
+								<table class="jmrs-mgmt__table">
+									<thead>
+										<tr>
+											<th scope="col"><?php echo esc_html__( 'Scheduled', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Referral', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Assessor', 'jm-referral-system' ); ?></th>
+											<th scope="col"><?php echo esc_html__( 'Open', 'jm-referral-system' ); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php foreach ( $assess_past as $row ) : ?>
+											<?php if ( ! is_array( $row ) ) { continue; } ?>
+											<tr>
+												<td><?php echo esc_html( (string) ( $row['scheduled_label'] ?? '—' ) ); ?></td>
+												<td><span class="jmrs-mgmt__ref"><?php echo esc_html( (string) ( $row['referral_number'] ?? '' ) ); ?></span></td>
+												<td class="jmrs-mgmt__who"><?php echo esc_html( (string) ( $row['assessor_name'] ?? '' ) ); ?></td>
+												<td>
+													<?php if ( '' !== (string) ( $row['url'] ?? '' ) ) : ?>
+														<a class="jmrs-mgmt__link" href="<?php echo esc_url( (string) $row['url'] ); ?>"><?php echo esc_html__( 'View', 'jm-referral-system' ); ?></a>
+													<?php endif; ?>
+												</td>
+											</tr>
+										<?php endforeach; ?>
+									</tbody>
+								</table>
+							</div>
+						<?php endif; ?>
+					</div>
+				</div>
 			</article>
 
 			<div class="jmrs-mgmt__ops-grid jmrs-mgmt__ops-grid--2">

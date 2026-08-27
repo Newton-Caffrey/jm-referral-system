@@ -2,6 +2,8 @@
 
 namespace JMReferral\Pipeline;
 
+use JMReferral\Assessment\ReferralAssessmentRepository;
+use JMReferral\Assessment\ReferralAssessmentService;
 use JMReferral\Meeting\ReferralMeeting;
 use JMReferral\Meeting\ReferralMeetingRepository;
 use JMReferral\Permissions\AccessPolicy;
@@ -12,20 +14,24 @@ use JMReferral\Users\UserProvider;
 use JMReferral\Workflow\WorkflowStageService;
 
 /**
- * Read-only operational Management Dashboard sections (Phase 4D.1).
+ * Read-only operational Management Dashboard sections (Phase 4D.1 / 4E.1).
  *
  * Scope-aware aggregates only. No mutations. No contact PII.
- * Assessment scheduling KPI deferred (no reliable standalone status metric).
+ * Assessment metrics are derived from scheduled_at + outcome (no status column).
  */
 class ManagementOperationalReadService
 {
     public const UPCOMING_MEETING_DAYS = 14;
+
+    public const UPCOMING_ASSESSMENT_DAYS = 14;
 
     public const RECENT_REFERRALS_LIMIT = 8;
 
     public const RECENT_ACTIVITY_LIMIT = 10;
 
     public const MEETING_LIST_LIMIT = 10;
+
+    public const ASSESSMENT_LIST_LIMIT = 8;
 
     public function __construct(
         private ReferralRepository $referral_repository,
@@ -34,7 +40,8 @@ class ManagementOperationalReadService
         private WorkflowStageService $workflow_stage_service,
         private AccessPolicy $access_policy,
         private UserProvider $user_provider,
-        private PipelineAttentionService $attention_service
+        private PipelineAttentionService $attention_service,
+        private ReferralAssessmentRepository $assessment_repository
     ) {
     }
 
@@ -50,6 +57,10 @@ class ManagementOperationalReadService
         $access = $this->access_policy->get_assigned_user_constraint();
         $now    = current_time('mysql');
         $until  = wp_date('Y-m-d H:i:s', strtotime('+' . self::UPCOMING_MEETING_DAYS . ' days', (int) current_time('timestamp')));
+        $assess_until = wp_date(
+            'Y-m-d H:i:s',
+            strtotime('+' . self::UPCOMING_ASSESSMENT_DAYS . ' days', (int) current_time('timestamp'))
+        );
 
         $status_new         = $this->referral_repository->countByStatus('new', $access, 'active');
         $status_in_progress = $this->referral_repository->countByStatus('in_progress', $access, 'active');
@@ -59,6 +70,11 @@ class ManagementOperationalReadService
 
         $upcoming_count = $this->meeting_repository->count_scheduled_for_dashboard('upcoming', $now, $until, $access);
         $past_count     = $this->meeting_repository->count_scheduled_for_dashboard('past', $now, null, $access);
+
+        $scheduled_assessments = $this->assessment_repository->count_for_dashboard('scheduled', $now, $access);
+        $past_assessments      = $this->assessment_repository->count_for_dashboard('past_scheduled', $now, $access);
+        $completed_assessments = $this->assessment_repository->count_for_dashboard('completed', $now, $access);
+        $outcome_counts        = $this->assessment_repository->count_outcomes_for_dashboard($access);
 
         $unassigned = $this->referral_repository->count_unassigned_responsibilities($access);
 
@@ -90,7 +106,10 @@ class ManagementOperationalReadService
                     self::UPCOMING_MEETING_DAYS
                 ),
                 'past_meetings'     => __('Meetings still marked Scheduled with a start time earlier than now.', 'jm-referral-system'),
-                'assessment'        => __('Deferred — assessment scheduling status is derived and not a reliable standalone KPI.', 'jm-referral-system'),
+                'assessment'        => __('Derived from scheduled_at and outcome on non-archived referrals (site timezone).', 'jm-referral-system'),
+                'scheduled_assessments' => __('Outcome pending with scheduled_at now or in the future.', 'jm-referral-system'),
+                'past_assessments'  => __('Outcome pending with scheduled_at earlier than now.', 'jm-referral-system'),
+                'completed_assessments' => __('Outcome is suitable, suitable with conditions, or not suitable.', 'jm-referral-system'),
             ],
             'status_cards'         => [
                 [
@@ -182,8 +201,45 @@ class ManagementOperationalReadService
             'recent_activity'      => $this->present_recent_activity(
                 $this->activity_repository->list_recent_for_dashboard(self::RECENT_ACTIVITY_LIMIT, $access)
             ),
+            'assessments'          => [
+                'scheduled_count'  => $scheduled_assessments,
+                'past_count'       => $past_assessments,
+                'completed_count'  => $completed_assessments,
+                'outcomes'         => [
+                    [
+                        'label' => ReferralAssessmentService::outcome_labels()[ReferralAssessmentService::OUTCOME_SUITABLE],
+                        'count' => (int) ($outcome_counts[ReferralAssessmentService::OUTCOME_SUITABLE] ?? 0),
+                    ],
+                    [
+                        'label' => ReferralAssessmentService::outcome_labels()[ReferralAssessmentService::OUTCOME_SUITABLE_WITH_CONDITIONS],
+                        'count' => (int) ($outcome_counts[ReferralAssessmentService::OUTCOME_SUITABLE_WITH_CONDITIONS] ?? 0),
+                    ],
+                    [
+                        'label' => ReferralAssessmentService::outcome_labels()[ReferralAssessmentService::OUTCOME_NOT_SUITABLE],
+                        'count' => (int) ($outcome_counts[ReferralAssessmentService::OUTCOME_NOT_SUITABLE] ?? 0),
+                    ],
+                ],
+                'upcoming_list'    => $this->present_assessments(
+                    $this->assessment_repository->list_scheduled_for_dashboard(
+                        'upcoming',
+                        $now,
+                        $assess_until,
+                        self::ASSESSMENT_LIST_LIMIT,
+                        $access
+                    )
+                ),
+                'past_list'        => $this->present_assessments(
+                    $this->assessment_repository->list_scheduled_for_dashboard(
+                        'past',
+                        $now,
+                        null,
+                        self::ASSESSMENT_LIST_LIMIT,
+                        $access
+                    )
+                ),
+            ],
             'deferred_metrics'     => [
-                'assessment_scheduling' => true,
+                'assessment_scheduling' => false,
                 'package_conversion'    => true,
                 'authority_sla'         => true,
                 'placement_conversion'  => true,
@@ -402,6 +458,50 @@ class ManagementOperationalReadService
                         $created
                     )
                     : '—',
+                'url'             => $referral_id > 0 ? PortalUrls::referral($referral_id) : '',
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, string>>
+     */
+    private function present_assessments(array $rows): array
+    {
+        $ids = [];
+        foreach ($rows as $row) {
+            $id = absint($row['assessor_user_id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+        $names = $this->user_provider->get_display_names_by_ids($ids);
+        $unavailable = __('Unavailable user', 'jm-referral-system');
+
+        $out = [];
+        foreach ($rows as $row) {
+            $referral_id = absint($row['referral_id'] ?? 0);
+            $assessor_id = absint($row['assessor_user_id'] ?? 0);
+            $scheduled   = (string) ($row['scheduled_at'] ?? '');
+            $assessor    = '';
+            if ($assessor_id > 0) {
+                $assessor = (string) ($names[$assessor_id] ?? $unavailable);
+                if ('' === trim($assessor)) {
+                    $assessor = $unavailable;
+                }
+            }
+            $out[] = [
+                'referral_number' => (string) ($row['referral_number'] ?? ''),
+                'scheduled_label' => '' !== $scheduled
+                    ? (string) mysql2date(
+                        get_option('date_format') . ' ' . get_option('time_format'),
+                        $scheduled
+                    )
+                    : '—',
+                'assessor_name'   => $assessor,
                 'url'             => $referral_id > 0 ? PortalUrls::referral($referral_id) : '',
             ];
         }
