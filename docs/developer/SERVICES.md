@@ -62,9 +62,9 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Used by:** Portal `MeetingsHandler`, referral workspace summary (Phase 4B.2.1+).
 
 ### `ReferralResponsibilityService`
-- **Purpose:** Assign/clear `champion_user_id` / `transition_lead_user_id`. Does not change `assigned_to` or visibility.
-- **Deps:** Referral repo, activity, AccessPolicy (`can_assign_referral_responsibilities`), `UserProvider`
-- **Used by:** Phase 4B.3 (no UI yet)
+- **Purpose (4B.1 / 4C.1):** Assign/clear/update referral owner (`assigned_to`), champion (`champion_user_id`), and transition lead (`transition_lead_user_id`). Public API: `get_for_referral`, `update_responsibilities`, `assign_champion`, `clear_champion`, `assign_transition_lead`, `clear_transition_lead`. Eligibility: `UserProvider::is_assignable` (VIEW_REFERRALS). Gate: `can_assign_referral_responsibilities` + non-archived. Same user may hold multiple roles. No-op when unchanged. Activity only for changed fields (`assigned`/`reassigned`, champion_*, transition_lead_*). Does **not** send email, change workflow_stage, or grant access via champion/lead.
+- **Deps:** ReferralRepository, activity, AccessPolicy, UserProvider
+- **Used by:** Portal `ResponsibilitiesHandler` (focused UAT **PASS** 2026-08-27; one service → `registerStaffPortal()` → sole handler). Product **1.4.0** · DB **2.29.0** · rewrite **1.2.7**.
 
 ---
 

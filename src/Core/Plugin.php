@@ -412,7 +412,7 @@ class Plugin
             $this->access_policy,
             $this->user_provider
         );
-        new \JMReferral\Meeting\ReferralResponsibilityService(
+        $responsibility_service = new \JMReferral\Meeting\ReferralResponsibilityService(
             $repository,
             $activity_service,
             $this->access_policy,
@@ -635,7 +635,8 @@ class Plugin
             $meeting_service,
             $meeting_attendee_service,
             $meeting_repository,
-            $meeting_attendee_repository
+            $meeting_attendee_repository,
+            $responsibility_service
         );
 
         $create_controller->register();
@@ -687,7 +688,8 @@ class Plugin
         \JMReferral\Meeting\ReferralMeetingService $meeting_service,
         \JMReferral\Meeting\MeetingAttendeeService $meeting_attendee_service,
         \JMReferral\Meeting\ReferralMeetingRepository $meeting_repository,
-        \JMReferral\Meeting\MeetingAttendeeRepository $meeting_attendee_repository
+        \JMReferral\Meeting\MeetingAttendeeRepository $meeting_attendee_repository,
+        \JMReferral\Meeting\ReferralResponsibilityService $responsibility_service
     ): void {
         $operational_alert_service = new OperationalAlertService(
             $repository,
@@ -819,6 +821,16 @@ class Plugin
         );
         $controller->set_meetings_handler($meetings_handler);
         $controller->set_meeting_read_service($meeting_read_service);
+
+        $responsibilities_handler = new \JMReferral\Portal\Responsibilities\ResponsibilitiesHandler(
+            $controller,
+            $clinical_access,
+            $this->access_policy,
+            $responsibility_service,
+            $this->user_provider,
+            $retention_service
+        );
+        $controller->set_responsibilities_handler($responsibilities_handler);
 
         $home_repository      = new HomeRepository();
         $bedroom_repository   = new BedroomRepository();

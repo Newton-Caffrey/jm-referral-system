@@ -152,9 +152,9 @@ Correction while still on review: `assessment_review_required` → (suitable / s
 
 **Critical:** Meetings are **independent** of formal assessment appointments and **must not** create, advance, or reverse canonical pipeline stages. `assessment_to_schedule` / Visual Stage 2 (“Appointment to Arrange”) are unchanged. Creating, completing, or cancelling a meeting does not write stage history.
 
-**Owner vs responsibilities:** `assigned_to` remains the referral owner. Champion and transition lead are nullable responsibility metadata only and do **not** grant AccessPolicy visibility. Future UI must still enforce referral-level scope.
+**Owner vs responsibilities (4C.1):** `assigned_to` is the **Referral owner**. Champion and transition lead are optional. Staff Portal Responsibilities panel + `/referrals/{id}/responsibilities/` (rewrite **1.2.7**; focused UAT **PASS** 2026-08-27). Eligibility: `UserProvider::is_assignable`. Manage via `can_assign_referral_responsibilities`. Champion / transition lead do **not** grant AccessPolicy visibility or portal access. Same person may hold multiple roles. No-op saves create no activity. Owner changes via this form do **not** send assignment emails. Archived = read-only. No schema migration.
 
-**Activity (meetings):** `meeting_created`, `meeting_updated`, `meeting_scheduled`, `meeting_rescheduled`, `meeting_completed`, `meeting_cancelled`, `meeting_attendee_*`, `champion_*`, `transition_lead_*` — data-minimised (no external email/phone/URL in descriptions). No-op reschedule/detail/attendee updates do not log.
+**Activity (meetings):** `meeting_created`, `meeting_updated`, `meeting_scheduled`, `meeting_rescheduled`, `meeting_completed`, `meeting_cancelled`, `meeting_attendee_*`, `champion_*`, `transition_lead_*` — data-minimised (no external email/phone/URL in descriptions). No-op reschedule/detail/attendee updates do not log. Owner changes reuse `assigned` / `reassigned`.
 
 **Permissions:** `AccessPolicy::can_manage_referral_meetings` / `can_assign_referral_responsibilities` (same allow/deny as Express Interest for mutations). Contact read: `can_view_referral_meeting_contacts`. Assessor and Support Worker denied management; Assessor denied contacts; Support Worker denied meeting view. No emails from these services.
 

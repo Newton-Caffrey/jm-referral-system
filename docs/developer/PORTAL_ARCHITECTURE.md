@@ -3,7 +3,7 @@
 Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clinical`, `JMReferral\Portal\Homes`).
 
 **Default base path:** `staff-portal`
-**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.6`)
+**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.7`)
 **Disabled by default** (`PortalSettings`).
 
 ---
@@ -21,6 +21,7 @@ Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clin
 | `ClinicalAccess` | Shared referral gates + breadcrumbs for clinical handlers |
 | Handlers | `CarePlanReviewHandler`, `MedicationHandler`, `CareTeamHandler`, `ScheduleHandler`, `VisitHandler` |
 | `MeetingsHandler` | Referral meetings list/detail (4B.2.1), write workflows (4B.2.2), **internal** attendees (4B.2.3), **external** participants (4B.2.4), **4B.2.5 polish** (focused UAT **PASS** 2026-08-27; no new routes). Mutations use `can_manage_referral_meetings` + service lifecycle. Contacts via `can_view_referral_meeting_contacts` (Assessor never sees email/telephone in markup). Support Worker denied meetings. Constructed once in `Plugin::registerStaffPortal()`. |
+| `ResponsibilitiesHandler` | **Phase 4C.1** referral owner / champion / transition lead manage form (`referral_responsibilities_edit`; rewrite **1.2.7**; focused UAT **PASS** 2026-08-27). Uses `can_assign_referral_responsibilities`. Champion/lead grant no access. Constructed once in `Plugin::registerStaffPortal()`. |
 | `HomesHandler` | Supported living homes & bedrooms via shared `HomeService` / `BedroomService` |
 | `PortalAccess` / `PortalNavigation` / `PortalAssets` | Eligibility, nav, CSS/JS |
 
@@ -28,7 +29,7 @@ Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clin
 
 ## Routing
 
-Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_entity`, `jmrs_portal_sub_entity` (attendee id; rewrite **1.2.6**).
+Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_entity`, `jmrs_portal_sub_entity` (attendee id; rewrite **1.2.7**).
 
 | URL | Route key |
 | --- | --- |
@@ -37,6 +38,7 @@ Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_e
 | `/{base}/referrals/` | `referrals` |
 | `/{base}/referrals/{id}/` | `referral` |
 | `/{base}/referrals/{id}/edit/` | `referral_edit` |
+| `/{base}/referrals/{id}/responsibilities/` | `referral_responsibilities_edit` (4C.1) |
 | `/{base}/referrals/{id}/assessment/` | `referral_assessment` |
 | `/{base}/referrals/{id}/care-plan/` | `referral_care_plan` |
 | `/{base}/referrals/{id}/care-plan/review/` | `care_plan_review` |

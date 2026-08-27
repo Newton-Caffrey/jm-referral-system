@@ -291,11 +291,11 @@ class AccessPolicy
     }
 
     /**
-     * Responsibility-assignment capability helper (Phase 4B foundation).
+     * Responsibility-assignment capability helper (Phase 4B foundation / 4C.1 UI).
      *
-     * Assign/clear champion_user_id / transition_lead_user_id only.
+     * Assign/clear assigned_to (owner), champion_user_id, transition_lead_user_id.
      * Same allow/deny roles as meeting-management capability.
-     * Does not alter assigned_to ownership or referral visibility scoping.
+     * Champion / transition lead do not alter AccessPolicy visibility scoping.
      *
      * @param array<string, mixed> $referral
      */

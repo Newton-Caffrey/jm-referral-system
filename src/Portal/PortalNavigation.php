@@ -25,6 +25,7 @@ class PortalNavigation
         'referrals',
         'referral',
         'referral_edit',
+        'referral_responsibilities_edit',
         'referral_assessment',
         'referral_care_plan',
         'care_plan_review',

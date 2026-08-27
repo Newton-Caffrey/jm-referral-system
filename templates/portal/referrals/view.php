@@ -326,12 +326,57 @@ if ( ! empty( $transition_panel['show_panel'] ) ) {
 			<dd><?php echo esc_html( '' !== $service_name ? $service_name : '—' ); ?></dd>
 		</div>
 		<div>
-			<dt><?php echo esc_html__( 'Assigned to', 'jm-referral-system' ); ?></dt>
-			<dd><?php echo esc_html( '' !== $assigned_to_name ? $assigned_to_name : '—' ); ?></dd>
+			<dt><?php echo esc_html__( 'Referral owner', 'jm-referral-system' ); ?></dt>
+			<dd><?php echo esc_html( '' !== $assigned_to_name ? $assigned_to_name : __( 'Unassigned', 'jm-referral-system' ) ); ?></dd>
 		</div>
 		<div>
 			<dt><?php echo esc_html__( 'Source', 'jm-referral-system' ); ?></dt>
 			<dd><?php echo esc_html( '' !== $submission_channel_label ? $submission_channel_label : '—' ); ?></dd>
+		</div>
+	</div>
+</section>
+
+<?php
+$owner_display_name            = (string) ( $owner_display_name ?? ( '' !== $assigned_to_name ? $assigned_to_name : __( 'Unassigned', 'jm-referral-system' ) ) );
+$champion_display_name         = (string) ( $champion_display_name ?? __( 'Unassigned', 'jm-referral-system' ) );
+$transition_lead_display_name  = (string) ( $transition_lead_display_name ?? __( 'Unassigned', 'jm-referral-system' ) );
+$can_manage_responsibilities   = ! empty( $can_manage_responsibilities );
+$responsibilities_edit_url     = (string) ( $responsibilities_edit_url ?? '' );
+$responsibilities_notice       = is_array( $responsibilities_notice ?? null ) ? $responsibilities_notice : null;
+?>
+<?php if ( null !== $responsibilities_notice ) : ?>
+	<div class="jmrs-portal-notice jmrs-portal-notice--<?php echo esc_attr( (string) ( $responsibilities_notice['type'] ?? 'success' ) ); ?>" role="status">
+		<p><?php echo esc_html( (string) ( $responsibilities_notice['message'] ?? '' ) ); ?></p>
+	</div>
+<?php endif; ?>
+<section class="jmrs-portal-section jmrs-portal-panel jmrs-responsibilities-panel" aria-labelledby="jmrs-portal-ref-responsibilities">
+	<div class="jmrs-portal-section__header">
+		<div class="jmrs-portal-section__heading">
+			<h2 id="jmrs-portal-ref-responsibilities" class="jmrs-portal-section__title"><?php echo esc_html__( 'Responsibilities', 'jm-referral-system' ); ?></h2>
+		</div>
+		<?php if ( $can_manage_responsibilities && '' !== $responsibilities_edit_url ) : ?>
+			<div class="jmrs-portal-section__actions">
+				<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $responsibilities_edit_url ); ?>">
+					<?php echo esc_html__( 'Manage responsibilities', 'jm-referral-system' ); ?>
+				</a>
+			</div>
+		<?php endif; ?>
+	</div>
+	<?php if ( ! empty( $is_archived ) ) : ?>
+		<p class="description"><?php echo esc_html__( 'This referral is archived. Responsibilities are read-only.', 'jm-referral-system' ); ?></p>
+	<?php endif; ?>
+	<div class="jmrs-portal-dl-grid jmrs-responsibilities-grid">
+		<div>
+			<dt><?php echo esc_html__( 'Referral owner', 'jm-referral-system' ); ?></dt>
+			<dd><?php echo esc_html( $owner_display_name ); ?></dd>
+		</div>
+		<div>
+			<dt><?php echo esc_html__( 'Champion', 'jm-referral-system' ); ?></dt>
+			<dd><?php echo esc_html( $champion_display_name ); ?></dd>
+		</div>
+		<div>
+			<dt><?php echo esc_html__( 'Transition lead', 'jm-referral-system' ); ?></dt>
+			<dd><?php echo esc_html( $transition_lead_display_name ); ?></dd>
 		</div>
 	</div>
 </section>

@@ -10,6 +10,7 @@ User Acceptance Testing materials for **JM Healthcare Referral Platform** / JM R
 | [UAT_PHASE_4B_2_3_INTERNAL_ATTENDEES.md](UAT_PHASE_4B_2_3_INTERNAL_ATTENDEES.md) | **Phase 4B.2.3** internal meeting attendee management (**PASS** 2026-08-27) |
 | [UAT_PHASE_4B_2_4_EXTERNAL_PARTICIPANTS.md](UAT_PHASE_4B_2_4_EXTERNAL_PARTICIPANTS.md) | **Phase 4B.2.4** external meeting participant management (**PARTIAL MANUAL UAT ACCEPTED** 2026-08-27) |
 | [UAT_PHASE_4B_2_5_FINAL_MEETING_POLISH.md](UAT_PHASE_4B_2_5_FINAL_MEETING_POLISH.md) | **Phase 4B.2.5** final meeting security / a11y / UX polish (**PASS** 2026-08-27; 4B.2.4 Batch 4 residual risk preserved) |
+| [UAT_PHASE_4C_1_RESPONSIBILITY_MANAGEMENT.md](UAT_PHASE_4C_1_RESPONSIBILITY_MANAGEMENT.md) | **Phase 4C.1** referral owner / champion / transition lead management (**PASS** 2026-08-27) |
 | [../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md](../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md) | **Phase 4B.2.0** meetings UI/workflow audit (design) |
 | [UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md](UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md) | **Phase 4A** accuracy / privacy / existing-data parity (pre-release) |
 | [UAT_MANAGEMENT_DASHBOARD_V1_4.md](UAT_MANAGEMENT_DASHBOARD_V1_4.md) | **v1.4.0 Management Dashboard UAT** (visual + data acceptance) |

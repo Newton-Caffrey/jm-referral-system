@@ -72,6 +72,8 @@ class PortalController implements PortalViewHost
 
     private ?\JMReferral\Meeting\ReferralMeetingReadService $meeting_read_service = null;
 
+    private ?\JMReferral\Portal\Responsibilities\ResponsibilitiesHandler $responsibilities_handler = null;
+
     /**
      * Set after construction via set_homes_handler() (HomesHandler needs PortalViewHost).
      */
@@ -143,6 +145,12 @@ class PortalController implements PortalViewHost
     public function set_meeting_read_service(\JMReferral\Meeting\ReferralMeetingReadService $meeting_read_service): void
     {
         $this->meeting_read_service = $meeting_read_service;
+    }
+
+    public function set_responsibilities_handler(
+        \JMReferral\Portal\Responsibilities\ResponsibilitiesHandler $responsibilities_handler
+    ): void {
+        $this->responsibilities_handler = $responsibilities_handler;
     }
 
     /**
@@ -249,6 +257,12 @@ class PortalController implements PortalViewHost
 
         if (null !== $this->meetings_handler && $this->meetings_handler->handles($route)) {
             $this->meetings_handler->dispatch($route);
+
+            return;
+        }
+
+        if (null !== $this->responsibilities_handler && $this->responsibilities_handler->handles($route)) {
+            $this->responsibilities_handler->dispatch($route);
 
             return;
         }
@@ -717,10 +731,38 @@ class PortalController implements PortalViewHost
             return;
         }
 
-        $assigned_to = absint($referral['assigned_to'] ?? 0);
+        $assigned_to      = absint($referral['assigned_to'] ?? 0);
+        $champion_user_id = absint($referral['champion_user_id'] ?? 0);
+        $transition_lead_user_id = absint($referral['transition_lead_user_id'] ?? 0);
+        $responsibility_names = $this->user_provider->get_display_names_by_ids([
+            $assigned_to,
+            $champion_user_id,
+            $transition_lead_user_id,
+        ]);
+        $unavailable = __('Unavailable user', 'jm-referral-system');
+        $unassigned  = __('Unassigned', 'jm-referral-system');
         $assigned_to_name = $assigned_to > 0
-            ? $this->user_provider->get_display_name($assigned_to)
+            ? (string) ($responsibility_names[$assigned_to] ?? $unavailable)
             : '';
+        if ($assigned_to > 0 && '' === trim($assigned_to_name)) {
+            $assigned_to_name = $unavailable;
+        }
+        $champion_display_name = $champion_user_id > 0
+            ? (string) ($responsibility_names[$champion_user_id] ?? $unavailable)
+            : $unassigned;
+        if ($champion_user_id > 0 && '' === trim($champion_display_name)) {
+            $champion_display_name = $unavailable;
+        }
+        $transition_lead_display_name = $transition_lead_user_id > 0
+            ? (string) ($responsibility_names[$transition_lead_user_id] ?? $unavailable)
+            : $unassigned;
+        if ($transition_lead_user_id > 0 && '' === trim($transition_lead_display_name)) {
+            $transition_lead_display_name = $unavailable;
+        }
+        $owner_display_name = $assigned_to > 0
+            ? ('' !== $assigned_to_name ? $assigned_to_name : $unavailable)
+            : $unassigned;
+        $responsibilities_notice = $this->responsibilities_notice_from_request();
 
         $archived_by = absint($referral['archived_by'] ?? 0);
         $archived_by_name = $archived_by > 0
@@ -771,6 +813,12 @@ class PortalController implements PortalViewHost
         $transition_panel = $this->transition_planning_service->get_panel_context($referral, 'portal');
 
         $is_archived = $this->retention_service->is_archived($referral);
+
+        $can_manage_responsibilities = ! $is_archived
+            && $this->access_policy->can_assign_referral_responsibilities($referral);
+        $responsibilities_edit_url = $can_manage_responsibilities
+            ? PortalUrls::referral_responsibilities_edit($referral_id)
+            : '';
 
         $can_download_documents = Capabilities::current_user_can(Capabilities::DOWNLOAD_DOCUMENTS);
         $documents              = [];
@@ -1118,6 +1166,12 @@ class PortalController implements PortalViewHost
         $view = [
             'referral'                   => $referral,
             'assigned_to_name'           => $assigned_to_name,
+            'owner_display_name'         => $owner_display_name,
+            'champion_display_name'      => $champion_display_name,
+            'transition_lead_display_name' => $transition_lead_display_name,
+            'can_manage_responsibilities'=> $can_manage_responsibilities,
+            'responsibilities_edit_url'  => $responsibilities_edit_url,
+            'responsibilities_notice'    => $responsibilities_notice,
             'service_name'               => $service_name,
             'workflow_stage_name'        => $workflow_stage_name,
             'pipeline_panel'             => $pipeline_panel,
@@ -2547,6 +2601,30 @@ class PortalController implements PortalViewHost
         }
 
         return $actions;
+    }
+
+    /**
+     * @return array{type: string, message: string}|null
+     */
+    private function responsibilities_notice_from_request(): ?array
+    {
+        if (! isset($_GET['jmrs_resp_notice'])) {
+            return null;
+        }
+
+        $code = sanitize_key((string) wp_unslash($_GET['jmrs_resp_notice']));
+
+        return match ($code) {
+            'updated' => [
+                'type'    => 'success',
+                'message' => __('Responsibilities updated.', 'jm-referral-system'),
+            ],
+            'unchanged' => [
+                'type'    => 'success',
+                'message' => __('No changes were made.', 'jm-referral-system'),
+            ],
+            default => null,
+        };
     }
 
     /**

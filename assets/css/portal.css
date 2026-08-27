@@ -1592,6 +1592,15 @@ body.admin-bar.jmrs-portal-body {
 }
 
 /* --- Meetings (Phase 4B.2.1 read-only) --- */
+.jmrs-responsibilities-grid dd {
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
+.jmrs-responsibilities-form .jmrs-portal-form-grid {
+	max-width: 40rem;
+}
+
 .jmrs-meetings-counts {
 	display: flex;
 	flex-wrap: wrap;

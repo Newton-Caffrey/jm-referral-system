@@ -666,9 +666,10 @@ class ReferralRepository
     }
 
     /**
-     * Updates champion and/or transition lead only (Phase 4B.1). Does not touch assigned_to.
+     * Updates owner (assigned_to), champion and/or transition lead only (Phase 4B.1 / 4C.1).
+     * Does not touch workflow_stage_id, status, client, or other referral columns.
      *
-     * @param array{champion_user_id?: int|null, transition_lead_user_id?: int|null} $data
+     * @param array{assigned_to?: int|null, champion_user_id?: int|null, transition_lead_user_id?: int|null} $data
      */
     public function update_responsibility_fields(int $id, array $data): bool
     {
@@ -681,17 +682,12 @@ class ReferralRepository
         $row     = [];
         $formats = [];
 
-        if (array_key_exists('champion_user_id', $data)) {
-            $value = $data['champion_user_id'];
-            $row['champion_user_id'] = null === $value || '' === $value || 0 === (int) $value
-                ? null
-                : absint($value);
-            $formats[] = '%d';
-        }
-
-        if (array_key_exists('transition_lead_user_id', $data)) {
-            $value = $data['transition_lead_user_id'];
-            $row['transition_lead_user_id'] = null === $value || '' === $value || 0 === (int) $value
+        foreach (['assigned_to', 'champion_user_id', 'transition_lead_user_id'] as $field) {
+            if (! array_key_exists($field, $data)) {
+                continue;
+            }
+            $value = $data[$field];
+            $row[$field] = null === $value || '' === $value || 0 === (int) $value
                 ? null
                 : absint($value);
             $formats[] = '%d';

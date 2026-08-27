@@ -45,6 +45,11 @@ class PortalUrls
         return self::referral_path($referral_id, 'edit');
     }
 
+    public static function referral_responsibilities_edit(int $referral_id): string
+    {
+        return self::referral_path($referral_id, 'responsibilities');
+    }
+
     public static function referral_assessment(int $referral_id): string
     {
         return self::referral_path($referral_id, 'assessment');
