@@ -4,7 +4,9 @@
 
 | Version | Supported |
 | --- | --- |
-| 1.0.x | Yes |
+| 1.5.x | Yes (release candidate until production sign-off) |
+| 1.4.x | Yes (prior production) |
+| 1.0.x – 1.3.x | Limited (upgrade to current release recommended) |
 | &lt; 1.0 | No |
 
 ## Reporting a vulnerability

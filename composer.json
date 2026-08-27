@@ -2,10 +2,12 @@
     "name": "jm/referral-system",
     "description": "J&M Referral Management System",
     "type": "wordpress-plugin",
+    "require": {
+        "php": ">=8.0"
+    },
     "autoload": {
         "psr-4": {
             "JMReferral\\": "src/"
         }
-    },
-    "require": {}
+    }
 }

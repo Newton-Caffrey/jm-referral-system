@@ -73,13 +73,17 @@ Default uninstall:
 - Removes custom JM roles and plugin capabilities from roles (including Administrator)
 - **Preserves** custom tables and private files
 
+Archive and approved retention processes are the **supported production** path. Uninstall is not a retention workflow.
+
 Optional wipe (disposable / migration sites only):
 
 ```php
 define('JMRS_DELETE_DATA_ON_UNINSTALL', true);
 ```
 
-When strictly `true`, uninstall drops custom tables in dependency-safe order, deletes JMRS options/transients, and removes the private storage directory. It does **not** delete Media Library attachments.
+When strictly `true`, uninstall attempts to drop listed custom tables, delete JMRS options/transients, and remove the private storage directory. It does **not** delete Media Library attachments.
+
+**Important:** the opt-in destructive constant is an administrative/development operation. It is **not** documented as complete purge coverage of every current schema table, and must not be relied on as a production erasure mechanism. Complete purge coverage should be reviewed separately before any reliance on wipe behaviour.
 
 Multisite: uninstall runs in the blog context where the plugin is deleted; plan per-site cleanup carefully.
 

@@ -1,8 +1,8 @@
 # JM Referral System
 
-**Version 1.4.0** · **Database schema 2.28.0**
+**Product 1.5.0** · **Database schema 2.29.0** · **Portal rewrite 1.2.7**
 
-A secure WordPress plugin for healthcare referral and domiciliary care management, built for **J&M Healthcare**.
+A WordPress plugin for healthcare referral and domiciliary care management, built for **J&M Healthcare**. JMRS supports role-based access, audit activity, retention workflows, and private-document handling. Hosting TLS, backups, SMTP, and web-server document protection remain operator responsibilities. This software does not itself certify GDPR, CQC, NHS, or medical-device compliance.
 
 ---
 
@@ -31,9 +31,23 @@ Architecture follows **Repository → Service → Controller → Template** with
 - Public intake shortcode with multi-step wizard
 - Optional staff portal (referral edit + clinical day-to-day workflows)
 - Supported Living: Homes, bedrooms, occupancy, transfers, own-home care setting, home dashboard
-- Archive / restore / safe delete; data integrity counts
+- Referral meetings (internal attendees and external participants)
+- Referral Owner, Champion, and Transition Lead responsibilities
+- Management Operations dashboard metrics (assessments, package costing, LA decisions, activity)
+- Transition planning readiness and care-commencement milestone (record-once)
+- Archive / restore / gated permanent delete; data integrity counts
 
 ---
+
+## Version matrix
+
+| Layer | Value |
+| --- | --- |
+| Product (`Version` / `JMRS_VERSION`) | **1.5.0** |
+| Database (`jmrs_db_version`) | **2.29.0** |
+| Portal rewrite | **1.2.7** |
+| Minimum WordPress | **6.0** |
+| Minimum PHP | **8.0** (8.1+ recommended) |
 
 ## Requirements
 
@@ -41,6 +55,7 @@ Architecture follows **Repository → Service → Controller → Template** with
 - PHP 8.0+ (8.1+ recommended)
 - Working `wp_mail` / SMTP for notifications
 - HTTPS recommended
+- `vendor/autoload.php` present in the installed plugin package
 
 ---
 

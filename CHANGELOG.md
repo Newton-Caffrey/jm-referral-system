@@ -7,11 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Release-candidate preparation for **1.5.0** is documented under `[1.5.0]` below. Production packaging and Phase 4J.1 regression remain outstanding.
+
+## [1.5.0] - Unreleased (release candidate)
+
+Feature release preparing production upgrade from **v1.4.0**. Product `1.5.0`. Database schema `2.29.0` (additive migration from production `2.28.0`). Portal rewrite `1.2.7`.
+
+**Status:** release-candidate preparation — not production-deployed. Full Phase 4J.1 regression is required before production.
+
+Scope covers Phase 4A–4I work implemented after tagged `v1.4.0`: meetings, responsibilities, Management Operations dashboard, commercial workflow hardening, and Operations UI polish.
+
 ### Added
+
+- Referral meetings with lifecycle (draft / scheduled / completed / cancelled)
+- Meeting internal attendees and external participants
+- Referral Owner, Champion, and Transition Lead responsibilities
+- Management Operations dashboard (real scoped aggregates)
+- Assessment operational metrics on Operations
+- Package Costing operational metrics on Operations
+- Local Authority Decision operational metrics on Operations
+- Transition-planning readiness panel (derived)
+- Supported Living placement integration for transition readiness
+- Care-commencement milestone (record-once)
+
+### Improved
+
+- Meeting access and mutation security
+- Assessment terminal-state enforcement (completed assessments read-only)
+- Package Costing terminal-state enforcement (sent packages read-only)
+- Local Authority Decision terminal-state enforcement (record-once)
+- Care-commencement record-once protection
+- Occupancy ownership and overlap validation (existing placement path)
+- Archive protections on commercial/mutation paths
+- Management Dashboard spacing, tables, and responsive layouts
+- Dashboard status badges (text plus subtle colour)
+- Keyboard focus and print presentation on the Management Dashboard
+
+### Database
+
+- DB schema version `2.29.0`
+- Tables `jmrs_referral_meetings` and `jmrs_referral_meeting_attendees`
+- Referral columns `champion_user_id` and `transition_lead_user_id`
+- Additive upgrade from production DB `2.28.0` via `dbDelta` (no fabricated backfill)
 
 ### Changed
 
-### Fixed
+- Product version `1.4.0` → `1.5.0` (`jm-referral-system.php` / `JMRS_VERSION`)
+- Portal rewrite evolves through Phase 4B–4C to `1.2.7` (version-gated flush)
+- Plugin header documents `Requires at least: 6.0` and `Requires PHP: 8.0`
+- `composer.json` requires `php >=8.0`
+
+### Known limitations (summary)
+
+- Assessor visibility of package / LA-decision / transition panels when a referral is visible remains existing product behaviour pending future JM confirmation
+- Proposed Package Value has no billing-frequency model
+- Selected dashboard boards use documented row limits
+- Homes vs Management future-occupancy semantics differ by design
+- SMTP / `wp_mail` and private-document web-server rules are environment dependencies
+- Chart.js prefers a local vendor file; audited package falls back to jsDelivr when the local file is absent
+- Management Dashboard Google Fonts require network access where that enqueue runs
+
+Paths that remain code-reviewed-only until Phase 4J.1 include Package Cost email send, LA Declined / Not Proceeding, LA-related status-change email, Own Home care commencement, and remaining meeting external-participant edge cases.
+
+See `docs/RELEASE_NOTES_v1.5.0.md`, `docs/RELEASE_CHECKLIST.md`, and `docs/uat/UAT_PHASE_4J_0_1_RELEASE_CANDIDATE_PREPARATION.md`.
 
 ## [1.4.0] - 2026-08-11
 
