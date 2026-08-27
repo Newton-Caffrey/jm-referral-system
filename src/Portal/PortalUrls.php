@@ -136,6 +136,27 @@ class PortalUrls
         );
     }
 
+    public static function referral_meeting_external_attendee_new(int $referral_id, int $meeting_id): string
+    {
+        return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id) . '/attendees/external/new');
+    }
+
+    public static function referral_meeting_external_attendee_edit(int $referral_id, int $meeting_id, int $attendee_id): string
+    {
+        return self::referral_path(
+            $referral_id,
+            'meetings/' . max(0, $meeting_id) . '/attendees/' . max(0, $attendee_id) . '/external/edit'
+        );
+    }
+
+    public static function referral_meeting_external_attendee_remove(int $referral_id, int $meeting_id, int $attendee_id): string
+    {
+        return self::referral_path(
+            $referral_id,
+            'meetings/' . max(0, $meeting_id) . '/attendees/' . max(0, $attendee_id) . '/external/remove'
+        );
+    }
+
     public static function schedule_new(int $referral_id): string
     {
         return self::referral_path($referral_id, 'schedules/new');

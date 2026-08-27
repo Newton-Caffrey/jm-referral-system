@@ -7,7 +7,7 @@ namespace JMReferral\Portal;
  */
 class PortalRouter
 {
-    public const REWRITE_VERSION = '1.2.5';
+    public const REWRITE_VERSION = '1.2.6';
 
     public const QV_PORTAL = 'jmrs_portal';
     public const QV_ROUTE = 'jmrs_portal_route';
@@ -58,6 +58,9 @@ class PortalRouter
             ['/referrals/([0-9]+)/meetings/([0-9]+)/complete/?$', 'referral_meeting_complete', '$matches[1]', '$matches[2]', null],
             ['/referrals/([0-9]+)/meetings/([0-9]+)/cancel/?$', 'referral_meeting_cancel', '$matches[1]', '$matches[2]', null],
             ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/internal/new/?$', 'referral_meeting_internal_attendee_new', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/external/new/?$', 'referral_meeting_external_attendee_new', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/([0-9]+)/external/edit/?$', 'referral_meeting_external_attendee_edit', '$matches[1]', '$matches[2]', '$matches[3]'],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/([0-9]+)/external/remove/?$', 'referral_meeting_external_attendee_remove', '$matches[1]', '$matches[2]', '$matches[3]'],
             ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/([0-9]+)/edit/?$', 'referral_meeting_internal_attendee_edit', '$matches[1]', '$matches[2]', '$matches[3]'],
             ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/([0-9]+)/remove/?$', 'referral_meeting_internal_attendee_remove', '$matches[1]', '$matches[2]', '$matches[3]'],
             ['/referrals/([0-9]+)/meetings/?$', 'referral_meetings', '$matches[1]', null, null],

@@ -27,6 +27,9 @@ $actions            = is_array( $actions ?? null ) ? $actions : array();
 $attendee_actions   = is_array( $attendee_actions ?? null ) ? $attendee_actions : array();
 $attendee_add_url   = (string) ( $attendee_actions['add'] ?? '' );
 $attendee_by_id     = is_array( $attendee_actions['by_id'] ?? null ) ? $attendee_actions['by_id'] : array();
+$external_actions   = is_array( $external_actions ?? null ) ? $external_actions : array();
+$external_add_url   = (string) ( $external_actions['add'] ?? '' );
+$external_by_id     = is_array( $external_actions['by_id'] ?? null ) ? $external_actions['by_id'] : array();
 $flash_notice       = is_array( $flash_notice ?? null ) ? $flash_notice : null;
 
 $date_format = (string) get_option( 'date_format' );
@@ -179,6 +182,11 @@ $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? 
 
 <section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-meeting-external-title">
 	<h2 id="jmrs-meeting-external-title" class="jmrs-portal-section__title"><?php echo esc_html__( 'External participants', 'jm-referral-system' ); ?></h2>
+	<?php if ( '' !== $external_add_url ) : ?>
+		<p class="jmrs-portal-quick-actions">
+			<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $external_add_url ); ?>"><?php echo esc_html__( 'Add external participant', 'jm-referral-system' ); ?></a>
+		</p>
+	<?php endif; ?>
 	<?php if ( empty( $external ) ) : ?>
 		<p><?php echo esc_html__( 'No external participants.', 'jm-referral-system' ); ?></p>
 	<?php else : ?>
@@ -196,10 +204,17 @@ $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? 
 							<th scope="col"><?php echo esc_html__( 'Email', 'jm-referral-system' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Telephone', 'jm-referral-system' ); ?></th>
 						<?php endif; ?>
+						<?php if ( ! empty( $external_by_id ) ) : ?>
+							<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
+						<?php endif; ?>
 					</tr>
 				</thead>
 				<tbody>
 					<?php foreach ( $external as $row ) : ?>
+						<?php
+						$row_id      = absint( $row['id'] ?? 0 );
+						$row_actions = is_array( $external_by_id[ $row_id ] ?? null ) ? $external_by_id[ $row_id ] : array();
+						?>
 						<tr>
 							<td data-label="<?php echo esc_attr__( 'Name', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $row['display_name'] ?? '—' ) ); ?></td>
 							<td data-label="<?php echo esc_attr__( 'Role', 'jm-referral-system' ); ?>"><?php echo esc_html( '' !== (string) ( $row['professional_role'] ?? '' ) ? (string) $row['professional_role'] : '—' ); ?></td>
@@ -210,6 +225,28 @@ $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? 
 							<?php if ( $can_view_contacts ) : ?>
 								<td data-label="<?php echo esc_attr__( 'Email', 'jm-referral-system' ); ?>"><?php echo esc_html( '' !== (string) ( $row['email'] ?? '' ) ? (string) $row['email'] : '—' ); ?></td>
 								<td data-label="<?php echo esc_attr__( 'Telephone', 'jm-referral-system' ); ?>"><?php echo esc_html( '' !== (string) ( $row['telephone'] ?? '' ) ? (string) $row['telephone'] : '—' ); ?></td>
+							<?php endif; ?>
+							<?php if ( ! empty( $external_by_id ) ) : ?>
+								<td data-label="<?php echo esc_attr__( 'Actions', 'jm-referral-system' ); ?>">
+									<?php if ( ! empty( $row_actions['edit'] ) ) : ?>
+										<a href="<?php echo esc_url( (string) $row_actions['edit'] ); ?>"><?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( ! empty( $row_actions['correct'] ) ) : ?>
+										<?php if ( ! empty( $row_actions['edit'] ) ) : ?>
+											<span aria-hidden="true"> · </span>
+										<?php endif; ?>
+										<a href="<?php echo esc_url( (string) $row_actions['correct'] ); ?>"><?php echo esc_html__( 'Correct attendance', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( ! empty( $row_actions['remove'] ) ) : ?>
+										<?php if ( ! empty( $row_actions['edit'] ) || ! empty( $row_actions['correct'] ) ) : ?>
+											<span aria-hidden="true"> · </span>
+										<?php endif; ?>
+										<a href="<?php echo esc_url( (string) $row_actions['remove'] ); ?>"><?php echo esc_html__( 'Remove', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( empty( $row_actions ) ) : ?>
+										—
+									<?php endif; ?>
+								</td>
 							<?php endif; ?>
 						</tr>
 					<?php endforeach; ?>

@@ -86,4 +86,24 @@ class MeetingLifecyclePolicy
     {
         return ReferralMeeting::STATUS_COMPLETED === sanitize_key($meeting_status);
     }
+
+    public function allows_external_attendee_add(string $meeting_status): bool
+    {
+        return $this->allows_internal_attendee_add($meeting_status);
+    }
+
+    public function allows_external_attendee_edit(string $meeting_status): bool
+    {
+        return $this->allows_internal_attendee_edit($meeting_status);
+    }
+
+    public function allows_external_attendee_remove(string $meeting_status): bool
+    {
+        return $this->allows_internal_attendee_remove($meeting_status);
+    }
+
+    public function allows_external_attendance_correction(string $meeting_status): bool
+    {
+        return $this->allows_internal_attendance_correction($meeting_status);
+    }
 }

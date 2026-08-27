@@ -4,22 +4,21 @@
 **Baseline commit:** `b930611c00e5d6651bd4a36da6618b4148d5b0dc` (Phase 4B.1 checkpoint)  
 **Product:** 1.4.0 · **Database:** 2.29.0 · **Portal rewrite:** 1.2.2 (baseline) → **1.2.3** (Phase 4B.2.1)
 
-**Status:** Audit approved; Phase 4B.2.1 read-only UI checkpointed; Phase 4B.2.2 write UI staging UAT **PASS** (2026-08-26; rewrite **1.2.4**). Phase 4B.2.3 internal attendee management staging UAT **PASS** (2026-08-27; rewrite **1.2.5**). Activation DI wiring defect (null `MeetingAttendeeService` into `MeetingsHandler`) discovered on first staging deploy and corrected before functional testing. Attendance soft warning manually exercised (count = 2). Deleted/unavailable-user display **NOT RUN — CODE REVIEWED**. External participant management remains Phase 4B.2.4.
+**Status:** Audit approved; Phase 4B.2.1–4B.2.3 checkpointed. Phase 4B.2.4 external participant management: rewrite **1.2.6**; Batches 1–3 manual staging UAT **PASS** (2026-08-27); Batch 4 (cancelled/archived/scheduled-removal) **NOT RUN — CODE REVIEWED** — **PARTIAL MANUAL UAT ACCEPTED** with **NON-BLOCKING DOCUMENTED UAT RISK**. Phase 4B.2.5 not started.
 
-### Phase 4B.2.3 implementation notes (internal attendees)
+### Phase 4B.2.4 implementation notes (external participants)
 
 | Topic | Decision / fact |
 | --- | --- |
-| Routes | `referral_meeting_internal_attendee_new` / `_edit` / `_remove`; query var `jmrs_portal_sub_entity` for attendee id |
-| Rewrite | **1.2.5** (version-gated flush only) |
-| Eligibility | `UserProvider` assignable users (`VIEW_REFERRALS`); Support Worker may be recorded as attendee but gains no meeting/referral/mutation/contact access |
-| Identity | Internal `user_id` immutable after create; fix via remove + add |
-| Duplicates | Service + `has_internal_user` prepared SQL; no unique DB index this phase (**NON-BLOCKING DOCUMENTED RISK** — residual concurrency race) |
-| Lifecycle | Draft/scheduled: add/edit/remove; completed: final attendance correction only; cancelled/archived: read-only mutations denied |
-| Soft warning | Complete page shows count of invited/confirmed attendees (internal + existing external); does not block or auto-change — **manually PASS** 2026-08-27 |
-| Activity | `meeting_attendee_added` / `_updated` / `_removed` — internal wording; no PII |
-| Activation wiring | Service instantiated once in `registerReferralControllers()`, passed into `registerStaffPortal()`, sole `MeetingsHandler` construction |
-| Explicit non-goals | No external participant UI; no emails; no workflow-stage / ownership / dashboard / assessment-scheduling changes |
+| Routes | `referral_meeting_external_attendee_new` / `_edit` / `_remove` under `…/attendees/external/…` and `…/attendees/{id}/external/…` |
+| Rewrite | **1.2.6** (version-gated flush only) |
+| Categories | Existing `MeetingAttendee` allowlist only (no new constants) |
+| Fields | Required: display name, category, meeting role, attendance; optional: professional role, organisation, email, telephone |
+| Contacts | Rendered only when `can_view_referral_meeting_contacts`; omitted from Assessor markup entirely |
+| Duplicates | Same-name participants allowed; no uniqueness rule |
+| Lifecycle | Same matrix as internal attendees |
+| Soft warning | Combined internal + external non-final count (unchanged service method) |
+| Explicit non-goals | No invitations/emails; no Management Dashboard; no workflow-stage changes; no 4B.2.5 polish |
 
 **Out of scope for 4B.2:** Champion / Transition Lead UI (→ 4B.3), Management Dashboard meeting widgets, assessment scheduling, care-team assignments, ownership (`assigned_to`), canonical pipeline / VisualStageMap, emails, schema changes.
 

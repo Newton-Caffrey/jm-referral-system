@@ -36,6 +36,9 @@ class MeetingsHandler
         'referral_meeting_internal_attendee_new',
         'referral_meeting_internal_attendee_edit',
         'referral_meeting_internal_attendee_remove',
+        'referral_meeting_external_attendee_new',
+        'referral_meeting_external_attendee_edit',
+        'referral_meeting_external_attendee_remove',
     ];
 
     private MeetingLifecyclePolicy $lifecycle_policy;
@@ -88,6 +91,9 @@ class MeetingsHandler
             'referral_meeting_internal_attendee_new' => $this->handle_internal_attendee_new($referral_id, $meeting_id),
             'referral_meeting_internal_attendee_edit' => $this->handle_internal_attendee_edit($referral_id, $meeting_id, $attendee_id),
             'referral_meeting_internal_attendee_remove' => $this->handle_internal_attendee_remove($referral_id, $meeting_id, $attendee_id),
+            'referral_meeting_external_attendee_new' => $this->handle_external_attendee_new($referral_id, $meeting_id),
+            'referral_meeting_external_attendee_edit' => $this->handle_external_attendee_edit($referral_id, $meeting_id, $attendee_id),
+            'referral_meeting_external_attendee_remove' => $this->handle_external_attendee_remove($referral_id, $meeting_id, $attendee_id),
             default => $this->view_host->render_portal_error('404', __('Not Found', 'jm-referral-system'), 404),
         };
     }
@@ -170,6 +176,13 @@ class MeetingsHandler
             $can_manage,
             is_array($data['internal'] ?? null) ? $data['internal'] : []
         );
+        $external_actions = $this->external_attendee_action_urls(
+            $referral_id,
+            $meeting_id,
+            $status,
+            $can_manage,
+            is_array($data['external'] ?? null) ? $data['external'] : []
+        );
 
         $type_label = (string) ($data['meeting']['meeting_type_label'] ?? __('Meeting', 'jm-referral-system'));
 
@@ -185,6 +198,7 @@ class MeetingsHandler
                 'can_manage'        => $can_manage,
                 'actions'           => $actions,
                 'attendee_actions'  => $attendee_actions,
+                'external_actions'  => $external_actions,
                 'flash_notice'      => $this->consume_flash_notice(),
             ]
         );
@@ -735,6 +749,288 @@ class MeetingsHandler
         exit;
     }
 
+    private function handle_external_attendee_new(int $referral_id, int $meeting_id): void
+    {
+        $ctx = $this->require_manage_meeting($referral_id, $meeting_id);
+        if (null === $ctx) {
+            return;
+        }
+        ['referral' => $referral, 'meeting' => $meeting] = $ctx;
+        $status = (string) ($meeting['status'] ?? '');
+
+        if (! $this->lifecycle_policy->allows_external_attendee_add($status)) {
+            $this->view_host->render_portal_error(
+                '403',
+                __('External participants cannot be added for this meeting status.', 'jm-referral-system'),
+                403
+            );
+
+            return;
+        }
+
+        if (isset($_POST['jmrs_save_meeting_external_attendee'])) {
+            $this->post_external_attendee_new($referral_id, $meeting_id);
+
+            return;
+        }
+
+        $can_view_contacts = $this->access_policy->can_view_referral_meeting_contacts($referral);
+        $state             = $this->get_form_state($referral_id, 'ext_attendee_new', $meeting_id, true);
+        $data              = $state['data'] !== [] ? $state['data'] : $this->empty_external_form_data();
+
+        $this->view_host->render_portal_page(
+            'referrals/meeting-external-attendee-form',
+            __('Add external participant', 'jm-referral-system'),
+            'referral',
+            $this->meetings_breadcrumbs($referral, __('Meetings', 'jm-referral-system'), __('Add external participant', 'jm-referral-system')),
+            [
+                'referral'           => $referral,
+                'meeting'            => $meeting,
+                'meeting_id'         => $meeting_id,
+                'attendee_id'        => 0,
+                'mode'               => 'add',
+                'data'               => $data,
+                'errors'             => $state['errors'],
+                'category_labels'    => MeetingAttendee::category_labels(),
+                'attendance_labels'  => MeetingAttendee::attendance_status_labels(),
+                'can_view_contacts'  => $can_view_contacts,
+                'form_action'        => PortalUrls::referral_meeting_external_attendee_new($referral_id, $meeting_id),
+                'cancel_url'         => PortalUrls::referral_meeting($referral_id, $meeting_id),
+            ]
+        );
+    }
+
+    private function handle_external_attendee_edit(int $referral_id, int $meeting_id, int $attendee_id): void
+    {
+        $ctx = $this->require_manage_external_attendee($referral_id, $meeting_id, $attendee_id);
+        if (null === $ctx) {
+            return;
+        }
+        ['referral' => $referral, 'meeting' => $meeting, 'attendee' => $attendee] = $ctx;
+        $status = (string) ($meeting['status'] ?? '');
+
+        $can_full_edit = $this->lifecycle_policy->allows_external_attendee_edit($status);
+        $can_correct   = $this->lifecycle_policy->allows_external_attendance_correction($status);
+
+        if (! $can_full_edit && ! $can_correct) {
+            $this->view_host->render_portal_error(
+                '403',
+                __('This participant cannot be edited for the current meeting status.', 'jm-referral-system'),
+                403
+            );
+
+            return;
+        }
+
+        if (isset($_POST['jmrs_save_meeting_external_attendee'])) {
+            $this->post_external_attendee_edit($referral_id, $meeting_id, $attendee_id, $can_full_edit);
+
+            return;
+        }
+
+        $can_view_contacts = $this->access_policy->can_view_referral_meeting_contacts($referral);
+        $form_key          = 'ext_attendee_edit_' . $attendee_id;
+        $state             = $this->get_form_state($referral_id, $form_key, $meeting_id, true);
+        $data              = $state['data'] !== [] ? $state['data'] : $this->external_attendee_to_form_data($attendee, $can_view_contacts);
+
+        $title = $can_full_edit
+            ? __('Edit external participant', 'jm-referral-system')
+            : __('Correct attendance', 'jm-referral-system');
+
+        $this->view_host->render_portal_page(
+            'referrals/meeting-external-attendee-form',
+            $title,
+            'referral',
+            $this->meetings_breadcrumbs($referral, __('Meetings', 'jm-referral-system'), $title),
+            [
+                'referral'           => $referral,
+                'meeting'            => $meeting,
+                'meeting_id'         => $meeting_id,
+                'attendee_id'        => $attendee_id,
+                'mode'               => $can_full_edit ? 'edit' : 'correct',
+                'data'               => $data,
+                'errors'             => $state['errors'],
+                'category_labels'    => MeetingAttendee::category_labels(),
+                'attendance_labels'  => $can_full_edit
+                    ? MeetingAttendee::attendance_status_labels()
+                    : MeetingAttendee::final_attendance_status_labels(),
+                'can_view_contacts'  => $can_view_contacts,
+                'form_action'        => PortalUrls::referral_meeting_external_attendee_edit($referral_id, $meeting_id, $attendee_id),
+                'cancel_url'         => PortalUrls::referral_meeting($referral_id, $meeting_id),
+            ]
+        );
+    }
+
+    private function handle_external_attendee_remove(int $referral_id, int $meeting_id, int $attendee_id): void
+    {
+        $ctx = $this->require_manage_external_attendee($referral_id, $meeting_id, $attendee_id);
+        if (null === $ctx) {
+            return;
+        }
+        ['referral' => $referral, 'meeting' => $meeting, 'attendee' => $attendee] = $ctx;
+        $status = (string) ($meeting['status'] ?? '');
+
+        if (! $this->lifecycle_policy->allows_external_attendee_remove($status)) {
+            $this->view_host->render_portal_error(
+                '403',
+                __('This participant cannot be removed for the current meeting status.', 'jm-referral-system'),
+                403
+            );
+
+            return;
+        }
+
+        if (isset($_POST['jmrs_save_meeting_external_attendee'])) {
+            $this->post_external_attendee_remove($referral_id, $meeting_id, $attendee_id);
+
+            return;
+        }
+
+        $can_view_contacts = $this->access_policy->can_view_referral_meeting_contacts($referral);
+
+        $this->view_host->render_portal_page(
+            'referrals/meeting-external-attendee-remove',
+            __('Remove external participant', 'jm-referral-system'),
+            'referral',
+            $this->meetings_breadcrumbs($referral, __('Meetings', 'jm-referral-system'), __('Remove external participant', 'jm-referral-system')),
+            [
+                'referral'          => $referral,
+                'meeting'           => $meeting,
+                'meeting_id'        => $meeting_id,
+                'attendee_id'       => $attendee_id,
+                'attendee'          => $attendee,
+                'can_view_contacts' => $can_view_contacts,
+                'form_action'       => PortalUrls::referral_meeting_external_attendee_remove($referral_id, $meeting_id, $attendee_id),
+                'cancel_url'        => PortalUrls::referral_meeting($referral_id, $meeting_id),
+            ]
+        );
+    }
+
+    private function post_external_attendee_new(int $referral_id, int $meeting_id): void
+    {
+        if (! $this->verify_external_attendee_nonce($referral_id, $meeting_id, 0)) {
+            $this->view_host->render_portal_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $input  = $this->posted_external_fields();
+        $result = $this->attendee_service->add_external_attendee($meeting_id, $input);
+
+        if (empty($result['ok'])) {
+            if (in_array((string) ($result['error'] ?? ''), ['not_found', 'forbidden', 'archived', 'invalid_transition', 'meeting_not_found', 'referral_not_found'], true)) {
+                $this->view_host->render_portal_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+                return;
+            }
+            $this->persist_form_state(
+                $referral_id,
+                'ext_attendee_new',
+                $meeting_id,
+                $this->sticky_external_form_data($input),
+                $result['field_errors'] ?? [
+                    'form' => $this->attendee_error_message((string) ($result['error'] ?? 'validation')),
+                ]
+            );
+            wp_safe_redirect(PortalUrls::referral_meeting_external_attendee_new($referral_id, $meeting_id));
+            exit;
+        }
+
+        wp_safe_redirect(add_query_arg(
+            'jmrs_meeting_notice',
+            'ext_attendee_added',
+            PortalUrls::referral_meeting($referral_id, $meeting_id)
+        ));
+        exit;
+    }
+
+    private function post_external_attendee_edit(int $referral_id, int $meeting_id, int $attendee_id, bool $full_edit): void
+    {
+        if (! $this->verify_external_attendee_nonce($referral_id, $meeting_id, $attendee_id)) {
+            $this->view_host->render_portal_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $input  = $this->posted_external_fields();
+        if ($full_edit) {
+            $referral = $this->require_manage_referral($referral_id);
+            if (null === $referral) {
+                return;
+            }
+            if (! $this->access_policy->can_view_referral_meeting_contacts($referral)) {
+                $existing = $this->attendee_repository->find($attendee_id);
+                if (null !== $existing) {
+                    $input['email']     = (string) ($existing['email'] ?? '');
+                    $input['telephone'] = (string) ($existing['telephone'] ?? '');
+                }
+            }
+        }
+        $result = $full_edit
+            ? $this->attendee_service->update_external_attendee($attendee_id, $input, null, $meeting_id)
+            : $this->attendee_service->update_external_attendance($attendee_id, $input, null, $meeting_id);
+
+        if (empty($result['ok'])) {
+            if (in_array((string) ($result['error'] ?? ''), ['not_found', 'forbidden', 'archived', 'invalid_transition', 'meeting_not_found', 'referral_not_found'], true)) {
+                $this->view_host->render_portal_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+                return;
+            }
+            $form_key = 'ext_attendee_edit_' . $attendee_id;
+            $this->persist_form_state(
+                $referral_id,
+                $form_key,
+                $meeting_id,
+                $this->sticky_external_form_data($input),
+                $result['field_errors'] ?? [
+                    'form' => $this->attendee_error_message((string) ($result['error'] ?? 'validation')),
+                ]
+            );
+            wp_safe_redirect(PortalUrls::referral_meeting_external_attendee_edit($referral_id, $meeting_id, $attendee_id));
+            exit;
+        }
+
+        $notice = empty($result['changed']) ? 'ext_attendee_unchanged' : 'ext_attendee_updated';
+        wp_safe_redirect(add_query_arg(
+            'jmrs_meeting_notice',
+            $notice,
+            PortalUrls::referral_meeting($referral_id, $meeting_id)
+        ));
+        exit;
+    }
+
+    private function post_external_attendee_remove(int $referral_id, int $meeting_id, int $attendee_id): void
+    {
+        if (! $this->verify_external_attendee_nonce($referral_id, $meeting_id, $attendee_id)) {
+            $this->view_host->render_portal_error('403', __('Access Denied', 'jm-referral-system'), 403);
+
+            return;
+        }
+
+        $result = $this->attendee_service->remove_external_attendee($attendee_id, null, $meeting_id);
+
+        if (empty($result['ok'])) {
+            if (in_array((string) ($result['error'] ?? ''), ['not_found', 'forbidden', 'archived', 'invalid_transition', 'meeting_not_found', 'referral_not_found'], true)) {
+                $this->view_host->render_portal_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+                return;
+            }
+            wp_safe_redirect(add_query_arg(
+                'jmrs_meeting_notice',
+                'ext_attendee_remove_failed',
+                PortalUrls::referral_meeting($referral_id, $meeting_id)
+            ));
+            exit;
+        }
+
+        wp_safe_redirect(add_query_arg(
+            'jmrs_meeting_notice',
+            'ext_attendee_removed',
+            PortalUrls::referral_meeting($referral_id, $meeting_id)
+        ));
+        exit;
+    }
+
     private function post_create(int $referral_id): void
     {
         if (! $this->verify_nonce($referral_id, 0)) {
@@ -968,6 +1264,34 @@ class MeetingsHandler
         ];
     }
 
+    /**
+     * @return array{referral: array<string, mixed>, meeting: array<string, mixed>, attendee: array<string, mixed>}|null
+     */
+    private function require_manage_external_attendee(int $referral_id, int $meeting_id, int $attendee_id): ?array
+    {
+        $ctx = $this->require_manage_meeting($referral_id, $meeting_id);
+        if (null === $ctx) {
+            return null;
+        }
+
+        $attendee = $this->attendee_repository->find($attendee_id);
+        if (
+            null === $attendee
+            || absint($attendee['meeting_id'] ?? 0) !== $meeting_id
+            || MeetingAttendee::KIND_EXTERNAL !== (string) ($attendee['attendee_kind'] ?? '')
+        ) {
+            $this->view_host->render_portal_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return null;
+        }
+
+        return [
+            'referral' => $ctx['referral'],
+            'meeting'  => $ctx['meeting'],
+            'attendee' => $attendee,
+        ];
+    }
+
     private function verify_nonce(int $referral_id, int $meeting_id): bool
     {
         $nonce = isset($_POST['jmrs_meeting_nonce'])
@@ -1012,6 +1336,113 @@ class MeetingsHandler
         }
 
         return true;
+    }
+
+    private function verify_external_attendee_nonce(int $referral_id, int $meeting_id, int $attendee_id): bool
+    {
+        $nonce = isset($_POST['jmrs_meeting_external_attendee_nonce'])
+            ? sanitize_text_field(wp_unslash((string) $_POST['jmrs_meeting_external_attendee_nonce']))
+            : '';
+
+        if (! wp_verify_nonce($nonce, 'jmrs_save_meeting_external_attendee_' . $referral_id)) {
+            return false;
+        }
+
+        if (absint($_POST['jmrs_referral_id'] ?? 0) !== $referral_id) {
+            return false;
+        }
+
+        if (absint($_POST['jmrs_meeting_id'] ?? 0) !== $meeting_id) {
+            return false;
+        }
+
+        if (absint($_POST['jmrs_attendee_id'] ?? 0) !== $attendee_id) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function empty_external_form_data(): array
+    {
+        return [
+            'display_name'         => '',
+            'professional_role'    => '',
+            'organisation'         => '',
+            'email'                => '',
+            'telephone'            => '',
+            'participant_category' => '',
+            'meeting_role'         => '',
+            'attendance_status'    => MeetingAttendee::ATTENDANCE_INVITED,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $attendee
+     * @return array<string, string>
+     */
+    private function external_attendee_to_form_data(array $attendee, bool $include_contacts): array
+    {
+        $data = [
+            'display_name'         => (string) ($attendee['display_name'] ?? ''),
+            'professional_role'    => (string) ($attendee['professional_role'] ?? ''),
+            'organisation'         => (string) ($attendee['organisation'] ?? ''),
+            'email'                => '',
+            'telephone'            => '',
+            'participant_category' => (string) ($attendee['participant_category'] ?? ''),
+            'meeting_role'         => (string) ($attendee['meeting_role'] ?? ''),
+            'attendance_status'    => (string) ($attendee['attendance_status'] ?? MeetingAttendee::ATTENDANCE_INVITED),
+        ];
+        if ($include_contacts) {
+            $data['email']     = (string) ($attendee['email'] ?? '');
+            $data['telephone'] = (string) ($attendee['telephone'] ?? '');
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function posted_external_fields(): array
+    {
+        return [
+            'display_name'         => isset($_POST['jmrs_ext_display_name']) ? wp_unslash((string) $_POST['jmrs_ext_display_name']) : '',
+            'professional_role'    => isset($_POST['jmrs_ext_professional_role']) ? wp_unslash((string) $_POST['jmrs_ext_professional_role']) : '',
+            'organisation'         => isset($_POST['jmrs_ext_organisation']) ? wp_unslash((string) $_POST['jmrs_ext_organisation']) : '',
+            'email'                => isset($_POST['jmrs_ext_email']) ? wp_unslash((string) $_POST['jmrs_ext_email']) : '',
+            'telephone'            => isset($_POST['jmrs_ext_telephone']) ? wp_unslash((string) $_POST['jmrs_ext_telephone']) : '',
+            'participant_category' => isset($_POST['jmrs_ext_participant_category'])
+                ? sanitize_key((string) wp_unslash($_POST['jmrs_ext_participant_category']))
+                : '',
+            'meeting_role'         => isset($_POST['jmrs_ext_meeting_role']) ? wp_unslash((string) $_POST['jmrs_ext_meeting_role']) : '',
+            'attendance_status'    => isset($_POST['jmrs_ext_attendance_status'])
+                ? sanitize_key((string) wp_unslash($_POST['jmrs_ext_attendance_status']))
+                : MeetingAttendee::ATTENDANCE_INVITED,
+        ];
+    }
+
+    /**
+     * Sticky values without echoing raw invalid emails beyond safe sticky display.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, string>
+     */
+    private function sticky_external_form_data(array $input): array
+    {
+        return [
+            'display_name'         => (string) ($input['display_name'] ?? ''),
+            'professional_role'    => (string) ($input['professional_role'] ?? ''),
+            'organisation'         => (string) ($input['organisation'] ?? ''),
+            'email'                => (string) ($input['email'] ?? ''),
+            'telephone'            => (string) ($input['telephone'] ?? ''),
+            'participant_category' => (string) ($input['participant_category'] ?? ''),
+            'meeting_role'         => (string) ($input['meeting_role'] ?? ''),
+            'attendance_status'    => (string) ($input['attendance_status'] ?? MeetingAttendee::ATTENDANCE_INVITED),
+        ];
     }
 
     /**
@@ -1181,6 +1612,46 @@ class MeetingsHandler
     }
 
     /**
+     * @param array<int, array<string, mixed>> $external_rows
+     * @return array{add?: string, by_id: array<int, array{edit?: string, remove?: string, correct?: string}>}
+     */
+    private function external_attendee_action_urls(
+        int $referral_id,
+        int $meeting_id,
+        string $status,
+        bool $can_manage,
+        array $external_rows
+    ): array {
+        $out = ['by_id' => []];
+        if (! $can_manage) {
+            return $out;
+        }
+
+        if ($this->lifecycle_policy->allows_external_attendee_add($status)) {
+            $out['add'] = PortalUrls::referral_meeting_external_attendee_new($referral_id, $meeting_id);
+        }
+
+        foreach ($external_rows as $row) {
+            $aid = absint($row['id'] ?? 0);
+            if ($aid <= 0) {
+                continue;
+            }
+            $links = [];
+            if ($this->lifecycle_policy->allows_external_attendee_edit($status)) {
+                $links['edit']   = PortalUrls::referral_meeting_external_attendee_edit($referral_id, $meeting_id, $aid);
+                $links['remove'] = PortalUrls::referral_meeting_external_attendee_remove($referral_id, $meeting_id, $aid);
+            } elseif ($this->lifecycle_policy->allows_external_attendance_correction($status)) {
+                $links['correct'] = PortalUrls::referral_meeting_external_attendee_edit($referral_id, $meeting_id, $aid);
+            }
+            if ([] !== $links) {
+                $out['by_id'][$aid] = $links;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @param array<string, mixed> $attendee
      */
     private function internal_attendee_display_name(array $attendee): string
@@ -1296,13 +1767,18 @@ class MeetingsHandler
             'attendee_unchanged' => __('No changes were made.', 'jm-referral-system'),
             'attendee_removed'   => __('Internal attendee removed.', 'jm-referral-system'),
             'attendee_remove_failed' => __('Unable to remove this attendee. Please try again.', 'jm-referral-system'),
+            'ext_attendee_added'     => __('External participant added.', 'jm-referral-system'),
+            'ext_attendee_updated'   => __('External participant updated.', 'jm-referral-system'),
+            'ext_attendee_unchanged' => __('No changes were made.', 'jm-referral-system'),
+            'ext_attendee_removed'   => __('External participant removed.', 'jm-referral-system'),
+            'ext_attendee_remove_failed' => __('Unable to remove this participant. Please try again.', 'jm-referral-system'),
         ];
 
         if (! isset($map[$key])) {
             return null;
         }
 
-        $type = 'attendee_remove_failed' === $key ? 'error' : 'success';
+        $type = in_array($key, ['attendee_remove_failed', 'ext_attendee_remove_failed'], true) ? 'error' : 'success';
 
         return ['type' => $type, 'message' => $map[$key]];
     }
