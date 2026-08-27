@@ -404,7 +404,7 @@ class Plugin
             $activity_service,
             $this->access_policy
         );
-        new \JMReferral\Meeting\MeetingAttendeeService(
+        $meeting_attendee_service = new \JMReferral\Meeting\MeetingAttendeeService(
             $repository,
             $meeting_repository,
             $meeting_attendee_repository,
@@ -633,6 +633,7 @@ class Plugin
             $pipeline_attention_service,
             $meeting_read_service,
             $meeting_service,
+            $meeting_attendee_service,
             $meeting_repository,
             $meeting_attendee_repository
         );
@@ -684,6 +685,7 @@ class Plugin
         \JMReferral\Pipeline\PipelineAttentionService $pipeline_attention_service,
         \JMReferral\Meeting\ReferralMeetingReadService $meeting_read_service,
         \JMReferral\Meeting\ReferralMeetingService $meeting_service,
+        \JMReferral\Meeting\MeetingAttendeeService $meeting_attendee_service,
         \JMReferral\Meeting\ReferralMeetingRepository $meeting_repository,
         \JMReferral\Meeting\MeetingAttendeeRepository $meeting_attendee_repository
     ): void {
@@ -810,6 +812,7 @@ class Plugin
             $this->access_policy,
             $meeting_read_service,
             $meeting_service,
+            $meeting_attendee_service,
             $meeting_repository,
             $meeting_attendee_repository,
             $retention_service

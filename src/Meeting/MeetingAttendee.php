@@ -82,6 +82,33 @@ class MeetingAttendee
         return '' === $category || array_key_exists($category, self::category_labels());
     }
 
+    /**
+     * Final attendance values allowed when correcting after meeting completion.
+     *
+     * @return array<string, string>
+     */
+    public static function final_attendance_status_labels(): array
+    {
+        return [
+            self::ATTENDANCE_ATTENDED => self::attendance_status_labels()[self::ATTENDANCE_ATTENDED],
+            self::ATTENDANCE_ABSENT   => self::attendance_status_labels()[self::ATTENDANCE_ABSENT],
+            self::ATTENDANCE_DECLINED => self::attendance_status_labels()[self::ATTENDANCE_DECLINED],
+        ];
+    }
+
+    public static function is_final_attendance_status(string $status): bool
+    {
+        return array_key_exists(sanitize_key($status), self::final_attendance_status_labels());
+    }
+
+    public static function is_non_final_attendance_status(string $status): bool
+    {
+        return in_array(sanitize_key($status), [
+            self::ATTENDANCE_INVITED,
+            self::ATTENDANCE_CONFIRMED,
+        ], true);
+    }
+
     public static function kind_label(string $kind): string
     {
         $labels = self::kind_labels();

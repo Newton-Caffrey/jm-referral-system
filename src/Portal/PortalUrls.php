@@ -115,6 +115,27 @@ class PortalUrls
         return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id) . '/cancel');
     }
 
+    public static function referral_meeting_internal_attendee_new(int $referral_id, int $meeting_id): string
+    {
+        return self::referral_path($referral_id, 'meetings/' . max(0, $meeting_id) . '/attendees/internal/new');
+    }
+
+    public static function referral_meeting_internal_attendee_edit(int $referral_id, int $meeting_id, int $attendee_id): string
+    {
+        return self::referral_path(
+            $referral_id,
+            'meetings/' . max(0, $meeting_id) . '/attendees/' . max(0, $attendee_id) . '/edit'
+        );
+    }
+
+    public static function referral_meeting_internal_attendee_remove(int $referral_id, int $meeting_id, int $attendee_id): string
+    {
+        return self::referral_path(
+            $referral_id,
+            'meetings/' . max(0, $meeting_id) . '/attendees/' . max(0, $attendee_id) . '/remove'
+        );
+    }
+
     public static function schedule_new(int $referral_id): string
     {
         return self::referral_path($referral_id, 'schedules/new');

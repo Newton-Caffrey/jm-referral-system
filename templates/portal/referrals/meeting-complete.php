@@ -17,7 +17,8 @@ $data               = is_array( $data ?? null ) ? $data : array();
 $errors             = is_array( $errors ?? null ) ? $errors : array();
 $form_action        = (string) ( $form_action ?? '' );
 $cancel_url         = (string) ( $cancel_url ?? '' );
-$attendance_warning = ! empty( $attendance_warning );
+$attendance_warning       = ! empty( $attendance_warning );
+$attendance_warning_count = absint( $attendance_warning_count ?? 0 );
 
 $val = static function ( array $data, string $key ): string {
 	return (string) ( $data[ $key ] ?? '' );
@@ -37,9 +38,17 @@ $val = static function ( array $data, string $key ): string {
 	<div class="jmrs-portal-notice jmrs-portal-notice--warning" role="status">
 		<p>
 			<?php
-			echo esc_html__(
-				'Some attendees still have invited or confirmed status. You can complete the meeting without updating attendance.',
-				'jm-referral-system'
+			echo esc_html(
+				sprintf(
+					/* translators: %d: count of attendees still invited or confirmed */
+					_n(
+						'%d attendee attendance record is not finalised. You may still complete the meeting and update attendance afterward.',
+						'%d attendee attendance records are not finalised. You may still complete the meeting and update attendance afterward.',
+						$attendance_warning_count,
+						'jm-referral-system'
+					),
+					$attendance_warning_count
+				)
 			);
 			?>
 		</p>

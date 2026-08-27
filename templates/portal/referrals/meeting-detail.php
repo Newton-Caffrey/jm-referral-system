@@ -24,6 +24,9 @@ $list_url           = (string) ( $detail['list_url'] ?? '' );
 $referral_url       = (string) ( $detail['referral_url'] ?? '' );
 $can_manage         = ! empty( $can_manage );
 $actions            = is_array( $actions ?? null ) ? $actions : array();
+$attendee_actions   = is_array( $attendee_actions ?? null ) ? $attendee_actions : array();
+$attendee_add_url   = (string) ( $attendee_actions['add'] ?? '' );
+$attendee_by_id     = is_array( $attendee_actions['by_id'] ?? null ) ? $attendee_actions['by_id'] : array();
 $flash_notice       = is_array( $flash_notice ?? null ) ? $flash_notice : null;
 
 $date_format = (string) get_option( 'date_format' );
@@ -114,6 +117,11 @@ $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? 
 
 <section class="jmrs-portal-section jmrs-portal-panel" aria-labelledby="jmrs-meeting-internal-title">
 	<h2 id="jmrs-meeting-internal-title" class="jmrs-portal-section__title"><?php echo esc_html__( 'Internal attendees', 'jm-referral-system' ); ?></h2>
+	<?php if ( '' !== $attendee_add_url ) : ?>
+		<p class="jmrs-portal-quick-actions">
+			<a class="jmrs-button jmrs-button--secondary" href="<?php echo esc_url( $attendee_add_url ); ?>"><?php echo esc_html__( 'Add internal attendee', 'jm-referral-system' ); ?></a>
+		</p>
+	<?php endif; ?>
 	<?php if ( empty( $internal ) ) : ?>
 		<p><?php echo esc_html__( 'No internal attendees.', 'jm-referral-system' ); ?></p>
 	<?php else : ?>
@@ -124,14 +132,43 @@ $url_raw    = $can_view_contacts ? (string) ( $meeting['online_meeting_url'] ?? 
 						<th scope="col"><?php echo esc_html__( 'Staff', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Meeting role', 'jm-referral-system' ); ?></th>
 						<th scope="col"><?php echo esc_html__( 'Attendance', 'jm-referral-system' ); ?></th>
+						<?php if ( ! empty( $attendee_by_id ) ) : ?>
+							<th scope="col"><?php echo esc_html__( 'Actions', 'jm-referral-system' ); ?></th>
+						<?php endif; ?>
 					</tr>
 				</thead>
 				<tbody>
 					<?php foreach ( $internal as $row ) : ?>
+						<?php
+						$row_id      = absint( $row['id'] ?? 0 );
+						$row_actions = is_array( $attendee_by_id[ $row_id ] ?? null ) ? $attendee_by_id[ $row_id ] : array();
+						?>
 						<tr>
 							<td data-label="<?php echo esc_attr__( 'Staff', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $row['display_name'] ?? '—' ) ); ?></td>
 							<td data-label="<?php echo esc_attr__( 'Meeting role', 'jm-referral-system' ); ?>"><?php echo esc_html( '' !== (string) ( $row['meeting_role'] ?? '' ) ? (string) $row['meeting_role'] : '—' ); ?></td>
 							<td data-label="<?php echo esc_attr__( 'Attendance', 'jm-referral-system' ); ?>"><?php echo esc_html( (string) ( $row['attendance_status_label'] ?? '—' ) ); ?></td>
+							<?php if ( ! empty( $attendee_by_id ) ) : ?>
+								<td data-label="<?php echo esc_attr__( 'Actions', 'jm-referral-system' ); ?>">
+									<?php if ( ! empty( $row_actions['edit'] ) ) : ?>
+										<a href="<?php echo esc_url( (string) $row_actions['edit'] ); ?>"><?php echo esc_html__( 'Edit', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( ! empty( $row_actions['correct'] ) ) : ?>
+										<?php if ( ! empty( $row_actions['edit'] ) ) : ?>
+											<span aria-hidden="true"> · </span>
+										<?php endif; ?>
+										<a href="<?php echo esc_url( (string) $row_actions['correct'] ); ?>"><?php echo esc_html__( 'Correct attendance', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( ! empty( $row_actions['remove'] ) ) : ?>
+										<?php if ( ! empty( $row_actions['edit'] ) || ! empty( $row_actions['correct'] ) ) : ?>
+											<span aria-hidden="true"> · </span>
+										<?php endif; ?>
+										<a href="<?php echo esc_url( (string) $row_actions['remove'] ); ?>"><?php echo esc_html__( 'Remove', 'jm-referral-system' ); ?></a>
+									<?php endif; ?>
+									<?php if ( empty( $row_actions ) ) : ?>
+										—
+									<?php endif; ?>
+								</td>
+							<?php endif; ?>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>

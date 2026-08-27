@@ -2,6 +2,8 @@
 
 namespace JMReferral\Referral;
 
+use JMReferral\Meeting\MeetingAttendee;
+
 class ReferralActivityService
 {
     public function __construct(
@@ -708,29 +710,55 @@ class ReferralActivityService
         $this->log($referral_id, 'meeting_cancelled', __('Meeting cancelled.', 'jm-referral-system'));
     }
 
-    public function log_meeting_attendee_added(int $referral_id, string $kind_label = ''): void
+    public function log_meeting_attendee_added(int $referral_id, string $kind_or_label = ''): void
     {
+        $kind = sanitize_key($kind_or_label);
+        if (MeetingAttendee::KIND_INTERNAL === $kind) {
+            $this->log($referral_id, 'meeting_attendee_added', __('Internal meeting attendee added.', 'jm-referral-system'));
+
+            return;
+        }
+        if (MeetingAttendee::KIND_EXTERNAL === $kind) {
+            $this->log($referral_id, 'meeting_attendee_added', __('External meeting participant added.', 'jm-referral-system'));
+
+            return;
+        }
+
         $this->log(
             $referral_id,
             'meeting_attendee_added',
-            '' !== $kind_label
+            '' !== $kind_or_label
                 ? sprintf(
                     /* translators: %s: attendee kind label */
                     __('Meeting attendee added (%s).', 'jm-referral-system'),
-                    $kind_label
+                    $kind_or_label
                 )
                 : __('Meeting attendee added.', 'jm-referral-system')
         );
     }
 
-    public function log_meeting_attendee_updated(int $referral_id): void
+    public function log_meeting_attendee_updated(int $referral_id, string $kind = ''): void
     {
-        $this->log($referral_id, 'meeting_attendee_updated', __('Meeting attendee updated.', 'jm-referral-system'));
+        $kind = sanitize_key($kind);
+        $description = MeetingAttendee::KIND_INTERNAL === $kind
+            ? __('Internal meeting attendee updated.', 'jm-referral-system')
+            : (MeetingAttendee::KIND_EXTERNAL === $kind
+                ? __('External meeting participant updated.', 'jm-referral-system')
+                : __('Meeting attendee updated.', 'jm-referral-system'));
+
+        $this->log($referral_id, 'meeting_attendee_updated', $description);
     }
 
-    public function log_meeting_attendee_removed(int $referral_id): void
+    public function log_meeting_attendee_removed(int $referral_id, string $kind = ''): void
     {
-        $this->log($referral_id, 'meeting_attendee_removed', __('Meeting attendee removed.', 'jm-referral-system'));
+        $kind = sanitize_key($kind);
+        $description = MeetingAttendee::KIND_INTERNAL === $kind
+            ? __('Internal meeting attendee removed.', 'jm-referral-system')
+            : (MeetingAttendee::KIND_EXTERNAL === $kind
+                ? __('External meeting participant removed.', 'jm-referral-system')
+                : __('Meeting attendee removed.', 'jm-referral-system'));
+
+        $this->log($referral_id, 'meeting_attendee_removed', $description);
     }
 
     public function log_champion_assigned(int $referral_id, string $display_name): void

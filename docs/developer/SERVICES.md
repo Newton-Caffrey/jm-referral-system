@@ -38,7 +38,7 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 
 ---
 
-## Meetings & responsibilities (Phase 4B.1 / 4B.2.1)
+## Meetings & responsibilities (Phase 4B.1 / 4B.2)
 
 ### `ReferralMeetingService`
 - **Purpose:** Create draft/scheduled meetings; update details; schedule/reschedule; complete; cancel. Server-side lifecycle via `MeetingLifecyclePolicy`. Does not advance pipeline. Does not send emails. No reopen/delete.
@@ -47,19 +47,19 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 - **Used by:** Portal `MeetingsHandler` write routes (Phase 4B.2.2)
 
 ### `MeetingLifecyclePolicy`
-- **Purpose:** Allowed actions by status (draft/scheduled mutable; completed/cancelled terminal).
-- **Used by:** `ReferralMeetingService`, `MeetingsHandler` (UI action visibility)
+- **Purpose:** Allowed meeting actions by status; also gates internal attendee add/edit/remove and completed attendance correction.
+- **Used by:** `ReferralMeetingService`, `MeetingAttendeeService`, `MeetingsHandler`
 
 ### `MeetingAttendeeService`
-- **Purpose:** Add/update/remove internal and external meeting attendees; rejects duplicates and invalid kinds.
-- **Deps:** Referral + meeting + attendee repos, activity, AccessPolicy, `UserProvider`
-- **Used by:** Write UI from Phase 4B.2.3/4 (not yet)
+- **Purpose (4B.2.3 public API):** `add_internal_attendee`, `update_internal_attendee`, `update_internal_attendance`, `remove_internal_attendee`, plus `count_non_final_attendance` and `eligible_internal_staff_for_meeting`. Forces `attendee_kind=internal`; ignores external identity fields; rejects duplicates via `MeetingAttendeeRepository::has_internal_user` (prepared SQL; DB index is **not** unique — residual low-probability race under concurrency without schema change). Eligibility: `UserProvider::is_assignable` / `VIEW_REFERRALS`. Draft/scheduled: add/edit role+attendance/remove. Completed: final attendance correction only (`attended`/`absent`/`declined`). Cancelled/archived: mutations denied. No emails; no workflow-stage changes; attendee membership grants no access.
+- **Deps:** Referral + meeting + attendee repos, activity, AccessPolicy, `UserProvider`, `MeetingLifecyclePolicy`
+- **Used by:** Portal `MeetingsHandler` internal attendee routes (Phase 4B.2.3; staging UAT **PASS** 2026-08-27). External participant API reserved for 4B.2.4. Composition: one `MeetingAttendeeService` in `registerReferralControllers()`, threaded into `registerStaffPortal()` → sole `MeetingsHandler` construction.
 
 ### `ReferralMeetingReadService`
-- **Purpose:** Read-only summary, paginated list, detail presentation; strips contact PII / online URL unless `can_view_referral_meeting_contacts`.
+- **Purpose:** Read-only summary, paginated list, detail presentation; strips contact PII / online URL unless `can_view_referral_meeting_contacts`. Deleted staff display as “Unavailable user”.
 - **Deps:** Meeting + attendee repos, AccessPolicy (`can_view_referral_meetings` / `can_view_referral_meeting_contacts` / `can_manage_referral_meetings`), `UserProvider`
 - **Query strategy:** Grouped status counts; paginated list with total; attendee counts grouped by meeting IDs; detail attendees once; batched internal display names; prepared SQL. List/summary do not present external contact PII or online URLs.
-- **Used by:** Portal `MeetingsHandler`, referral workspace summary (Phase 4B.2.1). Write UI starts in Phase 4B.2.2 (not yet).
+- **Used by:** Portal `MeetingsHandler`, referral workspace summary (Phase 4B.2.1+).
 
 ### `ReferralResponsibilityService`
 - **Purpose:** Assign/clear `champion_user_id` / `transition_lead_user_id`. Does not change `assigned_to` or visibility.

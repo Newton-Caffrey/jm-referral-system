@@ -63,4 +63,27 @@ class MeetingLifecyclePolicy
             ReferralMeeting::STATUS_CANCELLED,
         ], true);
     }
+
+    public function allows_internal_attendee_add(string $meeting_status): bool
+    {
+        return in_array(sanitize_key($meeting_status), [
+            ReferralMeeting::STATUS_DRAFT,
+            ReferralMeeting::STATUS_SCHEDULED,
+        ], true);
+    }
+
+    public function allows_internal_attendee_edit(string $meeting_status): bool
+    {
+        return $this->allows_internal_attendee_add($meeting_status);
+    }
+
+    public function allows_internal_attendee_remove(string $meeting_status): bool
+    {
+        return $this->allows_internal_attendee_add($meeting_status);
+    }
+
+    public function allows_internal_attendance_correction(string $meeting_status): bool
+    {
+        return ReferralMeeting::STATUS_COMPLETED === sanitize_key($meeting_status);
+    }
 }

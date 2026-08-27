@@ -3,7 +3,7 @@
 Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clinical`, `JMReferral\Portal\Homes`).
 
 **Default base path:** `staff-portal`
-**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.4`)
+**Rewrite version constant:** `PortalRouter::REWRITE_VERSION` (`1.2.5`)
 **Disabled by default** (`PortalSettings`).
 
 ---
@@ -20,7 +20,7 @@ Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clin
 | `ClinicalDispatcher` | Routes clinical portal actions to focused handlers |
 | `ClinicalAccess` | Shared referral gates + breadcrumbs for clinical handlers |
 | Handlers | `CarePlanReviewHandler`, `MedicationHandler`, `CareTeamHandler`, `ScheduleHandler`, `VisitHandler` |
-| `MeetingsHandler` | Referral meetings list/detail (4B.2.1) plus create/edit/schedule/complete/cancel (4B.2.2). Mutations use `can_manage_referral_meetings` + service lifecycle. Support Worker denied; Assessor read-only; contacts via `can_view_referral_meeting_contacts`. |
+| `MeetingsHandler` | Referral meetings list/detail (4B.2.1), create/edit/schedule/complete/cancel (4B.2.2), **internal attendee** add/edit/remove (4B.2.3). Mutations use `can_manage_referral_meetings` + service lifecycle. Support Worker denied; Assessor read-only; contacts via `can_view_referral_meeting_contacts`. External participants remain read-only until 4B.2.4. |
 | `HomesHandler` | Supported living homes & bedrooms via shared `HomeService` / `BedroomService` |
 | `PortalAccess` / `PortalNavigation` / `PortalAssets` | Eligibility, nav, CSS/JS |
 
@@ -28,12 +28,12 @@ Staff frontend portal. Namespace: `JMReferral\Portal` (+ `JMReferral\Portal\Clin
 
 ## Routing
 
-Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_entity`.
+Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_entity`, `jmrs_portal_sub_entity` (attendee id; rewrite **1.2.5**).
 
 | URL | Route key |
 | --- | --- |
 | `/{base}/` | `dashboard` |
-| `/{base}/management/` | `management` (Management Dashboard; rewrite `1.2.4`) |
+| `/{base}/management/` | `management` (Management Dashboard) |
 | `/{base}/referrals/` | `referrals` |
 | `/{base}/referrals/{id}/` | `referral` |
 | `/{base}/referrals/{id}/edit/` | `referral_edit` |
@@ -49,6 +49,9 @@ Query vars: `jmrs_portal`, `jmrs_portal_route`, `jmrs_portal_id`, `jmrs_portal_e
 | `/{base}/referrals/{id}/meetings/{meeting_id}/schedule/` | `referral_meeting_schedule` (4B.2.2) |
 | `/{base}/referrals/{id}/meetings/{meeting_id}/complete/` | `referral_meeting_complete` (4B.2.2) |
 | `/{base}/referrals/{id}/meetings/{meeting_id}/cancel/` | `referral_meeting_cancel` (4B.2.2) |
+| `/{base}/referrals/{id}/meetings/{meeting_id}/attendees/internal/new/` | `referral_meeting_internal_attendee_new` (4B.2.3) |
+| `/{base}/referrals/{id}/meetings/{meeting_id}/attendees/{attendee_id}/edit/` | `referral_meeting_internal_attendee_edit` (4B.2.3) |
+| `/{base}/referrals/{id}/meetings/{meeting_id}/attendees/{attendee_id}/remove/` | `referral_meeting_internal_attendee_remove` (4B.2.3) |
 | `/{base}/referrals/{id}/meetings/` | `referral_meetings` |
 | `/{base}/referrals/{id}/meetings/{meeting_id}/` | `referral_meeting` |
 | `/{base}/referrals/{id}/schedules/new/` | `schedule_new` |

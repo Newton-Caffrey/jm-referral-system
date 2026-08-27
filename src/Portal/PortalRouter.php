@@ -7,12 +7,13 @@ namespace JMReferral\Portal;
  */
 class PortalRouter
 {
-    public const REWRITE_VERSION = '1.2.4';
+    public const REWRITE_VERSION = '1.2.5';
 
     public const QV_PORTAL = 'jmrs_portal';
     public const QV_ROUTE = 'jmrs_portal_route';
     public const QV_ID = 'jmrs_portal_id';
     public const QV_ENTITY = 'jmrs_portal_entity';
+    public const QV_SUB_ENTITY = 'jmrs_portal_sub_entity';
 
     /** @var PortalController|null */
     private static $controller = null;
@@ -38,52 +39,59 @@ class PortalRouter
 
         $base = preg_quote(PortalSettings::base_path(), '/');
 
+        // Each rule: [pattern, route, id, entity, sub_entity]
         $rules = [
-            ['/?$', 'dashboard', null, null],
-            ['/management/?$', 'management', null, null],
-            ['/referrals/?$', 'referrals', null, null],
-            ['/referrals/([0-9]+)/edit/?$', 'referral_edit', '$matches[1]', null],
-            ['/referrals/([0-9]+)/assessment/?$', 'referral_assessment', '$matches[1]', null],
-            ['/referrals/([0-9]+)/care-plan/review/?$', 'care_plan_review', '$matches[1]', null],
-            ['/referrals/([0-9]+)/care-plan/?$', 'referral_care_plan', '$matches[1]', null],
-            ['/referrals/([0-9]+)/medications/new/?$', 'medication_new', '$matches[1]', null],
-            ['/referrals/([0-9]+)/medications/([0-9]+)/edit/?$', 'medication_edit', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/care-team/new/?$', 'care_team_new', '$matches[1]', null],
-            ['/referrals/([0-9]+)/care-team/([0-9]+)/edit/?$', 'care_team_edit', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/meetings/new/?$', 'referral_meeting_new', '$matches[1]', null],
-            ['/referrals/([0-9]+)/meetings/([0-9]+)/edit/?$', 'referral_meeting_edit', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/meetings/([0-9]+)/schedule/?$', 'referral_meeting_schedule', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/meetings/([0-9]+)/complete/?$', 'referral_meeting_complete', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/meetings/([0-9]+)/cancel/?$', 'referral_meeting_cancel', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/meetings/?$', 'referral_meetings', '$matches[1]', null],
-            ['/referrals/([0-9]+)/meetings/([0-9]+)/?$', 'referral_meeting', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/schedules/new/?$', 'schedule_new', '$matches[1]', null],
-            ['/referrals/([0-9]+)/schedules/([0-9]+)/edit/?$', 'schedule_edit', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/schedules/([0-9]+)/generate/?$', 'schedule_generate', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/visits/new/?$', 'visit_new', '$matches[1]', null],
-            ['/referrals/([0-9]+)/visits/([0-9]+)/edit/?$', 'visit_edit', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/visits/([0-9]+)/execute/?$', 'visit_execute', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/visits/([0-9]+)/review/?$', 'visit_review', '$matches[1]', '$matches[2]'],
-            ['/referrals/([0-9]+)/?$', 'referral', '$matches[1]', null],
-            ['/homes/?$', 'homes', null, null],
-            ['/homes/new/?$', 'home_new', null, null],
-            ['/homes/([0-9]+)/edit/?$', 'home_edit', '$matches[1]', null],
-            ['/homes/([0-9]+)/bedrooms/new/?$', 'bedroom_new', '$matches[1]', null],
-            ['/homes/([0-9]+)/bedrooms/([0-9]+)/edit/?$', 'bedroom_edit', '$matches[1]', '$matches[2]'],
-            ['/homes/([0-9]+)/?$', 'home', '$matches[1]', null],
-            ['/occupancy/?$', 'occupancy', null, null],
-            ['/occupancy/place/?$', 'occupancy_place', null, null],
-            ['/occupancy/([0-9]+)/transfer/?$', 'occupancy_transfer', '$matches[1]', null],
-            ['/occupancy/([0-9]+)/end/?$', 'occupancy_end', '$matches[1]', null],
+            ['/?$', 'dashboard', null, null, null],
+            ['/management/?$', 'management', null, null, null],
+            ['/referrals/?$', 'referrals', null, null, null],
+            ['/referrals/([0-9]+)/edit/?$', 'referral_edit', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/assessment/?$', 'referral_assessment', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/care-plan/review/?$', 'care_plan_review', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/care-plan/?$', 'referral_care_plan', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/medications/new/?$', 'medication_new', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/medications/([0-9]+)/edit/?$', 'medication_edit', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/care-team/new/?$', 'care_team_new', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/care-team/([0-9]+)/edit/?$', 'care_team_edit', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/meetings/new/?$', 'referral_meeting_new', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/edit/?$', 'referral_meeting_edit', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/schedule/?$', 'referral_meeting_schedule', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/complete/?$', 'referral_meeting_complete', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/cancel/?$', 'referral_meeting_cancel', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/internal/new/?$', 'referral_meeting_internal_attendee_new', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/([0-9]+)/edit/?$', 'referral_meeting_internal_attendee_edit', '$matches[1]', '$matches[2]', '$matches[3]'],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/attendees/([0-9]+)/remove/?$', 'referral_meeting_internal_attendee_remove', '$matches[1]', '$matches[2]', '$matches[3]'],
+            ['/referrals/([0-9]+)/meetings/?$', 'referral_meetings', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/meetings/([0-9]+)/?$', 'referral_meeting', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/schedules/new/?$', 'schedule_new', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/schedules/([0-9]+)/edit/?$', 'schedule_edit', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/schedules/([0-9]+)/generate/?$', 'schedule_generate', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/visits/new/?$', 'visit_new', '$matches[1]', null, null],
+            ['/referrals/([0-9]+)/visits/([0-9]+)/edit/?$', 'visit_edit', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/visits/([0-9]+)/execute/?$', 'visit_execute', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/visits/([0-9]+)/review/?$', 'visit_review', '$matches[1]', '$matches[2]', null],
+            ['/referrals/([0-9]+)/?$', 'referral', '$matches[1]', null, null],
+            ['/homes/?$', 'homes', null, null, null],
+            ['/homes/new/?$', 'home_new', null, null, null],
+            ['/homes/([0-9]+)/edit/?$', 'home_edit', '$matches[1]', null, null],
+            ['/homes/([0-9]+)/bedrooms/new/?$', 'bedroom_new', '$matches[1]', null, null],
+            ['/homes/([0-9]+)/bedrooms/([0-9]+)/edit/?$', 'bedroom_edit', '$matches[1]', '$matches[2]', null],
+            ['/homes/([0-9]+)/?$', 'home', '$matches[1]', null, null],
+            ['/occupancy/?$', 'occupancy', null, null, null],
+            ['/occupancy/place/?$', 'occupancy_place', null, null, null],
+            ['/occupancy/([0-9]+)/transfer/?$', 'occupancy_transfer', '$matches[1]', null, null],
+            ['/occupancy/([0-9]+)/end/?$', 'occupancy_end', '$matches[1]', null, null],
         ];
 
-        foreach ($rules as [$pattern, $route, $id, $entity]) {
+        foreach ($rules as [$pattern, $route, $id, $entity, $sub_entity]) {
             $query = self::QV_PORTAL . '=1&' . self::QV_ROUTE . '=' . $route;
             if (null !== $id) {
                 $query .= '&' . self::QV_ID . '=' . $id;
             }
             if (null !== $entity) {
                 $query .= '&' . self::QV_ENTITY . '=' . $entity;
+            }
+            if (null !== $sub_entity) {
+                $query .= '&' . self::QV_SUB_ENTITY . '=' . $sub_entity;
             }
 
             add_rewrite_rule('^' . $base . $pattern, 'index.php?' . $query, 'top');
@@ -113,6 +121,7 @@ class PortalRouter
         $vars[] = self::QV_ROUTE;
         $vars[] = self::QV_ID;
         $vars[] = self::QV_ENTITY;
+        $vars[] = self::QV_SUB_ENTITY;
 
         return $vars;
     }
