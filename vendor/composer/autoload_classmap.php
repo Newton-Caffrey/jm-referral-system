@@ -150,6 +150,7 @@ return array(
     'JMReferral\\Services\\ServiceTypeController' => $baseDir . '/src/Services/ServiceTypeController.php',
     'JMReferral\\Services\\ServiceTypeRepository' => $baseDir . '/src/Services/ServiceTypeRepository.php',
     'JMReferral\\Services\\ServiceTypeService' => $baseDir . '/src/Services/ServiceTypeService.php',
+    'JMReferral\\Settings\\OrganisationSettings' => $baseDir . '/src/Settings/OrganisationSettings.php',
     'JMReferral\\Support\\CsvExportHelper' => $baseDir . '/src/Support/CsvExportHelper.php',
     'JMReferral\\Support\\InputAllowlist' => $baseDir . '/src/Support/InputAllowlist.php',
     'JMReferral\\Support\\UiHelper' => $baseDir . '/src/Support/UiHelper.php',

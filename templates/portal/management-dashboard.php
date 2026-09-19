@@ -62,7 +62,7 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 	<header class="jmrs-mgmt__masthead">
 		<div class="jmrs-mgmt__masthead-in">
 			<div class="jmrs-mgmt__brand">
-				<h1><?php echo esc_html( (string) ( $masthead['company'] ?? 'J&M Healthcare Services' ) ); ?></h1>
+				<h1><?php echo esc_html( (string) ( $masthead['company'] ?? \JMReferral\Settings\OrganisationSettings::display_name() ) ); ?></h1>
 				<span class="jmrs-mgmt__sub"><?php echo esc_html( (string) ( $masthead['subtitle'] ?? '' ) ); ?></span>
 			</div>
 			<div class="jmrs-mgmt__meta">

@@ -9,6 +9,7 @@ use JMReferral\Permissions\Capabilities;
 use JMReferral\Portal\PortalSettings;
 use JMReferral\Portal\PortalUrls;
 use JMReferral\Referral\ReferralDependencyRepository;
+use JMReferral\Settings\OrganisationSettings;
 
 class SettingsPage
 {
@@ -24,6 +25,7 @@ class SettingsPage
             wp_die(esc_html__('You do not have permission to manage settings.', 'jm-referral-system'));
         }
 
+        $this->maybe_save_organisation_settings();
         $this->maybe_save_public_referral_settings();
         $this->maybe_save_staff_portal_settings();
         $this->maybe_save_pipeline_internal_targets();
@@ -48,6 +50,7 @@ class SettingsPage
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Settings', 'jm-referral-system') . '</h1>';
 
+        $this->render_organisation_and_branding_settings();
         $this->render_public_referral_settings();
         $this->render_staff_portal_settings();
         $this->render_pipeline_internal_targets();
@@ -180,6 +183,197 @@ class SettingsPage
         echo '</div>';
     }
 
+    private function maybe_save_organisation_settings(): void
+    {
+        if (! isset($_POST['jmrs_save_organisation_settings'])) {
+            return;
+        }
+
+        check_admin_referer('jmrs_save_organisation_settings', 'jmrs_organisation_settings_nonce');
+
+        if (! Capabilities::current_user_can(Capabilities::MANAGE_SETTINGS)) {
+            wp_die(esc_html__('You do not have permission to manage settings.', 'jm-referral-system'));
+        }
+
+        $result = OrganisationSettings::update(
+            [
+                'display_name'       => isset($_POST['jmrs_org_display_name'])
+                    ? wp_unslash((string) $_POST['jmrs_org_display_name'])
+                    : '',
+                'legal_name'         => isset($_POST['jmrs_org_legal_name'])
+                    ? wp_unslash((string) $_POST['jmrs_org_legal_name'])
+                    : '',
+                'trading_name'       => isset($_POST['jmrs_org_trading_name'])
+                    ? wp_unslash((string) $_POST['jmrs_org_trading_name'])
+                    : '',
+                'logo_attachment_id' => isset($_POST['jmrs_org_logo_attachment_id'])
+                    ? absint(wp_unslash((string) $_POST['jmrs_org_logo_attachment_id']))
+                    : 0,
+                'contact_email'      => isset($_POST['jmrs_org_contact_email'])
+                    ? wp_unslash((string) $_POST['jmrs_org_contact_email'])
+                    : '',
+                'contact_phone'      => isset($_POST['jmrs_org_contact_phone'])
+                    ? wp_unslash((string) $_POST['jmrs_org_contact_phone'])
+                    : '',
+                'website'            => isset($_POST['jmrs_org_website'])
+                    ? wp_unslash((string) $_POST['jmrs_org_website'])
+                    : '',
+                'address'            => isset($_POST['jmrs_org_address'])
+                    ? wp_unslash((string) $_POST['jmrs_org_address'])
+                    : '',
+                'portal_title'       => isset($_POST['jmrs_org_portal_title'])
+                    ? wp_unslash((string) $_POST['jmrs_org_portal_title'])
+                    : '',
+                'primary_colour'     => isset($_POST['jmrs_org_primary_colour'])
+                    ? wp_unslash((string) $_POST['jmrs_org_primary_colour'])
+                    : '',
+                'secondary_colour'   => isset($_POST['jmrs_org_secondary_colour'])
+                    ? wp_unslash((string) $_POST['jmrs_org_secondary_colour'])
+                    : '',
+                'email_sender_name'  => isset($_POST['jmrs_org_email_sender_name'])
+                    ? wp_unslash((string) $_POST['jmrs_org_email_sender_name'])
+                    : '',
+            ]
+        );
+
+        if (! empty($result['ok'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html__('Organisation and branding settings saved.', 'jm-referral-system');
+            echo '</p></div>';
+
+            return;
+        }
+
+        $errors = is_array($result['errors'] ?? null) ? $result['errors'] : [];
+        echo '<div class="notice notice-error" role="alert"><p>';
+        echo esc_html__('Organisation settings could not be saved. Please correct the highlighted fields.', 'jm-referral-system');
+        echo '</p>';
+        if ([] !== $errors) {
+            echo '<ul>';
+            foreach ($errors as $message) {
+                echo '<li>' . esc_html((string) $message) . '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '</div>';
+    }
+
+    private function render_organisation_and_branding_settings(): void
+    {
+        $org = OrganisationSettings::all();
+        $logo_id = absint($org['logo_attachment_id'] ?? 0);
+        $logo_url = OrganisationSettings::logo_url();
+
+        echo '<div class="jmrs-settings-org">';
+        echo '<h2>' . esc_html__('Organisation', 'jm-referral-system') . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'Client-facing organisation identity for this installation. Technical plugin identifiers (jmrs_*, routes, capabilities) are unchanged.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+
+        echo '<form method="post" action="' . esc_url(admin_url('admin.php?page=jm-referrals-settings')) . '" class="jmrs-organisation-settings-form">';
+        wp_nonce_field('jmrs_save_organisation_settings', 'jmrs_organisation_settings_nonce');
+
+        echo '<table class="form-table" role="presentation"><tbody>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_display_name">' . esc_html__('Organisation display name', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_org_display_name" id="jmrs_org_display_name" value="' . esc_attr((string) $org['display_name']) . '" required />';
+        echo '<p class="description">' . esc_html__('Shown in the portal header, management dashboard, public intake, and related labels.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_legal_name">' . esc_html__('Legal name', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_org_legal_name" id="jmrs_org_legal_name" value="' . esc_attr((string) $org['legal_name']) . '" />';
+        echo '<p class="description">' . esc_html__('Optional registered legal name. Plain text only.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_trading_name">' . esc_html__('Trading name', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_org_trading_name" id="jmrs_org_trading_name" value="' . esc_attr((string) $org['trading_name']) . '" />';
+        echo '<p class="description">' . esc_html__('Optional trading-as name if different from the display name.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_logo_attachment_id">' . esc_html__('Logo', 'jm-referral-system') . '</label></th><td>';
+        echo '<div class="jmrs-org-logo-controls">';
+        echo '<input type="hidden" name="jmrs_org_logo_attachment_id" id="jmrs_org_logo_attachment_id" value="' . esc_attr((string) $logo_id) . '" />';
+        echo '<button type="button" class="button" id="jmrs_org_logo_select">' . esc_html__('Select logo', 'jm-referral-system') . '</button> ';
+        echo '<button type="button" class="button" id="jmrs_org_logo_clear"' . ($logo_id > 0 ? '' : ' disabled') . '>' . esc_html__('Remove logo', 'jm-referral-system') . '</button>';
+        echo '<div class="jmrs-org-logo-preview" id="jmrs_org_logo_preview">';
+        if ('' !== $logo_url && $logo_id > 0) {
+            echo '<img src="' . esc_url($logo_url) . '" alt="" />';
+        } else {
+            echo '<p class="description">' . esc_html__('No logo selected. Portal and intake use text branding as a fallback.', 'jm-referral-system') . '</p>';
+        }
+        echo '</div>';
+        echo '<p class="description">' . esc_html__('Choose an image from the Media Library. Attachment ID is stored; arbitrary remote URLs are not accepted here.', 'jm-referral-system') . '</p>';
+        echo '</div></td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_contact_email">' . esc_html__('Contact email', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="email" class="regular-text" name="jmrs_org_contact_email" id="jmrs_org_contact_email" value="' . esc_attr((string) $org['contact_email']) . '" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_contact_phone">' . esc_html__('Contact phone', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_org_contact_phone" id="jmrs_org_contact_phone" value="' . esc_attr((string) $org['contact_phone']) . '" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_website">' . esc_html__('Website', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="url" class="regular-text" name="jmrs_org_website" id="jmrs_org_website" value="' . esc_attr((string) $org['website']) . '" placeholder="https://" />';
+        echo '<p class="description">' . esc_html__('Must be an http or https URL.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_address">' . esc_html__('Address', 'jm-referral-system') . '</label></th><td>';
+        echo '<textarea class="large-text" rows="3" name="jmrs_org_address" id="jmrs_org_address">' . esc_textarea((string) $org['address']) . '</textarea>';
+        echo '<p class="description">' . esc_html__('Business address as plain text. HTML is not allowed.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_portal_title">' . esc_html__('Portal title', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_org_portal_title" id="jmrs_org_portal_title" value="' . esc_attr((string) $org['portal_title']) . '" />';
+        echo '<p class="description">' . esc_html__('Staff portal product title shown in the portal chrome.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row">' . esc_html__('Site timezone (WordPress)', 'jm-referral-system') . '</th><td>';
+        echo '<code>' . esc_html(OrganisationSettings::effective_timezone_label()) . '</code>';
+        echo '<p class="description">' . esc_html__('Informational only. WordPress Settings → General remains authoritative for timezone and date format.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '</tbody></table>';
+
+        echo '<h2>' . esc_html__('Branding', 'jm-referral-system') . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'Colours must be 6-digit hex values (for example #17365D). Custom CSS and arbitrary style strings are not accepted.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+
+        echo '<table class="form-table" role="presentation"><tbody>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_primary_colour">' . esc_html__('Primary colour', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_org_primary_colour" id="jmrs_org_primary_colour" value="' . esc_attr((string) $org['primary_colour']) . '" placeholder="#0b5f4b" pattern="#[0-9A-Fa-f]{6}" />';
+        echo '<p class="description">' . esc_html__('Hex colour such as #0b5f4b or #17365D.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_secondary_colour">' . esc_html__('Secondary / accent colour', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_org_secondary_colour" id="jmrs_org_secondary_colour" value="' . esc_attr((string) $org['secondary_colour']) . '" placeholder="#1a3a32" pattern="#[0-9A-Fa-f]{6}" />';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row"><label for="jmrs_org_email_sender_name">' . esc_html__('Email sender display name', 'jm-referral-system') . '</label></th><td>';
+        echo '<input type="text" class="regular-text" name="jmrs_org_email_sender_name" id="jmrs_org_email_sender_name" value="' . esc_attr((string) $org['email_sender_name']) . '" />';
+        echo '<p class="description">' . esc_html__('Used as the From display name for outgoing notifications. Falls back to the organisation display name when blank. Does not change SMTP settings.', 'jm-referral-system') . '</p>';
+        echo '</td></tr>';
+
+        echo '</tbody></table>';
+
+        submit_button(
+            __('Save Organisation & Branding', 'jm-referral-system'),
+            'primary',
+            'jmrs_save_organisation_settings',
+            false
+        );
+        echo '</form>';
+        echo '</div>';
+    }
+
     private function maybe_save_public_referral_settings(): void
     {
         if (! isset($_POST['jmrs_save_public_referral_settings'])) {
@@ -188,6 +382,7 @@ class SettingsPage
 
         check_admin_referer('jmrs_save_public_referral_settings', 'jmrs_public_referral_settings_nonce');
 
+        // Organisation/branding identity is owned by OrganisationSettings (synced mirrors).
         PublicReferralSettings::update(
             [
                 'enabled'            => ! empty($_POST['jmrs_public_form_enabled']),
@@ -210,23 +405,11 @@ class SettingsPage
                 'max_upload_size_mb' => isset($_POST['jmrs_public_max_upload_size_mb'])
                     ? absint(wp_unslash((string) $_POST['jmrs_public_max_upload_size_mb']))
                     : PublicReferralSettings::DEFAULT_MAX_UPLOAD_SIZE_MB,
-                'company_name'       => isset($_POST['jmrs_company_name'])
-                    ? wp_unslash((string) $_POST['jmrs_company_name'])
-                    : '',
                 'public_heading'     => isset($_POST['jmrs_public_heading'])
                     ? wp_unslash((string) $_POST['jmrs_public_heading'])
                     : '',
                 'public_intro'       => isset($_POST['jmrs_public_intro'])
                     ? wp_unslash((string) $_POST['jmrs_public_intro'])
-                    : '',
-                'contact_phone'      => isset($_POST['jmrs_public_contact_phone'])
-                    ? wp_unslash((string) $_POST['jmrs_public_contact_phone'])
-                    : '',
-                'contact_email'      => isset($_POST['jmrs_public_contact_email'])
-                    ? wp_unslash((string) $_POST['jmrs_public_contact_email'])
-                    : '',
-                'primary_colour'     => isset($_POST['jmrs_primary_colour'])
-                    ? wp_unslash((string) $_POST['jmrs_primary_colour'])
                     : '',
                 'success_next_steps' => isset($_POST['jmrs_success_next_steps'])
                     ? wp_unslash((string) $_POST['jmrs_success_next_steps'])
@@ -279,9 +462,13 @@ class SettingsPage
         echo '<textarea class="large-text" rows="3" name="jmrs_public_success_message" id="jmrs_public_success_message">' . esc_textarea((string) $settings['success_message']) . '</textarea>';
         echo '</td></tr>';
 
-        echo '<tr><th scope="row"><label for="jmrs_company_name">' . esc_html__('Company Name', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="text" class="regular-text" name="jmrs_company_name" id="jmrs_company_name" value="' . esc_attr((string) $settings['company_name']) . '" />';
-        echo '</td></tr>';
+        echo '<tr><th scope="row">' . esc_html__('Organisation branding', 'jm-referral-system') . '</th><td>';
+        echo '<p class="description">';
+        echo esc_html__(
+            'Company name, contact details, and primary colour are managed under Organisation and Branding above. Saving this section does not change those values.',
+            'jm-referral-system'
+        );
+        echo '</p></td></tr>';
 
         echo '<tr><th scope="row"><label for="jmrs_public_heading">' . esc_html__('Public Referral Heading', 'jm-referral-system') . '</label></th><td>';
         echo '<input type="text" class="regular-text" name="jmrs_public_heading" id="jmrs_public_heading" value="' . esc_attr((string) $settings['public_heading']) . '" />';
@@ -289,19 +476,7 @@ class SettingsPage
 
         echo '<tr><th scope="row"><label for="jmrs_public_intro">' . esc_html__('Public Referral Intro', 'jm-referral-system') . '</label></th><td>';
         echo '<textarea class="large-text" rows="5" name="jmrs_public_intro" id="jmrs_public_intro">' . esc_textarea((string) $settings['public_intro']) . '</textarea>';
-        echo '</td></tr>';
-
-        echo '<tr><th scope="row"><label for="jmrs_public_contact_phone">' . esc_html__('Public Referral Contact Phone', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="text" class="regular-text" name="jmrs_public_contact_phone" id="jmrs_public_contact_phone" value="' . esc_attr((string) $settings['contact_phone']) . '" />';
-        echo '</td></tr>';
-
-        echo '<tr><th scope="row"><label for="jmrs_public_contact_email">' . esc_html__('Public Referral Contact Email', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="email" class="regular-text" name="jmrs_public_contact_email" id="jmrs_public_contact_email" value="' . esc_attr((string) $settings['contact_email']) . '" />';
-        echo '</td></tr>';
-
-        echo '<tr><th scope="row"><label for="jmrs_primary_colour">' . esc_html__('Primary Brand Colour', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="text" class="regular-text" name="jmrs_primary_colour" id="jmrs_primary_colour" value="' . esc_attr((string) $settings['primary_colour']) . '" placeholder="#0b5f4b" />';
-        echo '<p class="description">' . esc_html__('Hex colour used by the public wizard (for example #0b5f4b).', 'jm-referral-system') . '</p>';
+        echo '<p class="description">' . esc_html__('Leave blank to use the default intro with the configured organisation display name.', 'jm-referral-system') . '</p>';
         echo '</td></tr>';
 
         echo '<tr><th scope="row"><label for="jmrs_success_next_steps">' . esc_html__('Success Page Next-Steps Text', 'jm-referral-system') . '</label></th><td>';
@@ -341,33 +516,13 @@ class SettingsPage
 
         check_admin_referer('jmrs_save_staff_portal_settings', 'jmrs_staff_portal_settings_nonce');
 
+        // Branding (name, logo, colours, support contact) is owned by OrganisationSettings.
         $result = PortalSettings::update(
             [
                 'enabled'            => ! empty($_POST['jmrs_portal_enabled']),
-                'portal_name'        => isset($_POST['jmrs_portal_name'])
-                    ? wp_unslash((string) $_POST['jmrs_portal_name'])
-                    : PortalSettings::DEFAULT_PORTAL_NAME,
-                'company_name'       => isset($_POST['jmrs_portal_company_name'])
-                    ? wp_unslash((string) $_POST['jmrs_portal_company_name'])
-                    : PortalSettings::DEFAULT_COMPANY_NAME,
                 'base_path'          => isset($_POST['jmrs_portal_base_path'])
                     ? wp_unslash((string) $_POST['jmrs_portal_base_path'])
                     : PortalSettings::DEFAULT_BASE_PATH,
-                'logo_url'           => isset($_POST['jmrs_portal_logo_url'])
-                    ? wp_unslash((string) $_POST['jmrs_portal_logo_url'])
-                    : '',
-                'primary_colour'     => isset($_POST['jmrs_portal_primary_colour'])
-                    ? wp_unslash((string) $_POST['jmrs_portal_primary_colour'])
-                    : PortalSettings::DEFAULT_PRIMARY,
-                'secondary_colour'   => isset($_POST['jmrs_portal_secondary_colour'])
-                    ? wp_unslash((string) $_POST['jmrs_portal_secondary_colour'])
-                    : PortalSettings::DEFAULT_SECONDARY,
-                'support_email'      => isset($_POST['jmrs_portal_support_email'])
-                    ? wp_unslash((string) $_POST['jmrs_portal_support_email'])
-                    : '',
-                'support_phone'      => isset($_POST['jmrs_portal_support_phone'])
-                    ? wp_unslash((string) $_POST['jmrs_portal_support_phone'])
-                    : '',
                 'login_redirect_url' => isset($_POST['jmrs_portal_login_redirect_url'])
                     ? wp_unslash((string) $_POST['jmrs_portal_login_redirect_url'])
                     : '',
@@ -398,7 +553,7 @@ class SettingsPage
         echo '<h2>' . esc_html__('Staff Portal', 'jm-referral-system') . '</h2>';
         echo '<p>';
         echo esc_html__(
-            'Optional frontend portal for JM staff. Disabled by default. Reuses existing capabilities, AccessPolicy, and referral services. WordPress Admin remains available for administrators.',
+            'Optional frontend portal for staff. Disabled by default. Reuses existing capabilities, AccessPolicy, and referral services. WordPress Admin remains available for administrators.',
             'jm-referral-system'
         );
         echo '</p>';
@@ -418,47 +573,27 @@ class SettingsPage
         echo esc_html__('Enable the staff portal rewrite routes', 'jm-referral-system') . '</label>';
         echo '</td></tr>';
 
-        echo '<tr><th scope="row"><label for="jmrs_portal_name">' . esc_html__('Portal Name', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="text" class="regular-text" name="jmrs_portal_name" id="jmrs_portal_name" value="' . esc_attr((string) $settings['portal_name']) . '" />';
-        echo '</td></tr>';
-
-        echo '<tr><th scope="row"><label for="jmrs_portal_company_name">' . esc_html__('Company Name', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="text" class="regular-text" name="jmrs_portal_company_name" id="jmrs_portal_company_name" value="' . esc_attr((string) $settings['company_name']) . '" />';
-        echo '</td></tr>';
+        echo '<tr><th scope="row">' . esc_html__('Organisation branding', 'jm-referral-system') . '</th><td>';
+        echo '<p class="description">';
+        echo esc_html__(
+            'Portal title, organisation name, logo, colours, and support contact are managed under Organisation and Branding above.',
+            'jm-referral-system'
+        );
+        echo '</p></td></tr>';
 
         echo '<tr><th scope="row"><label for="jmrs_portal_base_path">' . esc_html__('Portal Base Path', 'jm-referral-system') . '</label></th><td>';
         echo '<input type="text" class="regular-text" name="jmrs_portal_base_path" id="jmrs_portal_base_path" value="' . esc_attr((string) $settings['base_path']) . '" />';
         echo '<p class="description">' . esc_html__('URL slug only (default: staff-portal). Changing this flushes rewrite rules once.', 'jm-referral-system') . '</p>';
         echo '</td></tr>';
 
-        echo '<tr><th scope="row"><label for="jmrs_portal_logo_url">' . esc_html__('Logo URL', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="url" class="regular-text" name="jmrs_portal_logo_url" id="jmrs_portal_logo_url" value="' . esc_attr((string) $settings['logo_url']) . '" />';
-        echo '</td></tr>';
-
-        echo '<tr><th scope="row"><label for="jmrs_portal_primary_colour">' . esc_html__('Primary Colour', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="text" class="regular-text" name="jmrs_portal_primary_colour" id="jmrs_portal_primary_colour" value="' . esc_attr((string) $settings['primary_colour']) . '" />';
-        echo '</td></tr>';
-
-        echo '<tr><th scope="row"><label for="jmrs_portal_secondary_colour">' . esc_html__('Secondary Colour', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="text" class="regular-text" name="jmrs_portal_secondary_colour" id="jmrs_portal_secondary_colour" value="' . esc_attr((string) $settings['secondary_colour']) . '" />';
-        echo '</td></tr>';
-
-        echo '<tr><th scope="row"><label for="jmrs_portal_support_email">' . esc_html__('Support Email', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="email" class="regular-text" name="jmrs_portal_support_email" id="jmrs_portal_support_email" value="' . esc_attr((string) $settings['support_email']) . '" />';
-        echo '</td></tr>';
-
-        echo '<tr><th scope="row"><label for="jmrs_portal_support_phone">' . esc_html__('Support Phone', 'jm-referral-system') . '</label></th><td>';
-        echo '<input type="text" class="regular-text" name="jmrs_portal_support_phone" id="jmrs_portal_support_phone" value="' . esc_attr((string) $settings['support_phone']) . '" />';
-        echo '</td></tr>';
-
         echo '<tr><th scope="row"><label for="jmrs_portal_login_redirect_url">' . esc_html__('Login Redirect URL', 'jm-referral-system') . '</label></th><td>';
         echo '<input type="url" class="regular-text" name="jmrs_portal_login_redirect_url" id="jmrs_portal_login_redirect_url" value="' . esc_attr((string) $settings['login_redirect_url']) . '" />';
-        echo '<p class="description">' . esc_html__('Optional. JM staff login redirect when redirect_to is not a portal URL. Leave blank to use the portal dashboard.', 'jm-referral-system') . '</p>';
+        echo '<p class="description">' . esc_html__('Optional. Staff login redirect when redirect_to is not a portal URL. Leave blank to use the portal dashboard.', 'jm-referral-system') . '</p>';
         echo '</td></tr>';
 
         echo '<tr><th scope="row">' . esc_html__('Redirect JMRS Staff Away From wp-admin', 'jm-referral-system') . '</th><td>';
         echo '<label><input type="checkbox" name="jmrs_portal_redirect_wp_admin" value="1" ' . checked(! empty($settings['redirect_wp_admin']), true, false) . ' /> ';
-        echo esc_html__('Send non-administrator JM staff from wp-admin screens to the portal (keep off until tested)', 'jm-referral-system') . '</label>';
+        echo esc_html__('Send non-administrator staff from wp-admin screens to the portal (keep off until tested)', 'jm-referral-system') . '</label>';
         echo '<p class="description">' . esc_html__('Does not block WordPress Administrators. AJAX, admin-post, secure downloads, exports, and profile screens remain allowed.', 'jm-referral-system') . '</p>';
         echo '</td></tr>';
 

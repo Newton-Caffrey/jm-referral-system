@@ -192,4 +192,81 @@
 
 	document.addEventListener('submit', onSubmit, true);
 	document.addEventListener('click', onClick, true);
+
+	/**
+	 * Organisation settings — WordPress media library logo picker.
+	 */
+	function initOrganisationLogoPicker() {
+		var input = document.getElementById('jmrs_org_logo_attachment_id');
+		var selectBtn = document.getElementById('jmrs_org_logo_select');
+		var clearBtn = document.getElementById('jmrs_org_logo_clear');
+		var preview = document.getElementById('jmrs_org_logo_preview');
+
+		if (!input || !selectBtn || !preview || typeof wp === 'undefined' || !wp.media) {
+			return;
+		}
+
+		var i18n = (window.jmrsOrgSettings && window.jmrsOrgSettings.i18n) || {};
+		var frame = null;
+
+		function setPreview(url) {
+			preview.innerHTML = '';
+			if (url) {
+				var img = document.createElement('img');
+				img.src = url;
+				img.alt = '';
+				preview.appendChild(img);
+			} else {
+				var p = document.createElement('p');
+				p.className = 'description';
+				p.textContent = i18n.noLogo || 'No logo selected. Portal and intake use text branding as a fallback.';
+				preview.appendChild(p);
+			}
+			if (clearBtn) {
+				clearBtn.disabled = !url;
+			}
+		}
+
+		selectBtn.addEventListener('click', function () {
+			if (frame) {
+				frame.open();
+				return;
+			}
+
+			frame = wp.media({
+				title: i18n.selectLogo || 'Select organisation logo',
+				button: { text: i18n.useLogo || 'Use this logo' },
+				library: { type: 'image' },
+				multiple: false
+			});
+
+			frame.on('select', function () {
+				var attachment = frame.state().get('selection').first();
+				if (!attachment) {
+					return;
+				}
+				var data = attachment.toJSON();
+				if (!data || !data.id) {
+					return;
+				}
+				input.value = String(data.id);
+				setPreview(data.url || (data.sizes && data.sizes.full && data.sizes.full.url) || '');
+			});
+
+			frame.open();
+		});
+
+		if (clearBtn) {
+			clearBtn.addEventListener('click', function () {
+				input.value = '0';
+				setPreview('');
+			});
+		}
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initOrganisationLogoPicker);
+	} else {
+		initOrganisationLogoPicker();
+	}
 })();

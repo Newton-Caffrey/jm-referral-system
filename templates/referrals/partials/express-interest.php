@@ -27,10 +27,19 @@ $methods         = is_array( $interest_form['methods'] ?? null ) ? $interest_for
 $default_method  = (string) ( $interest_form['default_method'] ?? 'phone' );
 $email_available = ! empty( $interest_form['email_available'] );
 $is_portal       = 'portal' === $context;
+$org_name        = \JMReferral\Settings\OrganisationSettings::display_name();
 ?>
 <div class="jmrs-express-interest" style="margin: 1.25em 0; padding: 1em 1.25em; border: 1px solid #2271b1; background: #f0f6fc;">
 	<h2 style="margin-top: 0;"><?php echo esc_html__( 'Express Interest', 'jm-referral-system' ); ?></h2>
-	<p><?php echo esc_html__( 'Confirm that JM Healthcare wishes to progress this referral, and record how the Local Authority / referrer was notified.', 'jm-referral-system' ); ?></p>
+	<p><?php
+	echo esc_html(
+		sprintf(
+			/* translators: %s: organisation display name */
+			__( 'Confirm that %s wishes to progress this referral, and record how the Local Authority / referrer was notified.', 'jm-referral-system' ),
+			$org_name
+		)
+	);
+	?></p>
 
 	<p>
 		<strong><?php echo esc_html__( 'Referral number:', 'jm-referral-system' ); ?></strong>
@@ -87,7 +96,15 @@ $is_portal       = 'portal' === $context;
 		<p>
 			<label>
 				<input type="checkbox" name="jmrs_interest_confirmed" value="1" />
-				<?php echo esc_html__( 'I confirm that JM Healthcare’s interest has been communicated to the referrer (required for Phone / Other).', 'jm-referral-system' ); ?>
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: organisation display name */
+						__( 'I confirm that %s’s interest has been communicated to the referrer (required for Phone / Other).', 'jm-referral-system' ),
+						$org_name
+					)
+				);
+				?>
 			</label>
 		</p>
 

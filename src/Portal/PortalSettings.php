@@ -2,8 +2,13 @@
 
 namespace JMReferral\Portal;
 
+use JMReferral\Settings\OrganisationSettings;
+
 /**
  * Staff portal settings (imperative option array).
+ *
+ * Presentation branding (name, logo, colours, support contact) is resolved via
+ * OrganisationSettings. Legacy option keys remain for upgrade compatibility.
  */
 class PortalSettings
 {
@@ -80,15 +85,17 @@ class PortalSettings
     public static function branding(): array
     {
         $all = self::all();
+        $email = OrganisationSettings::contact_email();
+        $phone = OrganisationSettings::contact_phone();
 
         return [
-            'portal_name'      => (string) $all['portal_name'],
-            'company_name'     => (string) $all['company_name'],
-            'logo_url'         => (string) $all['logo_url'],
-            'primary_colour'   => (string) $all['primary_colour'],
-            'secondary_colour' => (string) $all['secondary_colour'],
-            'support_email'    => (string) $all['support_email'],
-            'support_phone'    => (string) $all['support_phone'],
+            'portal_name'      => OrganisationSettings::portal_title(),
+            'company_name'     => OrganisationSettings::display_name(),
+            'logo_url'         => OrganisationSettings::logo_url(),
+            'primary_colour'   => OrganisationSettings::primary_colour(),
+            'secondary_colour' => OrganisationSettings::secondary_colour(),
+            'support_email'    => '' !== $email ? $email : (string) $all['support_email'],
+            'support_phone'    => '' !== $phone ? $phone : (string) $all['support_phone'],
         ];
     }
 

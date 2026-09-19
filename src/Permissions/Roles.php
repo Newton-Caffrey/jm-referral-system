@@ -29,7 +29,7 @@ class Roles
     {
         return [
             self::JM_ADMINISTRATOR => [
-                'label'        => __('JM Administrator', 'jm-referral-system'),
+                'label'        => __('Platform Administrator', 'jm-referral-system'),
                 'capabilities' => Capabilities::all(),
             ],
             self::REFERRAL_MANAGER => [
@@ -191,7 +191,29 @@ class Roles
             return;
         }
 
+        self::sync_role_display_name($slug, $label);
         self::sync_capabilities($role, $capabilities);
+    }
+
+    /**
+     * Updates the WordPress-stored display name without changing the role slug.
+     */
+    private static function sync_role_display_name(string $slug, string $label): void
+    {
+        global $wp_roles;
+
+        if (! $wp_roles instanceof \WP_Roles) {
+            return;
+        }
+
+        $current = (string) ($wp_roles->roles[$slug]['name'] ?? '');
+        if ($current === $label) {
+            return;
+        }
+
+        $wp_roles->roles[$slug]['name'] = $label;
+        $wp_roles->role_names[$slug]    = $label;
+        update_option($wp_roles->role_key, $wp_roles->roles);
     }
 
     /**

@@ -51,6 +51,22 @@ class AdminAssets
             true
         );
 
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash((string) $_GET['page'])) : '';
+        if ('jm-referrals-settings' === $page) {
+            wp_enqueue_media();
+            wp_localize_script(
+                'jmrs-admin',
+                'jmrsOrgSettings',
+                [
+                    'i18n' => [
+                        'selectLogo' => __('Select organisation logo', 'jm-referral-system'),
+                        'useLogo'    => __('Use this logo', 'jm-referral-system'),
+                        'noLogo'     => __('No logo selected. Portal and intake use text branding as a fallback.', 'jm-referral-system'),
+                    ],
+                ]
+            );
+        }
+
         wp_localize_script(
             'jmrs-admin',
             'jmrsAdmin',

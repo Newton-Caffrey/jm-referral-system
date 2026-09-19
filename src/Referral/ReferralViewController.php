@@ -1390,7 +1390,11 @@ class ReferralViewController
                 } elseif ('already_recorded' === $error) {
                     $message = __('Interest has already been recorded for this referral.', 'jm-referral-system');
                 } elseif ('confirmation_required' === $error) {
-                    $message = __('Please confirm that JM Healthcare’s interest has been communicated to the referrer.', 'jm-referral-system');
+                    $message = sprintf(
+                        /* translators: %s: organisation display name */
+                        __('Please confirm that %s’s interest has been communicated to the referrer.', 'jm-referral-system'),
+                        \JMReferral\Settings\OrganisationSettings::display_name()
+                    );
                 } elseif ('email_unavailable' === $error) {
                     $message = __('No valid referrer email is available. Please use phone or another communication method.', 'jm-referral-system');
                 } elseif ('wrong_stage' === $error) {

@@ -128,7 +128,7 @@ $heading = $is_add
 					value="<?php echo esc_attr( $val( $data, 'meeting_role' ) ); ?>"
 					<?php echo isset( $errors['meeting_role'] ) ? 'aria-invalid="true" aria-describedby="jmrs-attendee-error-meeting_role"' : ''; ?>
 				/>
-				<p class="description"><?php echo esc_html__( 'Examples: J&M representative, Meeting lead, Observer, Assessor, Care coordinator.', 'jm-referral-system' ); ?></p>
+				<p class="description"><?php echo esc_html__( 'Examples: Organisation representative, Meeting lead, Observer, Assessor, Care coordinator.', 'jm-referral-system' ); ?></p>
 				<?php $field_error( $errors, 'meeting_role' ); ?>
 			</div>
 		<?php else : ?>

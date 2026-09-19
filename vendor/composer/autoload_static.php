@@ -165,6 +165,7 @@ class ComposerStaticInit57bc947798ed76a137536f3057b4dbb5
         'JMReferral\\Services\\ServiceTypeController' => __DIR__ . '/../..' . '/src/Services/ServiceTypeController.php',
         'JMReferral\\Services\\ServiceTypeRepository' => __DIR__ . '/../..' . '/src/Services/ServiceTypeRepository.php',
         'JMReferral\\Services\\ServiceTypeService' => __DIR__ . '/../..' . '/src/Services/ServiceTypeService.php',
+        'JMReferral\\Settings\\OrganisationSettings' => __DIR__ . '/../..' . '/src/Settings/OrganisationSettings.php',
         'JMReferral\\Support\\CsvExportHelper' => __DIR__ . '/../..' . '/src/Support/CsvExportHelper.php',
         'JMReferral\\Support\\InputAllowlist' => __DIR__ . '/../..' . '/src/Support/InputAllowlist.php',
         'JMReferral\\Support\\UiHelper' => __DIR__ . '/../..' . '/src/Support/UiHelper.php',

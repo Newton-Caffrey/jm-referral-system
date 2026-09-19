@@ -9,7 +9,7 @@ Guide for WordPress Administrators and JM Administrators operating the system da
 | Role | Typical use |
 | --- | --- |
 | WordPress Administrator | Full WP + full JM access |
-| JM Administrator | Full JM clinical/ops (no WP site settings unless also WP Admin) |
+| Platform Administrator (`jmrs_administrator`) | Full JM clinical/ops (no WP site settings unless also WP Admin). Formerly labelled JM Administrator. |
 | Referral Manager | Intake, assignment, archive, oversight |
 | Care Coordinator | Care planning, team, schedules, visits |
 | Assessor | Assessments and related referral work |
@@ -186,8 +186,11 @@ Filter groups on Reports: **Report Period**, **Vacancy Home**, **Visit Analytics
 
 | Area | Purpose |
 | --- | --- |
-| Public Referral | Enable form, branding, spam-related settings, uploads |
-| Staff Portal | Enable portal, branding, base path, optional wp-admin redirect |
+| Organisation | Display/legal/trading names, logo, contact details, address, portal title |
+| Branding | Primary/secondary colours, email sender display name |
+| Public Referral | Enable form, heading/intro, notification email, uploads (identity comes from Organisation) |
+| Staff Portal | Enable portal, base path, optional wp-admin redirect (branding from Organisation) |
+| Pipeline Internal Targets | Optional operational stage wait targets |
 | Private Document Migration | Batch copy legacy Media Library files to private storage |
 | Data Integrity Check | Counts only — no automatic repair |
 | Backup / uninstall notes | Operational reminders |

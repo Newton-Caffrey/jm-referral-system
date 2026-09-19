@@ -236,7 +236,7 @@ class ManagementPipelineBoardService
             'show'              => true,
             'mode'              => $mode,
             'masthead'          => [
-                'company'        => __('J&M Healthcare Services', 'jm-referral-system'),
+                'company'        => \JMReferral\Settings\OrganisationSettings::display_name(),
                 'subtitle'       => __('Referral to placement pipeline', 'jm-referral-system'),
                 'period_label'   => __('Reporting view', 'jm-referral-system'),
                 'period_value'   => __('Live pipeline (point in time)', 'jm-referral-system'),

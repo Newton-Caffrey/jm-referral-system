@@ -2,6 +2,8 @@
 
 namespace JMReferral\Notifications;
 
+use JMReferral\Settings\OrganisationSettings;
+
 class EmailNotificationService
 {
     public function __construct(
@@ -41,6 +43,12 @@ class EmailNotificationService
         ];
 
         $safe_attachments = $this->filter_attachment_paths($attachments);
+        $sender_name      = OrganisationSettings::email_sender_name();
+        $from_name_filter = static function () use ($sender_name): string {
+            return $sender_name;
+        };
+
+        add_filter('wp_mail_from_name', $from_name_filter, 20);
 
         try {
             if ([] === $safe_attachments) {
@@ -53,6 +61,8 @@ class EmailNotificationService
             error_log('[JMRS] email send failed (transport exception)');
 
             return false;
+        } finally {
+            remove_filter('wp_mail_from_name', $from_name_filter, 20);
         }
     }
 

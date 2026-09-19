@@ -2,13 +2,18 @@
 
 namespace JMReferral\Frontend;
 
+use JMReferral\Settings\OrganisationSettings;
+
 /**
  * Centralized public-facing branding for the referral wizard and success receipt.
+ *
+ * Organisation identity resolves through OrganisationSettings (with legacy
+ * PublicReferralSettings fallbacks handled inside that service).
  */
 class PublicBranding
 {
-    public const DEFAULT_COMPANY_NAME = 'JM Healthcare';
-    public const DEFAULT_PRIMARY_COLOUR = '#0b5f4b';
+    public const DEFAULT_COMPANY_NAME = OrganisationSettings::DEFAULT_DISPLAY_NAME;
+    public const DEFAULT_PRIMARY_COLOUR = OrganisationSettings::DEFAULT_PRIMARY;
 
     /**
      * @return array{
@@ -29,22 +34,51 @@ class PublicBranding
             'company_name'       => self::company_name($settings),
             'heading'            => self::heading($settings),
             'intro'              => self::intro($settings),
-            'contact_phone'      => (string) ($settings['contact_phone'] ?? ''),
-            'contact_email'      => (string) ($settings['contact_email'] ?? ''),
+            'contact_phone'      => self::contact_phone($settings),
+            'contact_email'      => self::contact_email($settings),
             'primary_colour'     => self::primary_colour($settings),
             'success_next_steps' => self::success_next_steps($settings),
         ];
     }
 
     /**
-     * @param array<string, mixed>|null $settings
+     * @param array<string, mixed>|null $settings Unused; retained for call-site compatibility.
      */
     public static function company_name(?array $settings = null): string
     {
-        $settings = $settings ?? PublicReferralSettings::all();
-        $name     = trim((string) ($settings['company_name'] ?? ''));
+        unset($settings);
 
-        return '' !== $name ? $name : self::DEFAULT_COMPANY_NAME;
+        return OrganisationSettings::display_name();
+    }
+
+    /**
+     * @param array<string, mixed>|null $settings
+     */
+    public static function contact_phone(?array $settings = null): string
+    {
+        $org = OrganisationSettings::contact_phone();
+        if ('' !== $org) {
+            return $org;
+        }
+
+        $settings = $settings ?? PublicReferralSettings::all();
+
+        return (string) ($settings['contact_phone'] ?? '');
+    }
+
+    /**
+     * @param array<string, mixed>|null $settings
+     */
+    public static function contact_email(?array $settings = null): string
+    {
+        $org = OrganisationSettings::contact_email();
+        if ('' !== $org) {
+            return $org;
+        }
+
+        $settings = $settings ?? PublicReferralSettings::all();
+
+        return (string) ($settings['contact_email'] ?? '');
     }
 
     /**
@@ -68,9 +102,13 @@ class PublicBranding
      */
     public static function default_intro(): string
     {
-        return __(
-            "Use this form to securely refer an individual to J&M Healthcare for assessment and consideration of care and support services.\n\nCompleting this referral usually takes around 5–10 minutes.\n\nIf you do not know every answer, that is okay. Provide as much information as you can and our team will contact you if anything else is needed.",
-            'jm-referral-system'
+        return sprintf(
+            /* translators: %s: organisation display name */
+            __(
+                "Use this form to securely refer an individual to %s for assessment and consideration of care and support services.\n\nCompleting this referral usually takes around 5–10 minutes.\n\nIf you do not know every answer, that is okay. Provide as much information as you can and our team will contact you if anything else is needed.",
+                'jm-referral-system'
+            ),
+            OrganisationSettings::display_name()
         );
     }
 
@@ -137,14 +175,9 @@ class PublicBranding
      */
     public static function primary_colour(?array $settings = null): string
     {
-        $settings = $settings ?? PublicReferralSettings::all();
-        $colour   = strtolower(trim((string) ($settings['primary_colour'] ?? '')));
+        unset($settings);
 
-        if (preg_match('/^#[0-9a-f]{6}$/', $colour)) {
-            return $colour;
-        }
-
-        return self::DEFAULT_PRIMARY_COLOUR;
+        return OrganisationSettings::primary_colour();
     }
 
     /**

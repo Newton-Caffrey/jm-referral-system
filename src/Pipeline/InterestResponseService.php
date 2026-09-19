@@ -6,6 +6,7 @@ use JMReferral\Notifications\NotificationService;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Referral\ReferralActivityService;
 use JMReferral\Referral\ReferralRepository;
+use JMReferral\Settings\OrganisationSettings;
 
 /**
  * Records JM's interest response to a Local Authority / referrer and advances the pipeline.
@@ -209,7 +210,11 @@ class InterestResponseService
             if (! $confirmed) {
                 return $this->fail(
                     'confirmation_required',
-                    __('Please confirm that JM Healthcare’s interest has been communicated to the referrer.', 'jm-referral-system')
+                    sprintf(
+                        /* translators: %s: organisation display name */
+                        __('Please confirm that %s’s interest has been communicated to the referrer.', 'jm-referral-system'),
+                        OrganisationSettings::display_name()
+                    )
                 );
             }
             $recipient_snapshot = '' !== $phone ? $phone : null;
@@ -218,7 +223,11 @@ class InterestResponseService
             if (! $confirmed) {
                 return $this->fail(
                     'confirmation_required',
-                    __('Please confirm that JM Healthcare’s interest has been communicated to the referrer.', 'jm-referral-system')
+                    sprintf(
+                        /* translators: %s: organisation display name */
+                        __('Please confirm that %s’s interest has been communicated to the referrer.', 'jm-referral-system'),
+                        OrganisationSettings::display_name()
+                    )
                 );
             }
             $note = isset($input['other_note']) ? sanitize_text_field((string) $input['other_note']) : '';

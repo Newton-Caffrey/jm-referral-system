@@ -158,7 +158,7 @@ class PortalNavigation
         }
 
         $map = [
-            'jmrs_administrator'    => __('JM Administrator', 'jm-referral-system'),
+            'jmrs_administrator'    => __('Platform Administrator', 'jm-referral-system'),
             'jmrs_referral_manager' => __('Referral Manager', 'jm-referral-system'),
             'jmrs_care_coordinator' => __('Care Coordinator', 'jm-referral-system'),
             'jmrs_assessor'         => __('Assessor', 'jm-referral-system'),

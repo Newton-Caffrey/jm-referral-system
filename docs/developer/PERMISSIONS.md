@@ -67,7 +67,9 @@ Helpers: `Capabilities::all()`, `grant_to_administrators()`, `revoke_from_admini
 
 Custom roles always include WordPress `read`.
 
-### `jmrs_administrator` — JM Administrator
+### `jmrs_administrator` — Platform Administrator
+
+Display label **Platform Administrator** (role slug unchanged). Formerly labelled JM Administrator.
 
 All JMRS capabilities.
 

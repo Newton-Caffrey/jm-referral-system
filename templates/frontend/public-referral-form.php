@@ -40,7 +40,7 @@ $form_started    = isset( $form_started ) ? absint( $form_started ) : time();
 $nonce_action    = isset( $nonce_action ) ? (string) $nonce_action : 'jmrs_public_referral_submit';
 $nonce_field     = isset( $nonce_field ) ? (string) $nonce_field : 'jmrs_public_referral_nonce';
 
-$company_name  = (string) ( $branding['company_name'] ?? 'JM Healthcare' );
+$company_name  = (string) ( $branding['company_name'] ?? \JMReferral\Settings\OrganisationSettings::display_name() );
 $heading       = (string) ( $branding['heading'] ?? __( 'Local Authority Referral Form', 'jm-referral-system' ) );
 $intro         = (string) ( $branding['intro'] ?? '' );
 $primary       = (string) ( $branding['primary_colour'] ?? '#0b5f4b' );

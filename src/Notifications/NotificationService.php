@@ -6,6 +6,7 @@ use JMReferral\Frontend\PublicBranding;
 use JMReferral\Frontend\PublicReferralSettings;
 use JMReferral\Frontend\ReferrerTypes;
 use JMReferral\Referral\ReferralViewController;
+use JMReferral\Settings\OrganisationSettings;
 use JMReferral\Users\UserProvider;
 
 class NotificationService
@@ -48,7 +49,7 @@ class NotificationService
         $subject = sprintf(
             /* translators: %s: referral number */
             __('[%1$s] New referral assigned: %2$s', 'jm-referral-system'),
-            wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
+            OrganisationSettings::email_sender_name(),
             $context['referral_number']
         );
 
@@ -79,7 +80,7 @@ class NotificationService
         $subject = sprintf(
             /* translators: %s: referral number */
             __('[%1$s] Referral assigned to you: %2$s', 'jm-referral-system'),
-            wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
+            OrganisationSettings::email_sender_name(),
             $context['referral_number']
         );
 
@@ -112,7 +113,7 @@ class NotificationService
         $subject = sprintf(
             /* translators: %s: referral number */
             __('[%1$s] Referral status updated: %2$s', 'jm-referral-system'),
-            wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
+            OrganisationSettings::email_sender_name(),
             $context['referral_number']
         );
 
@@ -157,19 +158,20 @@ class NotificationService
         }
 
         $settings = PublicReferralSettings::all();
-        $contact_email = (string) ($settings['contact_email'] ?? '');
+        $contact_email = PublicBranding::contact_email($settings);
         if ('' === $contact_email || ! is_email($contact_email)) {
             $contact_email = (string) get_option('admin_email');
         }
 
+        $company = OrganisationSettings::email_sender_name();
         $context = [
             'referral_number' => (string) ($referral['referral_number'] ?? ''),
             'referrer_name'   => (string) ($referral['referrer_name'] ?? ''),
-            'site_name'       => PublicBranding::company_name($settings),
-            'company_name'    => PublicBranding::company_name($settings),
+            'site_name'       => $company,
+            'company_name'    => OrganisationSettings::display_name(),
             'site_url'        => home_url('/'),
             'admin_email'     => $contact_email,
-            'contact_phone'   => (string) ($settings['contact_phone'] ?? ''),
+            'contact_phone'   => PublicBranding::contact_phone($settings),
         ];
 
         $subject = sprintf(
@@ -197,26 +199,27 @@ class NotificationService
         }
 
         $settings = PublicReferralSettings::all();
-        $contact_email = (string) ($settings['contact_email'] ?? '');
+        $contact_email = PublicBranding::contact_email($settings);
         if ('' === $contact_email || ! is_email($contact_email)) {
             $contact_email = (string) get_option('admin_email');
         }
 
-        $company = PublicBranding::company_name($settings);
+        $company = OrganisationSettings::email_sender_name();
+        $display = OrganisationSettings::display_name();
         $context = [
             'referral_number' => (string) ($referral['referral_number'] ?? ''),
             'referrer_name'   => (string) ($referral['referrer_name'] ?? ''),
             'site_name'       => $company,
-            'company_name'    => $company,
+            'company_name'    => $display,
             'site_url'        => home_url('/'),
             'admin_email'     => $contact_email,
-            'contact_phone'   => (string) ($settings['contact_phone'] ?? ''),
+            'contact_phone'   => PublicBranding::contact_phone($settings),
         ];
 
         $subject = sprintf(
             /* translators: 1: company name, 2: referral number */
             __('%1$s — Interest in Referral %2$s', 'jm-referral-system'),
-            $company,
+            $display,
             $context['referral_number']
         );
 
@@ -243,26 +246,27 @@ class NotificationService
         }
 
         $settings = PublicReferralSettings::all();
-        $contact_email = (string) ($settings['contact_email'] ?? '');
+        $contact_email = PublicBranding::contact_email($settings);
         if ('' === $contact_email || ! is_email($contact_email)) {
             $contact_email = (string) get_option('admin_email');
         }
 
-        $company = PublicBranding::company_name($settings);
+        $company = OrganisationSettings::email_sender_name();
+        $display = OrganisationSettings::display_name();
         $context = [
             'referral_number' => (string) ($referral['referral_number'] ?? ''),
             'referrer_name'   => (string) ($referral['referrer_name'] ?? ''),
             'site_name'       => $company,
-            'company_name'    => $company,
+            'company_name'    => $display,
             'site_url'        => home_url('/'),
             'admin_email'     => $contact_email,
-            'contact_phone'   => (string) ($settings['contact_phone'] ?? ''),
+            'contact_phone'   => PublicBranding::contact_phone($settings),
         ];
 
         $subject = sprintf(
             /* translators: 1: company name, 2: referral number */
             __('%1$s — Package Cost for Referral %2$s', 'jm-referral-system'),
-            $company,
+            $display,
             $context['referral_number']
         );
 
@@ -290,7 +294,7 @@ class NotificationService
             'priority'         => $this->format_label((string) ($referral['priority'] ?? '')),
             'status'           => $this->format_label((string) ($referral['status'] ?? '')),
             'view_url'         => ReferralViewController::get_view_url($referral_id),
-            'site_name'        => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
+            'site_name'        => OrganisationSettings::email_sender_name(),
         ];
     }
 

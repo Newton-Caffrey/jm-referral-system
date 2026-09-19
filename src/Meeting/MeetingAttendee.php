@@ -62,7 +62,7 @@ class MeetingAttendee
             self::CATEGORY_CLIENT         => __('Client', 'jm-referral-system'),
             self::CATEGORY_FAMILY         => __('Family', 'jm-referral-system'),
             self::CATEGORY_ADVOCATE       => __('Advocate', 'jm-referral-system'),
-            self::CATEGORY_JM_STAFF       => __('J&M staff', 'jm-referral-system'),
+            self::CATEGORY_JM_STAFF       => __('Organisation staff', 'jm-referral-system'),
             self::CATEGORY_OTHER          => __('Other', 'jm-referral-system'),
         ];
     }

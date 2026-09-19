@@ -394,6 +394,32 @@
 	margin-bottom: 16px;
 }
 
+/* Organisation / branding settings */
+.jmrs-admin .jmrs-settings-org {
+	max-width: 920px;
+}
+
+.jmrs-admin .jmrs-org-logo-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 10px;
+}
+
+.jmrs-admin .jmrs-org-logo-preview {
+	flex: 1 1 100%;
+	margin-top: 8px;
+}
+
+.jmrs-admin .jmrs-org-logo-preview img {
+	display: block;
+	max-width: min(240px, 100%);
+	height: auto;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	padding: 6px;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Mobile / tablet                                                            */
 /* -------------------------------------------------------------------------- */
