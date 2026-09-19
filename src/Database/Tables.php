@@ -265,6 +265,26 @@ class Tables
     }
 
     /**
+     * Referral Inbox items (provider-neutral inbound opportunities).
+     */
+    public static function referral_inbox_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_inbox';
+    }
+
+    /**
+     * Referral Inbox attachment metadata (no binary storage in Phase 5B.1).
+     */
+    public static function referral_inbox_attachments_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_referral_inbox_attachments';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -301,6 +321,8 @@ class Tables
         self::create_referral_meeting_attendees_table($charset);
         self::create_local_authorities_table($charset);
         self::create_local_authority_sender_rules_table($charset);
+        self::create_referral_inbox_table($charset);
+        self::create_referral_inbox_attachments_table($charset);
     }
 
     /**
@@ -1207,6 +1229,95 @@ class Tables
             KEY rule_value (rule_value),
             KEY status (status),
             KEY type_value_status (rule_type, rule_value, status)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Phase 5B.1: Referral Inbox (provider-neutral inbound opportunities).
+     *
+     * Data minimisation: preview/summary only — no raw MIME/HTML archive, no tokens.
+     */
+    private static function create_referral_inbox_table(string $charset): void
+    {
+        $table = self::referral_inbox_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            source_provider VARCHAR(50) NOT NULL,
+            mailbox_identifier VARCHAR(255) NOT NULL,
+            provider_message_id VARCHAR(255) NOT NULL,
+            internet_message_id VARCHAR(255) NULL,
+            conversation_identifier VARCHAR(255) NULL,
+            dedupe_key CHAR(64) NOT NULL,
+            sender_name VARCHAR(255) NULL,
+            sender_email VARCHAR(190) NULL,
+            sender_domain VARCHAR(255) NULL,
+            recipient_summary VARCHAR(500) NULL,
+            subject VARCHAR(500) NULL,
+            body_preview VARCHAR(1000) NULL,
+            received_at DATETIME NOT NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'new',
+            detection_status VARCHAR(50) NOT NULL DEFAULT 'unclassified',
+            detection_reason VARCHAR(255) NULL,
+            local_authority_id BIGINT UNSIGNED NULL,
+            attachment_count INT UNSIGNED NOT NULL DEFAULT 0,
+            linked_referral_id BIGINT UNSIGNED NULL,
+            reviewed_by BIGINT UNSIGNED NULL,
+            reviewed_at DATETIME NULL,
+            accepted_by BIGINT UNSIGNED NULL,
+            accepted_at DATETIME NULL,
+            ignored_by BIGINT UNSIGNED NULL,
+            ignored_at DATETIME NULL,
+            duplicate_of_inbox_id BIGINT UNSIGNED NULL,
+            response_started_at DATETIME NULL,
+            response_sent_at DATETIME NULL,
+            error_code VARCHAR(100) NULL,
+            error_message VARCHAR(500) NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY dedupe_key (dedupe_key),
+            KEY status (status),
+            KEY detection_status (detection_status),
+            KEY received_at (received_at),
+            KEY status_received_at (status, received_at),
+            KEY detection_received_at (detection_status, received_at),
+            KEY sender_email (sender_email),
+            KEY sender_domain (sender_domain),
+            KEY local_authority_id (local_authority_id),
+            KEY linked_referral_id (linked_referral_id),
+            KEY internet_message_id (internet_message_id),
+            KEY source_provider (source_provider)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Phase 5B.1: Inbox attachment metadata only (no downloaded bytes).
+     */
+    private static function create_referral_inbox_attachments_table(string $charset): void
+    {
+        $table = self::referral_inbox_attachments_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            inbox_id BIGINT UNSIGNED NOT NULL,
+            provider_attachment_id VARCHAR(255) NULL,
+            filename VARCHAR(255) NULL,
+            mime_type VARCHAR(100) NULL,
+            size_bytes BIGINT UNSIGNED NULL,
+            sha256 CHAR(64) NULL,
+            storage_status VARCHAR(50) NOT NULL DEFAULT 'metadata_only',
+            private_path VARCHAR(500) NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY inbox_id (inbox_id),
+            KEY sha256 (sha256),
+            KEY storage_status (storage_status)
         ) {$charset};";
 
         dbDelta($sql);

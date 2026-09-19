@@ -1,6 +1,6 @@
 # Database Schema — JM Referral System
 
-Schema version: **`2.30.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
+Schema version: **`2.31.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
 DDL authority: `JMReferral\Database\Tables::create()` via WordPress `dbDelta`.
 
 All physical names are `{wpdb->prefix}jmrs_*`. Methods below are on `Tables`.
@@ -35,6 +35,9 @@ erDiagram
   jmrs_bedrooms ||--o{ jmrs_occupancies : occupied_by
   jmrs_referrals ||--o{ jmrs_occupancies : placed
   jmrs_local_authorities ||--o{ jmrs_local_authority_sender_rules : has
+  jmrs_referral_inbox ||--o{ jmrs_referral_inbox_attachments : has
+  jmrs_local_authorities ||--o{ jmrs_referral_inbox : optional_match
+  jmrs_referrals ||--o{ jmrs_referral_inbox : optional_link
 ```
 
 ---
@@ -269,6 +272,47 @@ Do not store clinical narrative here. Human timeline also logs concise `pipeline
 
 ---
 
+### `jmrs_referral_inbox` — `referral_inbox_table()` (Phase 5B.1)
+
+**Purpose:** Provider-neutral Referral Inbox items (inbound opportunities). Not an email archive.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Unique** | `dedupe_key` (CHAR 64) |
+| **Logical FKs** | `local_authority_id`, `linked_referral_id`, `duplicate_of_inbox_id` (nullable; app-enforced later) |
+
+**Identity:** `source_provider`, `mailbox_identifier`, `provider_message_id`, `internet_message_id` (non-unique), `conversation_identifier`.
+
+**Minimised content:** `sender_*`, `recipient_summary` (≤500), `subject` (≤500), `body_preview` (≤1000 plaintext).
+
+**Lifecycle / detection:** `status` (`ReferralInboxStatus`), `detection_status` (`ReferralDetectionStatus`) — independent fields.
+
+**Timing/actors:** `received_at`, review/accept/ignore + by, `response_started_at`, `response_sent_at`.
+
+**Errors:** `error_code`, `error_message` (≤500; no secrets).
+
+**Indexes:** unique `dedupe_key`; `status`; `detection_status`; `received_at`; `(status, received_at)`; `(detection_status, received_at)`; `sender_email`; `sender_domain`; `local_authority_id`; `linked_referral_id`; `internet_message_id`; `source_provider`.
+
+**Docs:** [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md).
+
+---
+
+### `jmrs_referral_inbox_attachments` — `referral_inbox_attachments_table()` (Phase 5B.1)
+
+**Purpose:** Attachment **metadata only** (no binary download/storage in 5B.1).
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Logical FK** | `inbox_id` → inbox (app-enforced) |
+
+**Columns:** `provider_attachment_id`, `filename`, `mime_type`, `size_bytes`, `sha256` (nullable), `storage_status` (`InboxAttachmentStatus`, default `metadata_only`), `private_path` (reserved), timestamps.
+
+**Indexes:** `inbox_id`, `sha256`, `storage_status`.
+
+---
+
 ### `jmrs_referral_care_plans` — `referral_care_plans_table()`
 
 **Purpose:** Active care plan (one per referral).
@@ -474,3 +518,4 @@ On `jmrs_referrals`:
 - Indexes/columns for current version are applied by re-running `Tables::create()` (`dbDelta`).
 - Legacy table rename: `{prefix}jm_referrals` → `jmrs_referrals` when needed.
 - **Phase 5A.3 (2.29.0 → 2.30.0):** additive `jmrs_local_authorities` + `jmrs_local_authority_sender_rules`. No referral/service backfill. See [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md).
+- **Phase 5B.1 (2.30.0 → 2.31.0):** additive `jmrs_referral_inbox` + `jmrs_referral_inbox_attachments`. No connectors/tokens/UI/detection/referral creation. See [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md).

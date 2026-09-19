@@ -22,6 +22,7 @@ User Acceptance Testing materials for **JM Healthcare Referral Platform** / JM R
 | [UAT_PHASE_5A_1_ORGANISATION_AND_BRANDING.md](UAT_PHASE_5A_1_ORGANISATION_AND_BRANDING.md) | **Phase 5A.1** organisation & branding foundation (toward **1.6.0**; DB **2.29.0**; rewrite **1.2.7**; **PASS** 2026-09-19) |
 | [UAT_PHASE_5A_2_SERVICES_TERMINOLOGY_MODULES.md](UAT_PHASE_5A_2_SERVICES_TERMINOLOGY_MODULES.md) | **Phase 5A.2** services catalogue, terminology & module settings (**PASS** 2026-09-19) |
 | [UAT_PHASE_5A_3_LOCAL_AUTHORITY_DIRECTORY.md](UAT_PHASE_5A_3_LOCAL_AUTHORITY_DIRECTORY.md) | **Phase 5A.3** Local Authority directory & recognised sender foundation (DB **2.30.0**; rewrite **1.2.7**; **PASS** 2026-09-19) |
+| [UAT_PHASE_5B_1_REFERRAL_INBOX_DATA_FOUNDATION.md](UAT_PHASE_5B_1_REFERRAL_INBOX_DATA_FOUNDATION.md) | **Phase 5B.1** Referral Inbox data foundation (DB **2.31.0**; rewrite **1.2.7**; **PASS** 2026-09-19) |
 | [../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md](../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md) | **Phase 4B.2.0** meetings UI/workflow audit (design) |
 | [UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md](UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md) | **Phase 4A** accuracy / privacy / existing-data parity (pre-release) |
 | [UAT_MANAGEMENT_DASHBOARD_V1_4.md](UAT_MANAGEMENT_DASHBOARD_V1_4.md) | **v1.4.0 Management Dashboard UAT** (visual + data acceptance) |

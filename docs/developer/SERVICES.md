@@ -153,6 +153,11 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Docs:** [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md)
 - **Notes:** DB **2.30.0**; product **1.5.0**; rewrite **1.2.7**. Not gated by `la_decisions` module. No mailbox/Graph/Gmail.
 
+### Referral Inbox domain constants (Phase 5B.1)
+- **Purpose:** Schema foundation only — `ReferralInboxStatus`, `ReferralDetectionStatus`, `ReferralInboxSource`, `InboxAttachmentStatus`, `ReferralInboxLimits`. No repositories/services/UI yet (5B.2+).
+- **Docs:** [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md)
+- **Notes:** DB **2.31.0**; product **1.5.0**; rewrite **1.2.7**. No connectors, detection, or referral creation.
+
 ### `HomeService` / `BedroomService` / `OccupancyService` / `HomeDashboardService`
 - **Purpose:** Supported living homes, bedrooms, historical placements (2B/2C), care-setting integration (2D), and home operational dashboard read model (2E). Capacity = active bedrooms; occupancy metrics shared via `OccupancyService::compute_metrics()`.
 - **Deps:** Home/Bedroom/Occupancy repositories, visit/care-plan/MAR repos (dashboard), `UserProvider`, `ReferralRepository`, `AccessPolicy`, `ReferralActivityService`

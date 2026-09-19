@@ -11,7 +11,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.30.0';
+    public const DB_VERSION = '2.31.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -213,6 +213,11 @@ class Migrator
         if (version_compare($from_version, '2.30.0', '<')) {
             // Phase 5A.3: jmrs_local_authorities + jmrs_local_authority_sender_rules via Tables::create() / dbDelta.
             // Additive only — no referral/service backfill; no mailbox/token tables.
+        }
+
+        if (version_compare($from_version, '2.31.0', '<')) {
+            // Phase 5B.1: jmrs_referral_inbox + jmrs_referral_inbox_attachments via Tables::create() / dbDelta.
+            // Additive only — no connectors, tokens, sync state, UI, detection, or referral creation.
         }
     }
 

@@ -54,6 +54,8 @@ $tables = [
     Tables::referral_assessments_table(),
     Tables::referral_meeting_attendees_table(),
     Tables::referral_meetings_table(),
+    Tables::referral_inbox_attachments_table(),
+    Tables::referral_inbox_table(),
     Tables::local_authority_sender_rules_table(),
     Tables::local_authorities_table(),
     Tables::referral_documents_table(),
