@@ -35,6 +35,27 @@ class PortalUrls
         return home_url('/' . PortalSettings::base_path() . '/referrals/');
     }
 
+    public static function referral_inbox(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/referral-inbox/');
+    }
+
+    /**
+     * @param array<string, scalar> $args
+     */
+    public static function referral_inbox_with_args(array $args): string
+    {
+        return add_query_arg($args, self::referral_inbox());
+    }
+
+    public static function referral_inbox_item(int $inbox_id): string
+    {
+        return home_url(
+            '/' . PortalSettings::base_path()
+            . '/referral-inbox/' . max(0, $inbox_id) . '/'
+        );
+    }
+
     public static function referral(int $referral_id): string
     {
         return home_url('/' . PortalSettings::base_path() . '/referrals/' . max(0, $referral_id) . '/');

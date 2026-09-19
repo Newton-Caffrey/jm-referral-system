@@ -224,6 +224,47 @@ class LocalAuthorityRepository
         return $this->list(['status' => 'active']);
     }
 
+    /**
+     * Batch-resolve Local Authority display names (Phase 5B.3 list efficiency).
+     *
+     * @param array<int, int> $ids
+     * @return array<int, string> Map of id => name
+     */
+    public function findNamesByIds(array $ids): array
+    {
+        global $wpdb;
+
+        $unique = [];
+        foreach ($ids as $id) {
+            $id = absint($id);
+            if ($id > 0) {
+                $unique[$id] = $id;
+            }
+        }
+
+        if ([] === $unique) {
+            return [];
+        }
+
+        $table        = Tables::local_authorities_table();
+        $placeholders = implode(',', array_fill(0, count($unique), '%d'));
+        $sql          = "SELECT id, name FROM {$table} WHERE id IN ({$placeholders})";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- placeholders generated from count.
+        $rows = $wpdb->get_results($wpdb->prepare($sql, ...array_values($unique)), ARRAY_A);
+
+        $map = [];
+        if (! is_array($rows)) {
+            return $map;
+        }
+
+        foreach ($rows as $row) {
+            $map[(int) $row['id']] = (string) ($row['name'] ?? '');
+        }
+
+        return $map;
+    }
+
     public function count_all(): int
     {
         global $wpdb;

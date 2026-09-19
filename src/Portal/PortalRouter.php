@@ -7,7 +7,7 @@ namespace JMReferral\Portal;
  */
 class PortalRouter
 {
-    public const REWRITE_VERSION = '1.2.7';
+    public const REWRITE_VERSION = '1.2.8';
 
     public const QV_PORTAL = 'jmrs_portal';
     public const QV_ROUTE = 'jmrs_portal_route';
@@ -74,6 +74,8 @@ class PortalRouter
             ['/referrals/([0-9]+)/visits/([0-9]+)/execute/?$', 'visit_execute', '$matches[1]', '$matches[2]', null],
             ['/referrals/([0-9]+)/visits/([0-9]+)/review/?$', 'visit_review', '$matches[1]', '$matches[2]', null],
             ['/referrals/([0-9]+)/?$', 'referral', '$matches[1]', null, null],
+            ['/referral-inbox/?$', 'referral_inbox', null, null, null],
+            ['/referral-inbox/([0-9]+)/?$', 'referral_inbox_item', '$matches[1]', null, null],
             ['/homes/?$', 'homes', null, null, null],
             ['/homes/new/?$', 'home_new', null, null, null],
             ['/homes/([0-9]+)/edit/?$', 'home_edit', '$matches[1]', null, null],

@@ -356,10 +356,12 @@ class Plugin
         $this->local_authority_service     = new LocalAuthorityService($la_repository, $sender_rule_repository, $la_matcher);
         $this->local_authority_controller  = new LocalAuthorityController($this->local_authority_service);
 
-        // Phase 5B.2 Inbox engine — constructed for DI readiness; no UI/controllers yet.
+        // Phase 5B.2 Inbox engine — Staff Portal UI wired in Phase 5B.3.
+        $inbox_repository                 = new \JMReferral\ReferralInbox\ReferralInboxRepository();
+        $inbox_attachment_repository      = new \JMReferral\ReferralInbox\ReferralInboxAttachmentRepository();
         $this->referral_inbox_service = new \JMReferral\ReferralInbox\ReferralInboxService(
-            new \JMReferral\ReferralInbox\ReferralInboxRepository(),
-            new \JMReferral\ReferralInbox\ReferralInboxAttachmentRepository(),
+            $inbox_repository,
+            $inbox_attachment_repository,
             new \JMReferral\ReferralInbox\ReferralInboxIdentity(),
             $la_repository,
             $repository
@@ -890,6 +892,18 @@ class Plugin
             $dashboard_service
         );
         $controller->set_homes_handler($homes_handler);
+
+        $inbox_handler = new \JMReferral\Portal\ReferralInbox\InboxHandler(
+            $controller,
+            $this->referral_inbox_service,
+            new \JMReferral\ReferralInbox\ReferralInboxRepository(),
+            new \JMReferral\ReferralInbox\ReferralInboxAttachmentRepository(),
+            new LocalAuthorityRepository(),
+            $repository,
+            $this->access_policy,
+            $this->user_provider
+        );
+        $controller->set_inbox_handler($inbox_handler);
 
         $occupancy_handler = new OccupancyHandler(
             $controller,

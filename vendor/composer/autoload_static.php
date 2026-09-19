@@ -135,6 +135,7 @@ class ComposerStaticInit57bc947798ed76a137536f3057b4dbb5
         'JMReferral\\Portal\\PortalRouter' => __DIR__ . '/../..' . '/src/Portal/PortalRouter.php',
         'JMReferral\\Portal\\PortalSettings' => __DIR__ . '/../..' . '/src/Portal/PortalSettings.php',
         'JMReferral\\Portal\\PortalUrls' => __DIR__ . '/../..' . '/src/Portal/PortalUrls.php',
+        'JMReferral\\Portal\\ReferralInbox\\InboxHandler' => __DIR__ . '/../..' . '/src/Portal/ReferralInbox/InboxHandler.php',
         'JMReferral\\Portal\\Responsibilities\\ResponsibilitiesHandler' => __DIR__ . '/../..' . '/src/Portal/Responsibilities/ResponsibilitiesHandler.php',
         'JMReferral\\ReferralInbox\\InboxAttachmentStatus' => __DIR__ . '/../..' . '/src/ReferralInbox/InboxAttachmentStatus.php',
         'JMReferral\\ReferralInbox\\ReferralDetectionStatus' => __DIR__ . '/../..' . '/src/ReferralInbox/ReferralDetectionStatus.php',

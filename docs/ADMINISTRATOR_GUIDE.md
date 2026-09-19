@@ -205,9 +205,9 @@ Filter groups on Reports: **Report Period**, **Vacancy Home**, **Visit Analytics
 
 ## Staff portal
 
-Optional frontend app at `/staff-portal/` (configurable). Read-only foundation in v1.0: dashboard, referral list, referral view, secure downloads. Disabled by default.
+Optional frontend app at `/staff-portal/` (configurable). Includes dashboard, referral list/view, Supported Living (when enabled), and **Referral Inbox** for reviewing incoming referral opportunities before they enter the workflow (Phase 5B.3). Inbox access is limited to Platform Admin / JM Administrator / Referral Manager / Care Coordinator (not Assessor or Support Worker). Mailbox connection is not available yet — opportunities appear when an intake source adds them. Disabled by default.
 
-Administrators normally keep using wp-admin. See `docs/STAFF_PORTAL.md` and `docs/STAFF_USER_GUIDE.md`.
+Administrators normally keep using wp-admin. See `docs/STAFF_PORTAL.md` and `docs/STAFF_USER_GUIDE.md`. Developer notes: `docs/developer/REFERRAL_INBOX_UI.md`.
 
 ---
 

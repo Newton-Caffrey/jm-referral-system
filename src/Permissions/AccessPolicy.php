@@ -203,6 +203,52 @@ class AccessPolicy
     }
 
     /**
+     * Whether the user may view the Staff Portal Referral Inbox (Phase 5B.3).
+     *
+     * Requires `VIEW_REFERRALS` plus the same commercial/management roles as
+     * Express Interest / meeting management (Platform Admin / WP admin,
+     * JM Administrator, Referral Manager, Care Coordinator).
+     * Denied: Assessor, Support Worker.
+     * Does not invent a new capability. Does not grant Inbox mutations.
+     */
+    public function can_view_referral_inbox(?int $user_id = null): bool
+    {
+        $user = $this->resolve_user($user_id);
+
+        if (! $user instanceof \WP_User) {
+            return false;
+        }
+
+        if (! user_can($user, Capabilities::VIEW_REFERRALS)) {
+            return false;
+        }
+
+        return $this->has_meeting_management_role($user_id);
+    }
+
+    /**
+     * Whether the user may perform Referral Inbox state-changing actions (Phase 5B.3).
+     *
+     * Requires Inbox view access plus `EDIT_REFERRALS`.
+     * Denied: Assessor, Support Worker (via commercial gate).
+     * Does not invent a new capability.
+     */
+    public function can_manage_referral_inbox(?int $user_id = null): bool
+    {
+        $user = $this->resolve_user($user_id);
+
+        if (! $user instanceof \WP_User) {
+            return false;
+        }
+
+        if (! $this->can_view_referral_inbox($user_id)) {
+            return false;
+        }
+
+        return user_can($user, Capabilities::EDIT_REFERRALS);
+    }
+
+    /**
      * Whether the user may view referral meetings (Phase 4B.2 read UI).
      *
      * Requires referral visibility. Explicitly denies Support Workers even when

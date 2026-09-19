@@ -162,7 +162,13 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Purpose:** Provider-neutral Inbox create/idempotency, atomic lifecycle transitions, review/ignore/duplicate/error/accept-safety, attachment metadata.
 - **Deps:** `ReferralInboxRepository`, `ReferralInboxAttachmentRepository`, `ReferralInboxIdentity`, `LocalAuthorityRepository`, `ReferralRepository`
 - **Docs:** [`REFERRAL_INBOX_SERVICE.md`](REFERRAL_INBOX_SERVICE.md)
-- **Notes:** DB remains **2.31.0**. No UI. `markAccepted` requires existing referral ID and does not call `ReferralService::create()`. Attachment idempotency best-effort only (no UNIQUE on inbox+provider attachment id).
+- **Notes:** DB remains **2.31.0**. `markAccepted` requires existing referral ID and does not call `ReferralService::create()`. Attachment idempotency best-effort only (no UNIQUE on inbox+provider attachment id).
+
+### Staff Portal Referral Inbox UI (Phase 5B.3)
+- **Purpose:** Staff Portal list/detail for Inbox opportunities; Start Review / Ignore / Duplicate / error recovery via `ReferralInboxService`.
+- **Deps:** `InboxHandler`, `AccessPolicy::can_view_referral_inbox` / `can_manage_referral_inbox`, repository read methods
+- **Docs:** [`REFERRAL_INBOX_UI.md`](REFERRAL_INBOX_UI.md)
+- **Notes:** Product **1.5.0**; DB **2.31.0**; rewrite **1.2.8**. No Accept button, no connector, no detection, no attachment downloads. GET is non-mutating.
 
 ### `HomeService` / `BedroomService` / `OccupancyService` / `HomeDashboardService`
 - **Purpose:** Supported living homes, bedrooms, historical placements (2B/2C), care-setting integration (2D), and home operational dashboard read model (2E). Capacity = active bedrooms; occupancy metrics shared via `OccupancyService::compute_metrics()`.

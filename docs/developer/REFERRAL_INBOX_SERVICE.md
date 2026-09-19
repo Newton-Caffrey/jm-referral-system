@@ -2,12 +2,14 @@
 
 **Product:** 1.5.0  
 **Database:** **2.31.0** (unchanged — no migration)  
-**Portal rewrite:** 1.2.7  
+**Portal rewrite:** 1.2.8 (Staff Portal Inbox UI — Phase 5B.3)
 **Branch:** `develop/1.6.0`
 
 Provider-neutral **domain/service engine** on top of the Phase 5B.1 schema.
 
-**Still out of scope:** Inbox UI, Graph/Gmail/OAuth/webhooks/sync/tokens, detection/classification, `ReferralService::create()`, attachment file I/O, cron.
+**Still out of scope:** Graph/Gmail/OAuth/webhooks/sync/tokens, detection/classification, `ReferralService::create()`, attachment file I/O, cron.
+
+Staff Portal UI is documented in [`REFERRAL_INBOX_UI.md`](REFERRAL_INBOX_UI.md) (Phase 5B.3).
 
 ---
 
@@ -22,7 +24,7 @@ Provider-neutral **domain/service engine** on top of the Phase 5B.1 schema.
 | `ReferralInboxAttachmentRepository` | Attachment metadata CRUD |
 | `ReferralInboxService` | Application boundary for all Inbox writes |
 
-Wired for DI readiness in `Plugin` — **no admin menu/controllers**.
+Wired for DI readiness in `Plugin`; Staff Portal mutations go through `InboxHandler` → this service only.
 
 ---
 

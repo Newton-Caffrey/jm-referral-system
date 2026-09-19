@@ -33,6 +33,7 @@ use JMReferral\Portal\Clinical\ClinicalDispatcher;
 use JMReferral\Portal\Clinical\PortalViewHost;
 use JMReferral\Portal\Homes\HomesHandler;
 use JMReferral\Portal\Homes\OccupancyHandler;
+use JMReferral\Portal\ReferralInbox\InboxHandler;
 use JMReferral\Homes\OccupancyService;
 use JMReferral\Referral\CareSetting;
 use JMReferral\Referral\ReferralActivityRepository;
@@ -78,6 +79,11 @@ class PortalController implements PortalViewHost
      * Set after construction via set_homes_handler() (HomesHandler needs PortalViewHost).
      */
     private ?HomesHandler $homes_handler = null;
+
+    /**
+     * Set after construction via set_inbox_handler() (InboxHandler needs PortalViewHost).
+     */
+    private ?InboxHandler $inbox_handler = null;
 
     /**
      * Set after construction via set_occupancy_handler() / set_occupancy_service().
@@ -160,6 +166,11 @@ class PortalController implements PortalViewHost
     public function set_homes_handler(HomesHandler $homes_handler): void
     {
         $this->homes_handler = $homes_handler;
+    }
+
+    public function set_inbox_handler(InboxHandler $inbox_handler): void
+    {
+        $this->inbox_handler = $inbox_handler;
     }
 
     public function set_occupancy_handler(OccupancyHandler $occupancy_handler): void
@@ -269,6 +280,12 @@ class PortalController implements PortalViewHost
 
         if (null !== $this->homes_handler && $this->homes_handler->handles($route)) {
             $this->homes_handler->dispatch($route);
+
+            return;
+        }
+
+        if (null !== $this->inbox_handler && $this->inbox_handler->handles($route)) {
+            $this->inbox_handler->dispatch($route);
 
             return;
         }

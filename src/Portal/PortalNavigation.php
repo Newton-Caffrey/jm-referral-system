@@ -110,6 +110,17 @@ class PortalNavigation
             ];
         }
 
+        if ($this->access_policy->can_view_referral_inbox()) {
+            $items[] = [
+                'id'      => 'referral_inbox',
+                'label'   => __('Referral Inbox', 'jm-referral-system'),
+                'url'     => PortalUrls::referral_inbox(),
+                'current' => in_array($current_route, ['referral_inbox', 'referral_inbox_item'], true),
+                'icon'    => 'referrals',
+                'section' => 'care',
+            ];
+        }
+
         if (
             ModuleSettings::is_enabled(ModuleSettings::SUPPORTED_LIVING)
             && Capabilities::current_user_can(Capabilities::VIEW_HOMES)

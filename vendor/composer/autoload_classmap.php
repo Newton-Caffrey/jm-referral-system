@@ -120,6 +120,7 @@ return array(
     'JMReferral\\Portal\\PortalRouter' => $baseDir . '/src/Portal/PortalRouter.php',
     'JMReferral\\Portal\\PortalSettings' => $baseDir . '/src/Portal/PortalSettings.php',
     'JMReferral\\Portal\\PortalUrls' => $baseDir . '/src/Portal/PortalUrls.php',
+    'JMReferral\\Portal\\ReferralInbox\\InboxHandler' => $baseDir . '/src/Portal/ReferralInbox/InboxHandler.php',
     'JMReferral\\Portal\\Responsibilities\\ResponsibilitiesHandler' => $baseDir . '/src/Portal/Responsibilities/ResponsibilitiesHandler.php',
     'JMReferral\\ReferralInbox\\InboxAttachmentStatus' => $baseDir . '/src/ReferralInbox/InboxAttachmentStatus.php',
     'JMReferral\\ReferralInbox\\ReferralDetectionStatus' => $baseDir . '/src/ReferralInbox/ReferralDetectionStatus.php',

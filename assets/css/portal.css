@@ -1,4 +1,4 @@
-/* JM Referral System — Staff Portal (scoped under .jmrs-portal) */
+/* JM Referral System ? Staff Portal (scoped under .jmrs-portal) */
 
 .jmrs-portal-body {
 	margin: 0;
@@ -264,7 +264,7 @@ body.admin-bar.jmrs-portal-body {
 
 .jmrs-portal-page-title {
 	margin: 0.25rem 0 0;
-	/* Staging measured: 24px / 400 / 30px — px avoids theme root rem drift */
+	/* Staging measured: 24px / 400 / 30px ? px avoids theme root rem drift */
 	font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 	font-size: 24px;
 	font-weight: 400;
@@ -368,7 +368,7 @@ body.admin-bar.jmrs-portal-body {
 }
 
 /*
- * Section titles (e.g. Results) are <h2>. Staging never had a JMRS size rule —
+ * Section titles (e.g. Results) are <h2>. Staging never had a JMRS size rule ?
  * measured 30.9133px / 400 / 34.7775px. Use px so theme root rem changes cannot
  * shift the approved desktop typography.
  */
@@ -917,7 +917,7 @@ body.admin-bar.jmrs-portal-body {
 .jmrs-portal .jmrs-portal-table td {
 	text-align: left;
 	padding: 0.65rem 0.55rem;
-	/* Horizontal separators only — no cell grid / vertical rules. */
+	/* Horizontal separators only ? no cell grid / vertical rules. */
 	border: 0;
 	border-bottom: 1px solid var(--jmrs-portal-border);
 	vertical-align: top;
@@ -1670,7 +1670,7 @@ body.admin-bar.jmrs-portal-body {
 	}
 }
 
-/* Phase 4H.1 � Transition Planning / Care Commencement panel */
+/* Phase 4H.1 ? Transition Planning / Care Commencement panel */
 .jmrs-portal .jmrs-transition-planning {
 	margin: 1.25em 0;
 	padding: 1em 1.25em;
@@ -1735,4 +1735,236 @@ body.admin-bar.jmrs-portal-body {
 .jmrs-portal .jmrs-transition-planning__wrap { overflow-wrap: anywhere; word-break: break-word; }
 @media (max-width: 375px) {
 	.jmrs-portal .jmrs-transition-planning { padding: 0.85em; }
+}
+
+/* Phase 5B.3 ? Referral Inbox */
+.jmrs-inbox__intro,
+.jmrs-inbox__summary {
+	color: var(--jmrs-portal-muted);
+	margin: 0 0 var(--jmrs-portal-space-md);
+}
+
+.jmrs-inbox-tabs {
+	margin: 0 0 var(--jmrs-portal-space-md);
+}
+
+.jmrs-inbox-tabs__list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.5rem;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border-bottom: 1px solid var(--jmrs-portal-border);
+}
+
+.jmrs-inbox-tabs__item a {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.25rem;
+	padding: 0.55rem 0.75rem;
+	text-decoration: none;
+	color: var(--jmrs-portal-muted);
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+}
+
+.jmrs-inbox-tabs__item.is-current a,
+.jmrs-inbox-tabs__item a[aria-current="page"] {
+	color: var(--jmrs-portal-primary);
+	font-weight: 600;
+	border-bottom-color: var(--jmrs-portal-primary);
+}
+
+.jmrs-inbox-tabs__count {
+	font-weight: 400;
+}
+
+.jmrs-inbox-badge {
+	display: inline-block;
+	padding: 0.15rem 0.45rem;
+	border-radius: 0.25rem;
+	font-size: 0.85rem;
+	font-weight: 600;
+	line-height: 1.3;
+	border: 1px solid var(--jmrs-portal-border);
+	background: #fff;
+	color: var(--jmrs-portal-text);
+}
+
+.jmrs-inbox-badge--status-new {
+	background: var(--jmrs-portal-info-tint);
+	border-color: var(--jmrs-portal-info-border);
+	color: var(--jmrs-portal-info);
+}
+
+.jmrs-inbox-badge--status-needs_review {
+	background: var(--jmrs-portal-warning-tint);
+	border-color: var(--jmrs-portal-warning-border);
+	color: var(--jmrs-portal-warning);
+}
+
+.jmrs-inbox-badge--status-accepted {
+	background: var(--jmrs-portal-primary-tint);
+	border-color: #b7d9c9;
+	color: var(--jmrs-portal-primary);
+}
+
+.jmrs-inbox-badge--status-ignored,
+.jmrs-inbox-badge--status-duplicate {
+	background: #f3f5f4;
+	color: var(--jmrs-portal-muted);
+}
+
+.jmrs-inbox-badge--status-error {
+	background: #fcf0f1;
+	border-color: #f0b7b8;
+	color: #b32d2e;
+}
+
+.jmrs-inbox-badge--fixture {
+	margin-left: 0.35rem;
+	background: #f3f5f4;
+	color: var(--jmrs-portal-muted);
+	font-weight: 500;
+}
+
+.jmrs-inbox-badge--detection {
+	font-weight: 500;
+}
+
+.jmrs-inbox-body-preview {
+	white-space: pre-wrap;
+	word-break: break-word;
+	overflow-wrap: anywhere;
+	margin: 0;
+	padding: 0.85rem 1rem;
+	background: #f8faf9;
+	border: 1px solid var(--jmrs-portal-border);
+	border-radius: var(--jmrs-portal-radius);
+	font-family: var(--jmrs-portal-font);
+	font-size: 0.95rem;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+.jmrs-inbox-detail__back {
+	margin: 0 0 var(--jmrs-portal-space-md);
+}
+
+.jmrs-inbox-detail__panel {
+	margin: 0 0 var(--jmrs-portal-space-lg);
+	padding: 1rem 1.15rem;
+	background: var(--jmrs-portal-surface);
+	border: 1px solid var(--jmrs-portal-border);
+	border-radius: var(--jmrs-portal-radius);
+}
+
+.jmrs-inbox-detail__panel--muted {
+	background: #f8faf9;
+}
+
+.jmrs-inbox-detail__panel h3 {
+	margin: 0 0 0.75rem;
+	font-size: 1.05rem;
+}
+
+.jmrs-inbox-detail__subheading {
+	margin: 1rem 0 0.5rem;
+	font-size: 0.95rem;
+}
+
+.jmrs-inbox-detail__hint {
+	color: var(--jmrs-portal-muted);
+	font-size: 0.92rem;
+	margin: 0 0 0.75rem;
+}
+
+.jmrs-inbox-detail__facts {
+	display: grid;
+	gap: 0.65rem 1.25rem;
+	grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+	margin: 0;
+}
+
+.jmrs-inbox-detail__facts dt {
+	font-weight: 600;
+	margin: 0;
+	font-size: 0.85rem;
+	color: var(--jmrs-portal-muted);
+}
+
+.jmrs-inbox-detail__facts dd {
+	margin: 0.15rem 0 0;
+}
+
+.jmrs-inbox-detail__facts code {
+	font-size: 0.85rem;
+	word-break: break-all;
+}
+
+.jmrs-inbox-action-form {
+	margin: 0 0 1rem;
+	padding-bottom: 1rem;
+	border-bottom: 1px solid var(--jmrs-portal-border);
+}
+
+.jmrs-inbox-action-form:last-child {
+	border-bottom: 0;
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+.jmrs-inbox-action-form label {
+	display: block;
+	margin-bottom: 0.35rem;
+	font-weight: 600;
+}
+
+.jmrs-inbox-action-form input[type="number"],
+.jmrs-inbox-action-form input[type="text"] {
+	max-width: 16rem;
+	width: 100%;
+}
+
+.jmrs-inbox-action-form--ignore label {
+	font-weight: 400;
+}
+
+.jmrs-inbox-dup-preview {
+	margin: 0 0 1rem;
+	padding: 0.75rem 1rem;
+	background: var(--jmrs-portal-info-tint);
+	border: 1px solid var(--jmrs-portal-info-border);
+	border-radius: var(--jmrs-portal-radius);
+}
+
+.jmrs-inbox-table-wrap {
+	max-width: 100%;
+}
+
+@media (max-width: 768px) {
+	.jmrs-inbox-table th.jmrs-inbox-col--secondary,
+	.jmrs-inbox-table td.jmrs-inbox-col--secondary {
+		display: none;
+	}
+
+	.jmrs-inbox-tabs__list {
+		gap: 0.25rem;
+	}
+
+	.jmrs-inbox-tabs__item a {
+		padding: 0.45rem 0.55rem;
+		font-size: 0.92rem;
+	}
+}
+
+@media (max-width: 375px) {
+	.jmrs-inbox-detail__panel {
+		padding: 0.85rem;
+	}
+
+	.jmrs-inbox-action-form input[type="number"] {
+		max-width: 100%;
+	}
 }

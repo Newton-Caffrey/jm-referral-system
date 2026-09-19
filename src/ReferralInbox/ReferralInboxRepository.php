@@ -315,4 +315,124 @@ class ReferralInboxRepository
 
         return false !== $result;
     }
+
+    /**
+     * Paginated Inbox list for Staff Portal UI (Phase 5B.3).
+     *
+     * @param array{status?: string, search?: string} $filters
+     * @return array<int, array<string, mixed>>
+     */
+    public function query(array $filters, int $page = 1, int $per_page = 20): array
+    {
+        global $wpdb;
+
+        $page     = max(1, $page);
+        $per_page = max(1, min(100, $per_page));
+        $offset   = ($page - 1) * $per_page;
+
+        [$where_sql, $params] = $this->build_list_where($filters);
+
+        $table = Tables::referral_inbox_table();
+        $cols  = self::SELECT_COLUMNS;
+
+        $sql = "SELECT {$cols} FROM {$table} WHERE {$where_sql}
+            ORDER BY received_at DESC, id DESC
+            LIMIT %d OFFSET %d";
+
+        $params[] = $per_page;
+        $params[] = $offset;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- fragments built from allowlisted filters.
+        $rows = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+        return is_array($rows) ? $rows : [];
+    }
+
+    /**
+     * @param array{status?: string, search?: string} $filters
+     */
+    public function count(array $filters): int
+    {
+        global $wpdb;
+
+        [$where_sql, $params] = $this->build_list_where($filters);
+
+        $table = Tables::referral_inbox_table();
+        $sql   = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
+
+        if ([] === $params) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- no user params; table trusted.
+            return (int) $wpdb->get_var($sql);
+        }
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- fragments built from allowlisted filters.
+        return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
+
+    /**
+     * Counts per lifecycle status in a single GROUP BY query.
+     *
+     * @return array<string, int> Map of status key => count (missing keys implied 0 by callers).
+     */
+    public function countByStatus(): array
+    {
+        global $wpdb;
+
+        $table = Tables::referral_inbox_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table trusted.
+        $rows = $wpdb->get_results(
+            "SELECT status, COUNT(*) AS cnt FROM {$table} GROUP BY status",
+            ARRAY_A
+        );
+
+        $counts = [];
+        foreach (ReferralInboxStatus::all() as $status) {
+            $counts[$status] = 0;
+        }
+
+        if (! is_array($rows)) {
+            return $counts;
+        }
+
+        foreach ($rows as $row) {
+            $status = (string) ($row['status'] ?? '');
+            if (isset($counts[$status])) {
+                $counts[$status] = (int) ($row['cnt'] ?? 0);
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @param array{status?: string, search?: string} $filters
+     * @return array{0: string, 1: array<int, mixed>}
+     */
+    private function build_list_where(array $filters): array
+    {
+        global $wpdb;
+
+        $where  = ['1=1'];
+        $params = [];
+
+        $status = isset($filters['status']) ? (string) $filters['status'] : '';
+        if ('' !== $status && ReferralInboxStatus::is_valid($status)) {
+            $where[]  = 'status = %s';
+            $params[] = $status;
+        }
+
+        $search = isset($filters['search']) ? trim((string) $filters['search']) : '';
+        if ('' !== $search) {
+            $like     = '%' . $wpdb->esc_like($search) . '%';
+            $where[]  = '(subject LIKE %s OR sender_name LIKE %s OR sender_email LIKE %s OR internet_message_id LIKE %s OR provider_message_id LIKE %s)';
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+        }
+
+        return [implode(' AND ', $where), $params];
+    }
 }
