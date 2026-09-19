@@ -183,6 +183,7 @@ flowchart LR
 | TerminologySettings + ModuleSettings | Display labels and operational module switches without renaming domain keys (Phase 5A.2) |
 | Local Authority directory + recognised sender rules | Platform config for commissioning orgs; provider-neutral matcher; recognition ≠ authenticity (Phase 5A.3, DB 2.30.0) |
 | Referral Inbox data foundation | Provider-neutral inbox + attachment metadata tables; lifecycle ≠ detection; no connectors/UI yet (Phase 5B.1, DB 2.31.0) |
+| Referral Inbox engine | Identity/dedupe, repositories, service, atomic transitions; no UI/connectors (Phase 5B.2, DB 2.31.0) |
 
 ---
 
@@ -198,6 +199,7 @@ flowchart LR
 - [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md)
 - [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md)
 - [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md)
+- [`REFERRAL_INBOX_SERVICE.md`](REFERRAL_INBOX_SERVICE.md)
 - [`SERVICES.md`](SERVICES.md)
 - [`DEPENDENCY_INJECTION.md`](DEPENDENCY_INJECTION.md)
 - [`PROJECT_HISTORY.md`](PROJECT_HISTORY.md)

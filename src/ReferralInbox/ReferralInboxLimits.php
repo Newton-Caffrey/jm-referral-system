@@ -21,4 +21,18 @@ class ReferralInboxLimits
 
     /** SHA-256 hex length for dedupe_key / optional attachment hash. */
     public const DEDUPE_KEY_LENGTH = 64;
+
+    public const MAILBOX_IDENTIFIER_MAX = 255;
+    public const PROVIDER_MESSAGE_ID_MAX = 255;
+    public const INTERNET_MESSAGE_ID_MAX = 255;
+    public const CONVERSATION_IDENTIFIER_MAX = 255;
+    public const SENDER_NAME_MAX = 255;
+    public const SENDER_EMAIL_MAX = 190;
+    public const SENDER_DOMAIN_MAX = 255;
+    public const ERROR_CODE_MAX = 100;
+    public const PROVIDER_ATTACHMENT_ID_MAX = 255;
+    public const FILENAME_MAX = 255;
+    public const MIME_TYPE_MAX = 100;
+    public const PRIVATE_PATH_MAX = 500;
+    public const DETECTION_REASON_MAX = 255;
 }

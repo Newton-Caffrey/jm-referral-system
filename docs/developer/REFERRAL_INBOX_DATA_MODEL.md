@@ -26,7 +26,8 @@ Provider-neutral **data foundation** for a future Referral Inbox that will recei
 - Inbox UI, Accept/Ignore, referral creation
 - Attachment binary download/storage
 - Connector tables, token storage, sync-state tables
-- Repositories / Inbox service workflow (Phase **5B.2**)
+- Inbox UI (Phase **5B.3**)
+- Detection / classification (Phase **5D**)
 
 ---
 
@@ -42,6 +43,8 @@ Future phases:
 | 5B.3 | Admin Inbox UI |
 | 5C | Provider connectors |
 | 5D | Detection / classification |
+
+See also: [`REFERRAL_INBOX_SERVICE.md`](REFERRAL_INBOX_SERVICE.md) (Phase 5B.2 engine).
 
 ---
 

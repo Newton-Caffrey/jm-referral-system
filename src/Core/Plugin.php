@@ -110,6 +110,7 @@ class Plugin
     private ?ServiceTypeService $service_type_service = null;
     private ?LocalAuthorityController $local_authority_controller = null;
     private ?LocalAuthorityService $local_authority_service = null;
+    private ?\JMReferral\ReferralInbox\ReferralInboxService $referral_inbox_service = null;
     private ?WorkflowStageController $workflow_stage_controller = null;
     private ?WorkflowStageService $workflow_stage_service = null;
     private ?ReferralCarePlanReviewController $care_plan_review_controller = null;
@@ -354,6 +355,15 @@ class Plugin
         $la_matcher                        = new LocalAuthoritySenderMatcher($la_repository, $sender_rule_repository);
         $this->local_authority_service     = new LocalAuthorityService($la_repository, $sender_rule_repository, $la_matcher);
         $this->local_authority_controller  = new LocalAuthorityController($this->local_authority_service);
+
+        // Phase 5B.2 Inbox engine — constructed for DI readiness; no UI/controllers yet.
+        $this->referral_inbox_service = new \JMReferral\ReferralInbox\ReferralInboxService(
+            new \JMReferral\ReferralInbox\ReferralInboxRepository(),
+            new \JMReferral\ReferralInbox\ReferralInboxAttachmentRepository(),
+            new \JMReferral\ReferralInbox\ReferralInboxIdentity(),
+            $la_repository,
+            $repository
+        );
 
         $workflow_stage_repository       = new WorkflowStageRepository();
         $this->workflow_stage_service    = new WorkflowStageService($workflow_stage_repository, $repository);
