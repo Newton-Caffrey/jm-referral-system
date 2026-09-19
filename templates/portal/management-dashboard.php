@@ -37,6 +37,11 @@ $ops          = is_array( $board['operational'] ?? null ) ? $board['operational'
 $show_ops     = ! empty( $ops['show'] );
 $ops_attn     = is_array( $ops['needs_attention_extra'] ?? null ) ? $ops['needs_attention_extra'] : array();
 $ops_attn_n   = count( $ops_attn );
+$modules      = is_array( $board['modules'] ?? null ) ? $board['modules'] : array();
+$mod_assess   = ! empty( $modules['assessments'] );
+$mod_pkg      = ! empty( $modules['package_costing'] );
+$mod_la       = ! empty( $modules['la_decisions'] );
+$mod_trans    = ! empty( $modules['transition'] );
 
 $now_url     = \JMReferral\Portal\PortalUrls::management_with_args( array( 'jmrs_mgmt_mode' => 'now' ) );
 $reached_url = \JMReferral\Portal\PortalUrls::management_with_args( array( 'jmrs_mgmt_mode' => 'reached' ) );
@@ -674,6 +679,7 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 				<?php endif; ?>
 			</article>
 
+			<?php if ( $mod_assess ) : ?>
 			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#3F7D3A">
 				<div class="jmrs-mgmt__panel-head">
 					<div>
@@ -786,7 +792,9 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 				</div>
 				</div>
 			</article>
+			<?php endif; ?>
 
+			<?php if ( $mod_pkg ) : ?>
 			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#1F5A8A">
 				<div class="jmrs-mgmt__panel-head">
 					<div>
@@ -890,11 +898,21 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 				</div>
 				</div>
 			</article>
+			<?php endif; ?>
 
+			<?php if ( $mod_la ) : ?>
 			<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#7A4E2D">
 				<div class="jmrs-mgmt__panel-head">
 					<div>
-						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Local Authority Decisions', 'jm-referral-system' ); ?></h3></div>
+						<div class="jmrs-mgmt__panel-title"><h3><?php
+						echo esc_html(
+							sprintf(
+								/* translators: %s: local authority singular label */
+								__( '%s Decisions', 'jm-referral-system' ),
+								\JMReferral\Settings\TerminologySettings::local_authority_singular()
+							)
+						);
+						?></h3></div>
 						<p class="jmrs-mgmt__panel-q"><?php echo esc_html( (string) ( $defs['la_decisions'] ?? '' ) ); ?></p>
 					</div>
 				</div>
@@ -1000,11 +1018,20 @@ $jmrs_mgmt_client_cell = static function ( array $row ): void {
 				</div>
 				</div>
 			</article>
+			<?php endif; ?>
 
 			<div class="jmrs-mgmt__ops-grid jmrs-mgmt__ops-grid--2 jmrs-mgmt__ops-grid--start">
 				<article class="jmrs-mgmt__panel jmrs-mgmt__ops-panel" style="border-left-color:#5B6B7B">
 					<div class="jmrs-mgmt__panel-head">
-						<div class="jmrs-mgmt__panel-title"><h3><?php echo esc_html__( 'Recent referrals', 'jm-referral-system' ); ?></h3></div>
+						<div class="jmrs-mgmt__panel-title"><h3><?php
+						echo esc_html(
+							sprintf(
+								/* translators: %s: referral plural label */
+								__( 'Recent %s', 'jm-referral-system' ),
+								\JMReferral\Settings\TerminologySettings::referral_plural()
+							)
+						);
+						?></h3></div>
 					</div>
 					<?php if ( [] === $recent_refs ) : ?>
 						<div class="jmrs-mgmt__empty"><?php echo esc_html__( 'No recent referrals.', 'jm-referral-system' ); ?></div>

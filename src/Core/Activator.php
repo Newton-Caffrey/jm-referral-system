@@ -7,6 +7,7 @@ use JMReferral\Documents\PrivateDocumentStorage;
 use JMReferral\Permissions\Capabilities;
 use JMReferral\Permissions\Roles;
 use JMReferral\Portal\PortalRouter;
+use JMReferral\Services\ServiceTypeSeeder;
 
 class Activator
 {
@@ -18,6 +19,9 @@ class Activator
 
         $storage = new PrivateDocumentStorage();
         $storage->ensure_ready();
+
+        // Empty catalogue only — never overwrites existing JM / configured services.
+        ServiceTypeSeeder::seed_if_empty();
 
         // Register portal rules (no-op when disabled) and flush once.
         PortalRouter::flush_rules();

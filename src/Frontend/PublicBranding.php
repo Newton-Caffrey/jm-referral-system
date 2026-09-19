@@ -91,7 +91,11 @@ class PublicBranding
 
         // Treat empty or previous product default as the current Local Authority heading.
         if ('' === $heading || 'Make a Referral' === $heading) {
-            return __('Local Authority Referral Form', 'jm-referral-system');
+            return sprintf(
+                /* translators: %s: local authority singular label */
+                __('%s Referral Form', 'jm-referral-system'),
+                \JMReferral\Settings\TerminologySettings::local_authority_singular()
+            );
         }
 
         return $heading;

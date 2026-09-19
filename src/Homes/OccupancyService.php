@@ -186,6 +186,14 @@ class OccupancyService
      */
     public function place_resident(array $input, ?int $actor_user_id = null): array|false
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING)) {
+            return [
+                'errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING),
+                ],
+            ];
+        }
+
         $actor_user_id = $actor_user_id ?? get_current_user_id();
 
         // Allowlisted fields only — callers cannot set status, created_by, pipeline, or timestamps.
@@ -311,6 +319,14 @@ class OccupancyService
      */
     public function transfer_resident(int $occupancy_id, array $input, ?int $actor_user_id = null): array|false
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING)) {
+            return [
+                'errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING),
+                ],
+            ];
+        }
+
         $actor_user_id   = $actor_user_id ?? get_current_user_id();
         $new_home_id     = absint($input['new_home_id'] ?? $input['home_id'] ?? 0);
         $new_bedroom_id  = absint($input['new_bedroom_id'] ?? $input['bedroom_id'] ?? 0);
@@ -513,6 +529,14 @@ class OccupancyService
      */
     public function end_occupancy(int $occupancy_id, array $input, ?int $actor_user_id = null): array|false
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING)) {
+            return [
+                'errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING),
+                ],
+            ];
+        }
+
         $actor_user_id = $actor_user_id ?? get_current_user_id();
         $move_out_date = $this->normalize_date((string) ($input['move_out_date'] ?? ''));
         $end_reason    = sanitize_text_field((string) ($input['end_reason'] ?? ''));

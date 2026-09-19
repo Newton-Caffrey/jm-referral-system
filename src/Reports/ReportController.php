@@ -55,6 +55,10 @@ class ReportController
             wp_die(esc_html__('You do not have permission to view reports.', 'jm-referral-system'));
         }
 
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::REPORTS)) {
+            wp_die(esc_html(\JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::REPORTS)));
+        }
+
         $filters = $this->filters_from_request();
         $result  = $this->report_service->get_report_data($filters);
 
@@ -62,6 +66,11 @@ class ReportController
         $supported_living = is_array($result['supported_living'] ?? null)
             ? $result['supported_living']
             : [];
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING)) {
+            $supported_living = [];
+            $result['vacancy'] = [];
+            $result['placement_movements'] = [];
+        }
         $vacancy          = is_array($result['vacancy'] ?? null) ? $result['vacancy'] : [];
         $placement_movements = is_array($result['placement_movements'] ?? null)
             ? $result['placement_movements']

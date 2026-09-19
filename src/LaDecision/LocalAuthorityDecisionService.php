@@ -38,6 +38,10 @@ class LocalAuthorityDecisionService
      */
     public function can_record(array $referral): bool
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::LA_DECISIONS)) {
+            return false;
+        }
+
         if (! $this->access_policy->can_record_la_decision($referral)) {
             return false;
         }
@@ -156,6 +160,13 @@ class LocalAuthorityDecisionService
      */
     public function record(int $referral_id, array $input): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::LA_DECISIONS)) {
+            return $this->fail(
+                'module_disabled',
+                \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::LA_DECISIONS)
+            );
+        }
+
         $referral = $this->referral_repository->find($referral_id);
         if (null === $referral) {
             return $this->fail('referral_not_found', __('Referral not found.', 'jm-referral-system'));

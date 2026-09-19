@@ -293,6 +293,16 @@ class PortalController implements PortalViewHost
 
     private function render_management_dashboard(): void
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::MANAGEMENT_DASHBOARD)) {
+            $this->render_error(
+                '403',
+                \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::MANAGEMENT_DASHBOARD),
+                403
+            );
+
+            return;
+        }
+
         if (! Capabilities::current_user_can(Capabilities::VIEW_DASHBOARD)) {
             $this->render_error('403', __('Access Denied', 'jm-referral-system'), 403);
 
@@ -1124,8 +1134,11 @@ class PortalController implements PortalViewHost
 
         $current_placement = null;
         $placement_history = [];
-        $can_manage_occupancies = Capabilities::current_user_can(Capabilities::MANAGE_OCCUPANCIES)
+        $sl_enabled = \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING);
+        $can_manage_occupancies = $sl_enabled
+            && Capabilities::current_user_can(Capabilities::MANAGE_OCCUPANCIES)
             && $this->access_policy->can_mutate_referral($referral);
+        // Historical occupancy remains viewable for audit even when the module is disabled.
         $can_view_placement = Capabilities::current_user_can(Capabilities::VIEW_HOMES)
             || Capabilities::current_user_can(Capabilities::MANAGE_OCCUPANCIES);
         $place_url = '';

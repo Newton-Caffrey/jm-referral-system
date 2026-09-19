@@ -19,7 +19,8 @@ User Acceptance Testing materials for **JM Healthcare Referral Platform** / JM R
 | [UAT_PHASE_4I_1_MANAGEMENT_DASHBOARD_UI_POLISH.md](UAT_PHASE_4I_1_MANAGEMENT_DASHBOARD_UI_POLISH.md) | **Phase 4I.1** Management Operations Dashboard UI/UX polish (visual-only; shared spacing system; **PASS** 2026-08-27) |
 | [UAT_PHASE_4J_0_1_RELEASE_CANDIDATE_PREPARATION.md](UAT_PHASE_4J_0_1_RELEASE_CANDIDATE_PREPARATION.md) | **Phase 4J.0.1** product **1.5.0** release-candidate preparation (version/docs only; staging UAT **PASS** 2026-08-27; production not deployed) |
 | [UAT_PHASE_4J_1_FULL_RELEASE_CANDIDATE_REGRESSION.md](UAT_PHASE_4J_1_FULL_RELEASE_CANDIDATE_REGRESSION.md) | **Phase 4J.1** release evidence for **1.5.0** (cumulative 4B–4I UAT accepted; no full lifecycle replay; final staging smoke required; production not deployed) |
-| [UAT_PHASE_5A_1_ORGANISATION_AND_BRANDING.md](UAT_PHASE_5A_1_ORGANISATION_AND_BRANDING.md) | **Phase 5A.1** organisation & branding foundation (toward **1.6.0**; DB **2.29.0**; rewrite **1.2.7**; manual UAT blank until executed) |
+| [UAT_PHASE_5A_1_ORGANISATION_AND_BRANDING.md](UAT_PHASE_5A_1_ORGANISATION_AND_BRANDING.md) | **Phase 5A.1** organisation & branding foundation (toward **1.6.0**; DB **2.29.0**; rewrite **1.2.7**; **PASS** 2026-09-19) |
+| [UAT_PHASE_5A_2_SERVICES_TERMINOLOGY_MODULES.md](UAT_PHASE_5A_2_SERVICES_TERMINOLOGY_MODULES.md) | **Phase 5A.2** services catalogue, terminology & module settings (manual UAT blank until executed) |
 | [../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md](../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md) | **Phase 4B.2.0** meetings UI/workflow audit (design) |
 | [UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md](UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md) | **Phase 4A** accuracy / privacy / existing-data parity (pre-release) |
 | [UAT_MANAGEMENT_DASHBOARD_V1_4.md](UAT_MANAGEMENT_DASHBOARD_V1_4.md) | **v1.4.0 Management Dashboard UAT** (visual + data acceptance) |

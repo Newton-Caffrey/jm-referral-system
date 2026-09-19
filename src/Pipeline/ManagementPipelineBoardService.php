@@ -266,7 +266,15 @@ class ManagementPipelineBoardService
                 static fn (array $a): bool => 'critical' === ($a['severity'] ?? '') || 'high' === ($a['severity'] ?? '')
             )),
             'homes'             => $this->build_homes_payload(),
-            'show_homes'        => Capabilities::current_user_can(Capabilities::VIEW_HOMES),
+            'show_homes'        => Capabilities::current_user_can(Capabilities::VIEW_HOMES)
+                && \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING),
+            'modules'           => [
+                'assessments'      => \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::ASSESSMENTS),
+                'package_costing'  => \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::PACKAGE_COSTING),
+                'la_decisions'     => \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::LA_DECISIONS),
+                'transition'       => \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::TRANSITION),
+                'supported_living' => \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING),
+            ],
             'ownership'         => $ownership,
             'show_ownership'    => [] !== $ownership,
             'show_team_tab'     => [] !== $ownership,

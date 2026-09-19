@@ -27,6 +27,10 @@ class ReportExportController
             wp_die(esc_html__('You do not have permission.', 'jm-referral-system'));
         }
 
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::REPORTS)) {
+            wp_die(esc_html(\JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::REPORTS)));
+        }
+
         $mode = sanitize_key((string) ($_GET['jmrs_report_export'] ?? ''));
         if (! in_array($mode, ['full', 'section'], true)) {
             wp_die(esc_html__('The requested action could not be completed.', 'jm-referral-system'));

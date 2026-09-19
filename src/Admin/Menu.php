@@ -412,19 +412,26 @@ class Menu
             [$this->operational_alerts_page, 'render']
         );
 
-        add_submenu_page(
-            'jm-referrals',
-            __('Reports', 'jm-referral-system'),
-            __('Reports', 'jm-referral-system'),
-            Capabilities::VIEW_REPORTS,
-            'jm-referrals-reports',
-            [$this->report_controller, 'render']
-        );
+        if (\JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::REPORTS)) {
+            add_submenu_page(
+                'jm-referrals',
+                __('Reports', 'jm-referral-system'),
+                __('Reports', 'jm-referral-system'),
+                Capabilities::VIEW_REPORTS,
+                'jm-referrals-reports',
+                [$this->report_controller, 'render']
+            );
+        }
+
+        $referral_plural = \JMReferral\Settings\TerminologySettings::referral_plural();
+        $referral_singular = \JMReferral\Settings\TerminologySettings::referral_singular();
+        $service_plural = \JMReferral\Settings\TerminologySettings::service_plural();
+        $service_singular = \JMReferral\Settings\TerminologySettings::service_singular();
 
         add_submenu_page(
             'jm-referrals',
-            __('Referrals', 'jm-referral-system'),
-            __('Referrals', 'jm-referral-system'),
+            $referral_plural,
+            $referral_plural,
             Capabilities::VIEW_REFERRALS,
             'jm-referrals-list',
             [$this->referrals_page, 'render']
@@ -432,8 +439,16 @@ class Menu
 
         add_submenu_page(
             'jm-referrals',
-            __('Add Referral', 'jm-referral-system'),
-            __('Add Referral', 'jm-referral-system'),
+            sprintf(
+                /* translators: %s: referral singular label */
+                __('Add %s', 'jm-referral-system'),
+                $referral_singular
+            ),
+            sprintf(
+                /* translators: %s: referral singular label */
+                __('Add %s', 'jm-referral-system'),
+                $referral_singular
+            ),
             Capabilities::CREATE_REFERRALS,
             'jm-referrals-add',
             [$this->add_referral_page, 'render']
@@ -441,8 +456,8 @@ class Menu
 
         add_submenu_page(
             'jm-referrals',
-            __('Service Types', 'jm-referral-system'),
-            __('Service Types', 'jm-referral-system'),
+            $service_plural,
+            $service_plural,
             Capabilities::MANAGE_SERVICE_TYPES,
             'jm-referrals-service-types',
             [$this->service_type_controller, 'render_list']
@@ -450,8 +465,16 @@ class Menu
 
         add_submenu_page(
             'jm-referrals',
-            __('Add Service Type', 'jm-referral-system'),
-            __('Add Service Type', 'jm-referral-system'),
+            sprintf(
+                /* translators: %s: service singular label */
+                __('Add %s', 'jm-referral-system'),
+                $service_singular
+            ),
+            sprintf(
+                /* translators: %s: service singular label */
+                __('Add %s', 'jm-referral-system'),
+                $service_singular
+            ),
             Capabilities::MANAGE_SERVICE_TYPES,
             'jm-referrals-service-types-add',
             [$this->service_type_controller, 'render_create']

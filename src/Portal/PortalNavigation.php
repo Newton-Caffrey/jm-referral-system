@@ -4,6 +4,8 @@ namespace JMReferral\Portal;
 
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Permissions\Capabilities;
+use JMReferral\Settings\ModuleSettings;
+use JMReferral\Settings\TerminologySettings;
 
 /**
  * Capability-based portal navigation.
@@ -74,7 +76,8 @@ class PortalNavigation
 
             // Same commercial gate as pipeline Needs Attention (excludes Support Workers).
             if (
-                Capabilities::current_user_can(Capabilities::VIEW_REFERRALS)
+                ModuleSettings::is_enabled(ModuleSettings::MANAGEMENT_DASHBOARD)
+                && Capabilities::current_user_can(Capabilities::VIEW_REFERRALS)
                 && ! $this->access_policy->should_scope_to_assigned()
             ) {
                 $items[] = [
@@ -90,11 +93,16 @@ class PortalNavigation
 
         if (Capabilities::current_user_can(Capabilities::VIEW_REFERRALS)) {
             $scoped = $this->access_policy->should_scope_to_assigned();
+            $referral_plural = TerminologySettings::referral_plural();
             $items[] = [
                 'id'      => 'referrals',
                 'label'   => $scoped
-                    ? __('My Referrals', 'jm-referral-system')
-                    : __('Referrals', 'jm-referral-system'),
+                    ? sprintf(
+                        /* translators: %s: referral plural label */
+                        __('My %s', 'jm-referral-system'),
+                        $referral_plural
+                    )
+                    : $referral_plural,
                 'url'     => PortalUrls::referrals(),
                 'current' => in_array($current_route, self::REFERRAL_RELATED_ROUTES, true),
                 'icon'    => 'referrals',
@@ -102,7 +110,10 @@ class PortalNavigation
             ];
         }
 
-        if (Capabilities::current_user_can(Capabilities::VIEW_HOMES)) {
+        if (
+            ModuleSettings::is_enabled(ModuleSettings::SUPPORTED_LIVING)
+            && Capabilities::current_user_can(Capabilities::VIEW_HOMES)
+        ) {
             $items[] = [
                 'id'      => 'homes',
                 'label'   => __('Homes', 'jm-referral-system'),

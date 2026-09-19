@@ -41,7 +41,11 @@ $nonce_action    = isset( $nonce_action ) ? (string) $nonce_action : 'jmrs_publi
 $nonce_field     = isset( $nonce_field ) ? (string) $nonce_field : 'jmrs_public_referral_nonce';
 
 $company_name  = (string) ( $branding['company_name'] ?? \JMReferral\Settings\OrganisationSettings::display_name() );
-$heading       = (string) ( $branding['heading'] ?? __( 'Local Authority Referral Form', 'jm-referral-system' ) );
+$heading       = (string) ( $branding['heading'] ?? sprintf(
+	/* translators: %s: local authority singular label */
+	__( '%s Referral Form', 'jm-referral-system' ),
+	\JMReferral\Settings\TerminologySettings::local_authority_singular()
+) );
 $intro         = (string) ( $branding['intro'] ?? '' );
 $primary       = (string) ( $branding['primary_colour'] ?? '#0b5f4b' );
 $privacy_url   = (string) ( $settings['privacy_notice_url'] ?? '' );
@@ -245,14 +249,30 @@ $root_style = '--jmrs-primary:' . $primary . ';';
 					</div>
 					<div class="jmrs-public-referral__row">
 						<div class="jmrs-public-referral__field" id="jmrs-field-client_email">
-							<label for="jmrs_client_email"><?php echo esc_html__( 'Client email', 'jm-referral-system' ); ?></label>
+							<label for="jmrs_client_email"><?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: client singular label */
+									__( '%s email', 'jm-referral-system' ),
+									\JMReferral\Settings\TerminologySettings::client_singular()
+								)
+							);
+							?></label>
 							<input type="email" name="jmrs_client_email" id="jmrs_client_email" value="<?php echo esc_attr( $v( 'client_email' ) ); ?>" aria-invalid="<?php echo esc_attr( $aria_invalid( 'client_email' ) ); ?>" />
 							<?php if ( $field_invalid( 'client_email' ) ) : ?>
 								<p class="jmrs-public-referral__field-error"><?php echo esc_html( $errors['client_email'] ); ?></p>
 							<?php endif; ?>
 						</div>
 						<div class="jmrs-public-referral__field">
-							<label for="jmrs_client_phone"><?php echo esc_html__( 'Client phone', 'jm-referral-system' ); ?></label>
+							<label for="jmrs_client_phone"><?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: client singular label */
+									__( '%s phone', 'jm-referral-system' ),
+									\JMReferral\Settings\TerminologySettings::client_singular()
+								)
+							);
+							?></label>
 							<input type="tel" name="jmrs_client_phone" id="jmrs_client_phone" value="<?php echo esc_attr( $v( 'client_phone' ) ); ?>" />
 						</div>
 					</div>
@@ -290,7 +310,15 @@ $root_style = '--jmrs-primary:' . $primary . ';';
 				<fieldset class="jmrs-public-referral__card">
 					<legend class="screen-reader-text"><?php echo esc_html__( 'Care needs', 'jm-referral-system' ); ?></legend>
 					<div class="jmrs-public-referral__field" id="jmrs-field-service_type_id">
-						<label for="jmrs_service_type_id"><?php echo esc_html__( 'Service type', 'jm-referral-system' ); ?> <span class="jmrs-public-referral__req" aria-hidden="true">*</span></label>
+						<label for="jmrs_service_type_id"><?php
+						echo esc_html(
+							sprintf(
+								/* translators: %s: service singular label */
+								__( '%s type', 'jm-referral-system' ),
+								\JMReferral\Settings\TerminologySettings::service_singular()
+							)
+						);
+						?> <span class="jmrs-public-referral__req" aria-hidden="true">*</span></label>
 						<select name="jmrs_service_type_id" id="jmrs_service_type_id" required aria-required="true" aria-invalid="<?php echo esc_attr( $aria_invalid( 'service_type_id' ) ); ?>">
 							<option value=""><?php echo esc_html__( 'Select…', 'jm-referral-system' ); ?></option>
 							<?php foreach ( $service_types as $service_type ) : ?>

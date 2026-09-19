@@ -41,6 +41,10 @@ class CareCommencementService
      */
     public function can_commence(array $referral): bool
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::TRANSITION)) {
+            return false;
+        }
+
         if (! $this->access_policy->can_commence_care($referral)) {
             return false;
         }
@@ -82,6 +86,13 @@ class CareCommencementService
      */
     public function commence(int $referral_id, array $input): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::TRANSITION)) {
+            return $this->fail(
+                'module_disabled',
+                \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::TRANSITION)
+            );
+        }
+
         $referral = $this->referral_repository->find($referral_id);
         if (null === $referral) {
             return $this->fail('referral_not_found', __('Referral not found.', 'jm-referral-system'));

@@ -180,6 +180,7 @@ flowchart LR
 | Portal theme independence | `template_redirect` + `exit` avoids theme header/footer wrapping staff data |
 | Public PRG + receipt transient | Prevents duplicate POST; shows confirmation without putting PHI in the URL |
 | OrganisationSettings as branding source of truth | Client-facing org identity is configurable per install; `jmrs_*` technical IDs stay stable (Phase 5A.1) |
+| TerminologySettings + ModuleSettings | Display labels and operational module switches without renaming domain keys (Phase 5A.2) |
 
 ---
 
@@ -191,6 +192,8 @@ flowchart LR
 - [`PORTAL_ARCHITECTURE.md`](PORTAL_ARCHITECTURE.md)
 - [`PUBLIC_REFERRAL_ARCHITECTURE.md`](PUBLIC_REFERRAL_ARCHITECTURE.md)
 - [`ORGANISATION_SETTINGS.md`](ORGANISATION_SETTINGS.md)
+- [`TERMINOLOGY_SETTINGS.md`](TERMINOLOGY_SETTINGS.md)
+- [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md)
 - [`SERVICES.md`](SERVICES.md)
 - [`DEPENDENCY_INJECTION.md`](DEPENDENCY_INJECTION.md)
 - [`PROJECT_HISTORY.md`](PROJECT_HISTORY.md)

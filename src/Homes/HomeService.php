@@ -157,6 +157,14 @@ class HomeService
      */
     public function create(array $input): array|false
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING)) {
+            return [
+                'errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING),
+                ],
+            ];
+        }
+
         $sanitized = $this->sanitize_input($input);
         $errors    = $this->validate($sanitized);
 
@@ -194,6 +202,14 @@ class HomeService
      */
     public function update(int $id, array $input): array|false
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING)) {
+            return [
+                'errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING),
+                ],
+            ];
+        }
+
         $existing = $this->repository->find($id);
         if (null === $existing) {
             return false;

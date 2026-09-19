@@ -182,6 +182,12 @@ class ReferralAssessmentService
      */
     public function save(int $referral_id, array $input): array|false
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)) {
+            return ['errors' => [
+                'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::ASSESSMENTS),
+            ]];
+        }
+
         $referral = $this->referral_repository->find($referral_id);
 
         if ($referral_id <= 0 || null === $referral) {

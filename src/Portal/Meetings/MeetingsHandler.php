@@ -69,6 +69,25 @@ class MeetingsHandler
 
     public function dispatch(string $route): void
     {
+        $module = \JMReferral\Settings\ModuleGate::portal_module_for_route($route);
+        if (null !== $module && ! \JMReferral\Settings\ModuleSettings::is_enabled($module)) {
+            // Read routes for historical continuity: list/detail allowed when disabled.
+            $write_like = in_array(
+                $route,
+                array_merge(self::WRITE_ROUTES, self::ATTENDEE_ROUTES),
+                true
+            );
+            if ($write_like || 'POST' === strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'))) {
+                $this->view_host->render_portal_error(
+                    '403',
+                    \JMReferral\Settings\ModuleGate::unavailable_message($module),
+                    403
+                );
+
+                return;
+            }
+        }
+
         $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
         if (! in_array($method, ['GET', 'POST'], true)) {
             $this->view_host->render_portal_error('405', __('Method Not Allowed', 'jm-referral-system'), 405);

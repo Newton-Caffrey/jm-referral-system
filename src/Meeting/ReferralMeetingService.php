@@ -55,6 +55,16 @@ class ReferralMeetingService
      */
     public function update_details(int $meeting_id, array $input, ?int $actor_user_id = null): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::MEETINGS)) {
+            return [
+                'ok'    => false,
+                'error' => 'module_disabled',
+                'field_errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::MEETINGS),
+                ],
+            ];
+        }
+
         $actor_user_id = $actor_user_id ?? get_current_user_id();
         $ctx           = $this->resolve_mutable_meeting($meeting_id, $actor_user_id);
         if (isset($ctx['ok']) && false === $ctx['ok']) {
@@ -111,6 +121,16 @@ class ReferralMeetingService
      */
     public function schedule(int $meeting_id, array $input, ?int $actor_user_id = null): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::MEETINGS)) {
+            return [
+                'ok'    => false,
+                'error' => 'module_disabled',
+                'field_errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::MEETINGS),
+                ],
+            ];
+        }
+
         $actor_user_id = $actor_user_id ?? get_current_user_id();
         $ctx           = $this->resolve_mutable_meeting($meeting_id, $actor_user_id);
         if (isset($ctx['ok']) && false === $ctx['ok']) {
@@ -211,6 +231,16 @@ class ReferralMeetingService
      */
     public function complete(int $meeting_id, array $input = [], ?int $actor_user_id = null): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::MEETINGS)) {
+            return [
+                'ok'    => false,
+                'error' => 'module_disabled',
+                'field_errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::MEETINGS),
+                ],
+            ];
+        }
+
         $actor_user_id = $actor_user_id ?? get_current_user_id();
         $ctx           = $this->resolve_mutable_meeting($meeting_id, $actor_user_id);
         if (isset($ctx['ok']) && false === $ctx['ok']) {
@@ -261,6 +291,13 @@ class ReferralMeetingService
      */
     public function cancel(int $meeting_id, ?int $actor_user_id = null): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::MEETINGS)) {
+            return [
+                'ok'    => false,
+                'error' => 'module_disabled',
+            ];
+        }
+
         $actor_user_id = $actor_user_id ?? get_current_user_id();
         $ctx           = $this->resolve_mutable_meeting($meeting_id, $actor_user_id);
         if (isset($ctx['ok']) && false === $ctx['ok']) {
@@ -307,6 +344,16 @@ class ReferralMeetingService
      */
     private function create_with_status(int $referral_id, array $input, string $forced_status, ?int $actor_user_id): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::MEETINGS)) {
+            return [
+                'ok'    => false,
+                'error' => 'module_disabled',
+                'field_errors' => [
+                    'general' => \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::MEETINGS),
+                ],
+            ];
+        }
+
         $actor_user_id = $actor_user_id ?? get_current_user_id();
         $gate          = $this->gate_referral($referral_id, $actor_user_id);
         if (null !== $gate) {

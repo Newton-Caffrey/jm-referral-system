@@ -9,7 +9,9 @@ use JMReferral\Permissions\Capabilities;
 use JMReferral\Portal\PortalSettings;
 use JMReferral\Portal\PortalUrls;
 use JMReferral\Referral\ReferralDependencyRepository;
+use JMReferral\Settings\ModuleSettings;
 use JMReferral\Settings\OrganisationSettings;
+use JMReferral\Settings\TerminologySettings;
 
 class SettingsPage
 {
@@ -26,6 +28,8 @@ class SettingsPage
         }
 
         $this->maybe_save_organisation_settings();
+        $this->maybe_save_terminology_settings();
+        $this->maybe_save_module_settings();
         $this->maybe_save_public_referral_settings();
         $this->maybe_save_staff_portal_settings();
         $this->maybe_save_pipeline_internal_targets();
@@ -51,6 +55,9 @@ class SettingsPage
         echo '<h1>' . esc_html__('Settings', 'jm-referral-system') . '</h1>';
 
         $this->render_organisation_and_branding_settings();
+        $this->render_terminology_settings();
+        $this->render_module_settings();
+        $this->render_service_catalogue_link();
         $this->render_public_referral_settings();
         $this->render_staff_portal_settings();
         $this->render_pipeline_internal_targets();
@@ -371,6 +378,226 @@ class SettingsPage
             false
         );
         echo '</form>';
+        echo '</div>';
+    }
+
+    private function maybe_save_terminology_settings(): void
+    {
+        if (! isset($_POST['jmrs_save_terminology_settings'])) {
+            return;
+        }
+
+        check_admin_referer('jmrs_save_terminology_settings', 'jmrs_terminology_settings_nonce');
+
+        if (! Capabilities::current_user_can(Capabilities::MANAGE_SETTINGS)) {
+            wp_die(esc_html__('You do not have permission to manage settings.', 'jm-referral-system'));
+        }
+
+        $input = [];
+        foreach (array_keys(TerminologySettings::defaults()) as $key) {
+            $field = 'jmrs_term_' . $key;
+            if (isset($_POST[$field])) {
+                $input[$key] = wp_unslash($_POST[$field]);
+            }
+        }
+
+        $result = TerminologySettings::update($input);
+
+        if (! empty($result['ok'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html__('Terminology settings saved. Display labels only — stored referral data and technical keys are unchanged.', 'jm-referral-system');
+            echo '</p></div>';
+
+            return;
+        }
+
+        $errors = is_array($result['errors'] ?? null) ? $result['errors'] : [];
+        echo '<div class="notice notice-error" role="alert"><p>';
+        echo esc_html__('Terminology settings could not be saved.', 'jm-referral-system');
+        echo '</p>';
+        if ([] !== $errors) {
+            echo '<ul>';
+            foreach ($errors as $message) {
+                echo '<li>' . esc_html((string) $message) . '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '</div>';
+    }
+
+    private function render_terminology_settings(): void
+    {
+        $terms = TerminologySettings::all();
+
+        $fields = [
+            'referral_singular'        => __('Referral singular', 'jm-referral-system'),
+            'referral_plural'          => __('Referral plural', 'jm-referral-system'),
+            'client_singular'          => __('Client / person singular', 'jm-referral-system'),
+            'client_plural'            => __('Client / person plural', 'jm-referral-system'),
+            'local_authority_singular' => __('Local Authority singular', 'jm-referral-system'),
+            'local_authority_plural'   => __('Local Authority plural', 'jm-referral-system'),
+            'commissioner_singular'    => __('Commissioner singular', 'jm-referral-system'),
+            'commissioner_plural'      => __('Commissioner plural', 'jm-referral-system'),
+            'service_singular'         => __('Service singular', 'jm-referral-system'),
+            'service_plural'           => __('Service plural', 'jm-referral-system'),
+        ];
+
+        echo '<div class="jmrs-settings-terminology">';
+        echo '<h2>' . esc_html__('Terminology', 'jm-referral-system') . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'These labels affect client-facing wording only. Pipeline keys, database values, capabilities, routes, and stored referral fields are not renamed.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+
+        echo '<form method="post" action="' . esc_url(admin_url('admin.php?page=jm-referrals-settings')) . '">';
+        wp_nonce_field('jmrs_save_terminology_settings', 'jmrs_terminology_settings_nonce');
+
+        echo '<table class="form-table" role="presentation"><tbody>';
+        foreach ($fields as $key => $label) {
+            $id = 'jmrs_term_' . $key;
+            echo '<tr><th scope="row"><label for="' . esc_attr($id) . '">' . esc_html($label) . '</label></th><td>';
+            echo '<input type="text" class="regular-text" name="' . esc_attr($id) . '" id="' . esc_attr($id) . '" value="' . esc_attr((string) ($terms[$key] ?? '')) . '" maxlength="' . esc_attr((string) TerminologySettings::MAX_LENGTH) . '" />';
+            echo '</td></tr>';
+        }
+        echo '</tbody></table>';
+
+        submit_button(
+            __('Save Terminology', 'jm-referral-system'),
+            'primary',
+            'jmrs_save_terminology_settings',
+            false
+        );
+        echo '</form>';
+        echo '</div>';
+    }
+
+    private function maybe_save_module_settings(): void
+    {
+        if (! isset($_POST['jmrs_save_module_settings'])) {
+            return;
+        }
+
+        check_admin_referer('jmrs_save_module_settings', 'jmrs_module_settings_nonce');
+
+        if (! Capabilities::current_user_can(Capabilities::MANAGE_SETTINGS)) {
+            wp_die(esc_html__('You do not have permission to manage settings.', 'jm-referral-system'));
+        }
+
+        $input = [];
+        foreach (ModuleSettings::known_modules() as $module) {
+            $input[$module] = ! empty($_POST['jmrs_module_' . $module]);
+        }
+
+        $result = ModuleSettings::update($input);
+
+        if (! empty($result['ok'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html__('Module settings saved. Disabled modules preserve historical data; new actions are blocked.', 'jm-referral-system');
+            echo '</p></div>';
+
+            $warnings = is_array($result['warnings'] ?? null) ? $result['warnings'] : [];
+            foreach ($warnings as $warning) {
+                echo '<div class="notice notice-warning is-dismissible" role="status"><p>';
+                echo esc_html((string) $warning);
+                echo '</p></div>';
+            }
+
+            return;
+        }
+
+        $errors = is_array($result['errors'] ?? null) ? $result['errors'] : [];
+        echo '<div class="notice notice-error" role="alert"><p>';
+        echo esc_html__('Module settings could not be saved. The previous valid configuration was kept.', 'jm-referral-system');
+        echo '</p>';
+        if ([] !== $errors) {
+            echo '<ul>';
+            foreach ($errors as $message) {
+                echo '<li>' . esc_html((string) $message) . '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '</div>';
+    }
+
+    private function render_module_settings(): void
+    {
+        $modules = ModuleSettings::all();
+        $labels  = ModuleSettings::labels();
+        $descs   = ModuleSettings::descriptions();
+
+        echo '<div class="jmrs-settings-modules">';
+        echo '<h2>' . esc_html__('Modules', 'jm-referral-system') . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'Turn operational modules on or off for this installation. Disabling a module hides navigation and blocks new mutations. Historical records and pipeline history are not deleted or rewritten. Dependencies are enforced on save.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+        echo '<p class="description">';
+        echo esc_html__(
+            'Package Costing requires Assessments. Local Authority Decisions require Package Costing. Transition & Care Commencement require Local Authority Decisions. Email intake is not available in this phase.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+
+        echo '<form method="post" action="' . esc_url(admin_url('admin.php?page=jm-referrals-settings')) . '">';
+        wp_nonce_field('jmrs_save_module_settings', 'jmrs_module_settings_nonce');
+
+        echo '<table class="form-table" role="presentation"><tbody>';
+        foreach (ModuleSettings::known_modules() as $module) {
+            $id = 'jmrs_module_' . $module;
+            echo '<tr><th scope="row">' . esc_html((string) ($labels[$module] ?? $module)) . '</th><td>';
+            echo '<label for="' . esc_attr($id) . '">';
+            echo '<input type="checkbox" name="' . esc_attr($id) . '" id="' . esc_attr($id) . '" value="1" ' . checked(! empty($modules[$module]), true, false) . ' /> ';
+            echo esc_html__('Enabled', 'jm-referral-system');
+            echo '</label>';
+            if (! empty($descs[$module])) {
+                echo '<p class="description">' . esc_html((string) $descs[$module]) . '</p>';
+            }
+            echo '</td></tr>';
+        }
+        echo '</tbody></table>';
+
+        submit_button(
+            __('Save Modules', 'jm-referral-system'),
+            'primary',
+            'jmrs_save_module_settings',
+            false
+        );
+        echo '</form>';
+        echo '</div>';
+    }
+
+    private function render_service_catalogue_link(): void
+    {
+        $services_url = admin_url('admin.php?page=jm-referrals-service-types');
+        $service_label = TerminologySettings::service_plural();
+
+        echo '<div class="jmrs-settings-services">';
+        echo '<h2>' . esc_html($service_label) . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'Manage the per-installation service catalogue (name, description, active/inactive). Prefer deactivating services that are referenced by historical referrals instead of deleting them.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+        echo '<p class="description">';
+        echo esc_html__(
+            'Display order and separate public/staff availability flags require a later database schema change and are not available in this phase. Active services are offered for both staff and public intake.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+        echo '<p><a class="button" href="' . esc_url($services_url) . '">';
+        echo esc_html(
+            sprintf(
+                /* translators: %s: service plural label */
+                __('Open %s management', 'jm-referral-system'),
+                $service_label
+            )
+        );
+        echo '</a></p>';
         echo '</div>';
     }
 

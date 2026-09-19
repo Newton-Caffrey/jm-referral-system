@@ -73,6 +73,15 @@ Display label **Platform Administrator** (role slug unchanged). Formerly labelle
 
 All JMRS capabilities.
 
+### Settings capabilities (Phase 5A.2)
+
+| Capability | Who |
+| --- | --- |
+| `jmrs_manage_settings` | Platform Administrator, WordPress Administrator — organisation, branding, terminology, modules |
+| `jmrs_manage_service_types` | Existing service catalogue CRUD (unchanged) |
+
+Module and terminology settings use `jmrs_manage_settings` only. No new capabilities in Phase 5A.2.
+
 ### `jmrs_referral_manager` — Referral Manager
 
 All except: `manage_service_types`, `manage_workflow_stages`, `manage_settings`. Includes supported living view + manage homes + manage occupancies, and **`override_pipeline_stage`**. May **Express Interest**.

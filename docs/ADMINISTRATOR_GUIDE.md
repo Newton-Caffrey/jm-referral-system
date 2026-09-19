@@ -188,6 +188,9 @@ Filter groups on Reports: **Report Period**, **Vacancy Home**, **Visit Analytics
 | --- | --- |
 | Organisation | Display/legal/trading names, logo, contact details, address, portal title |
 | Branding | Primary/secondary colours, email sender display name |
+| Terminology | Client-facing singular/plural labels only (does not rename technical keys) |
+| Modules | Enable/disable operational modules; historical data preserved; dependencies enforced |
+| Services | Link to existing service catalogue management (name, description, active/inactive) |
 | Public Referral | Enable form, heading/intro, notification email, uploads (identity comes from Organisation) |
 | Staff Portal | Enable portal, base path, optional wp-admin redirect (branding from Organisation) |
 | Pipeline Internal Targets | Optional operational stage wait targets |

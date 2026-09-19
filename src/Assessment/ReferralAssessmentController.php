@@ -35,6 +35,8 @@ class ReferralAssessmentController
             return;
         }
 
+        \JMReferral\Settings\ModuleGate::wp_die_if_disabled(\JMReferral\Settings\ModuleSettings::ASSESSMENTS);
+
         if (! Capabilities::current_user_can(Capabilities::EDIT_REFERRALS)) {
             wp_die(esc_html__('You do not have permission to save assessments.', 'jm-referral-system'));
         }

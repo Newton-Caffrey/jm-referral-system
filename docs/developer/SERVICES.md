@@ -4,6 +4,9 @@ Major `*Service` classes under `src/`. Repositories are omitted here except as d
 
 Organisation identity for presentation is owned by `JMReferral\Settings\OrganisationSettings` (see [`ORGANISATION_SETTINGS.md`](ORGANISATION_SETTINGS.md)). Portal/public branding helpers delegate to that service.
 
+Display terminology: [`TERMINOLOGY_SETTINGS.md`](TERMINOLOGY_SETTINGS.md).
+Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
+
 ---
 
 ## Referral & retention

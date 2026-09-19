@@ -15,12 +15,14 @@ $service_types = is_array( $service_types ?? null ) ? $service_types : array();
 $add_url       = admin_url( 'admin.php?page=jm-referrals-service-types-add' );
 ?>
 <div class="wrap">
-	<h1 class="wp-heading-inline"><?php echo esc_html__( 'Service Types', 'jm-referral-system' ); ?></h1>
+	<h1 class="wp-heading-inline"><?php echo esc_html( \JMReferral\Settings\TerminologySettings::service_plural() ); ?></h1>
 	<a href="<?php echo esc_url( $add_url ); ?>" class="page-title-action">
 		<?php echo esc_html__( 'Add New', 'jm-referral-system' ); ?>
 	</a>
 	<hr class="wp-header-end" />
-
+	<p class="description">
+		<?php echo esc_html__( 'Prefer setting a service to Inactive when it is used by historical referrals. Deletion is blocked while referrals reference the service.', 'jm-referral-system' ); ?>
+	</p>
 	<table class="wp-list-table widefat fixed striped table-view-list">
 		<thead>
 			<tr>

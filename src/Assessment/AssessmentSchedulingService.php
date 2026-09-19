@@ -31,6 +31,10 @@ class AssessmentSchedulingService
      */
     public function can_schedule(array $referral): bool
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)) {
+            return false;
+        }
+
         if (! $this->access_policy->can_schedule_assessment($referral)) {
             return false;
         }
@@ -48,6 +52,10 @@ class AssessmentSchedulingService
      */
     public function can_reschedule(array $referral): bool
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)) {
+            return false;
+        }
+
         if (! $this->access_policy->can_schedule_assessment($referral)) {
             return false;
         }
@@ -152,6 +160,13 @@ class AssessmentSchedulingService
      */
     public function schedule(int $referral_id, array $input): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)) {
+            return $this->fail(
+                'module_disabled',
+                \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)
+            );
+        }
+
         $referral = $this->referral_repository->find($referral_id);
         if (null === $referral) {
             return $this->fail('referral_not_found', __('Referral not found.', 'jm-referral-system'));
@@ -272,6 +287,13 @@ class AssessmentSchedulingService
      */
     public function reschedule(int $referral_id, array $input): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)) {
+            return $this->fail(
+                'module_disabled',
+                \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)
+            );
+        }
+
         $referral = $this->referral_repository->find($referral_id);
         if (null === $referral) {
             return $this->fail('referral_not_found', __('Referral not found.', 'jm-referral-system'));
@@ -337,6 +359,13 @@ class AssessmentSchedulingService
      */
     public function mark_needs_rescheduling(int $referral_id, string $reason): array
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)) {
+            return $this->fail(
+                'module_disabled',
+                \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::ASSESSMENTS)
+            );
+        }
+
         $referral = $this->referral_repository->find($referral_id);
         if (null === $referral) {
             return $this->fail('referral_not_found', __('Referral not found.', 'jm-referral-system'));

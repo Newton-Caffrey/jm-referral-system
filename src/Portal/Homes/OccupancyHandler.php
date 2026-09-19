@@ -42,6 +42,16 @@ class OccupancyHandler
 
     public function dispatch(string $route): void
     {
+        if (! \JMReferral\Settings\ModuleSettings::is_enabled(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING)) {
+            $this->view_host->render_portal_error(
+                '403',
+                \JMReferral\Settings\ModuleGate::unavailable_message(\JMReferral\Settings\ModuleSettings::SUPPORTED_LIVING),
+                403
+            );
+
+            return;
+        }
+
         match ($route) {
             'occupancy'           => $this->render_board(),
             'occupancy_place'     => $this->render_place(),

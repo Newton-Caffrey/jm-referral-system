@@ -106,10 +106,15 @@ $jmrs_render_list_pagination = static function ( string $select_id ) use ( $from
 <div class="wrap">
 	<h1 class="wp-heading-inline">
 		<?php
+		$referral_plural = \JMReferral\Settings\TerminologySettings::referral_plural();
 		echo esc_html(
 			$scope_to_assigned
-				? __( 'My Referrals', 'jm-referral-system' )
-				: __( 'Referrals', 'jm-referral-system' )
+				? sprintf(
+					/* translators: %s: referral plural label */
+					__( 'My %s', 'jm-referral-system' ),
+					$referral_plural
+				)
+				: $referral_plural
 		);
 		?>
 	</h1>
