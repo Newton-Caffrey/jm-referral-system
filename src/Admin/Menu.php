@@ -53,6 +53,11 @@ use JMReferral\Scheduling\ScheduleController;
 use JMReferral\Scheduling\ScheduleGenerationService;
 use JMReferral\Scheduling\ScheduleRepository;
 use JMReferral\Scheduling\ScheduleService;
+use JMReferral\LocalAuthority\LocalAuthorityController;
+use JMReferral\LocalAuthority\LocalAuthorityRepository;
+use JMReferral\LocalAuthority\LocalAuthoritySenderMatcher;
+use JMReferral\LocalAuthority\LocalAuthorityService;
+use JMReferral\LocalAuthority\SenderRuleRepository;
 use JMReferral\Services\ServiceTypeController;
 use JMReferral\Services\ServiceTypeRepository;
 use JMReferral\Services\ServiceTypeService;
@@ -80,6 +85,7 @@ class Menu
     private ReferralEditController $edit_controller;
     private ReferralViewController $view_controller;
     private ServiceTypeController $service_type_controller;
+    private LocalAuthorityController $local_authority_controller;
     private WorkflowStageController $workflow_stage_controller;
     private ?ReferralCarePlanReviewController $care_plan_review_controller;
     private CareVisitController $care_visit_controller;
@@ -96,6 +102,8 @@ class Menu
         ?ReferralFilters $filters = null,
         ?ServiceTypeController $service_type_controller = null,
         ?ServiceTypeService $service_type_service = null,
+        ?LocalAuthorityController $local_authority_controller = null,
+        ?LocalAuthorityService $local_authority_service = null,
         ?WorkflowStageController $workflow_stage_controller = null,
         ?WorkflowStageService $workflow_stage_service = null,
         ?AccessPolicy $access_policy = null,
@@ -119,6 +127,14 @@ class Menu
         $service_type_repository = new ServiceTypeRepository();
         $service_type_service  ??= new ServiceTypeService($service_type_repository, $repository);
         $service_type_controller ??= new ServiceTypeController($service_type_service);
+
+        if (null === $local_authority_service) {
+            $la_repository           = new LocalAuthorityRepository();
+            $sender_rule_repository  = new SenderRuleRepository();
+            $la_matcher              = new LocalAuthoritySenderMatcher($la_repository, $sender_rule_repository);
+            $local_authority_service = new LocalAuthorityService($la_repository, $sender_rule_repository, $la_matcher);
+        }
+        $local_authority_controller ??= new LocalAuthorityController($local_authority_service);
 
         $workflow_stage_repository = new WorkflowStageRepository();
         $workflow_stage_service  ??= new WorkflowStageService($workflow_stage_repository, $repository);
@@ -342,8 +358,9 @@ class Menu
         );
         $this->edit_controller           = $edit_controller;
         $this->view_controller           = $view_controller;
-        $this->service_type_controller   = $service_type_controller;
-        $this->workflow_stage_controller = $workflow_stage_controller;
+        $this->service_type_controller     = $service_type_controller;
+        $this->local_authority_controller  = $local_authority_controller;
+        $this->workflow_stage_controller   = $workflow_stage_controller;
         $this->care_plan_review_controller = $care_plan_review_controller ?? new ReferralCarePlanReviewController(
             $care_plan_review_service,
             $repository,
@@ -427,6 +444,8 @@ class Menu
         $referral_singular = \JMReferral\Settings\TerminologySettings::referral_singular();
         $service_plural = \JMReferral\Settings\TerminologySettings::service_plural();
         $service_singular = \JMReferral\Settings\TerminologySettings::service_singular();
+        $la_plural = \JMReferral\Settings\TerminologySettings::local_authority_plural();
+        $la_singular = \JMReferral\Settings\TerminologySettings::local_authority_singular();
 
         add_submenu_page(
             'jm-referrals',
@@ -487,6 +506,49 @@ class Menu
             Capabilities::MANAGE_SERVICE_TYPES,
             'jm-referrals-service-types-edit',
             [$this->service_type_controller, 'render_edit']
+        );
+
+        add_submenu_page(
+            'jm-referrals',
+            $la_plural,
+            $la_plural,
+            Capabilities::MANAGE_SETTINGS,
+            'jm-referrals-local-authorities',
+            [$this->local_authority_controller, 'render_list']
+        );
+
+        add_submenu_page(
+            'jm-referrals',
+            sprintf(
+                /* translators: %s: local authority singular label */
+                __('Add %s', 'jm-referral-system'),
+                $la_singular
+            ),
+            sprintf(
+                /* translators: %s: local authority singular label */
+                __('Add %s', 'jm-referral-system'),
+                $la_singular
+            ),
+            Capabilities::MANAGE_SETTINGS,
+            'jm-referrals-local-authorities-add',
+            [$this->local_authority_controller, 'render_create']
+        );
+
+        add_submenu_page(
+            null,
+            sprintf(
+                /* translators: %s: local authority singular label */
+                __('Edit %s', 'jm-referral-system'),
+                $la_singular
+            ),
+            sprintf(
+                /* translators: %s: local authority singular label */
+                __('Edit %s', 'jm-referral-system'),
+                $la_singular
+            ),
+            Capabilities::MANAGE_SETTINGS,
+            'jm-referrals-local-authorities-edit',
+            [$this->local_authority_controller, 'render_edit']
         );
 
         add_submenu_page(

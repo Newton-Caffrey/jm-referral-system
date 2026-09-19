@@ -1,6 +1,6 @@
 # Database Schema — JM Referral System
 
-Schema version: **`2.29.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
+Schema version: **`2.30.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
 DDL authority: `JMReferral\Database\Tables::create()` via WordPress `dbDelta`.
 
 All physical names are `{wpdb->prefix}jmrs_*`. Methods below are on `Tables`.
@@ -34,6 +34,7 @@ erDiagram
   jmrs_homes ||--o{ jmrs_occupancies : hosts
   jmrs_bedrooms ||--o{ jmrs_occupancies : occupied_by
   jmrs_referrals ||--o{ jmrs_occupancies : placed
+  jmrs_local_authorities ||--o{ jmrs_local_authority_sender_rules : has
 ```
 
 ---
@@ -230,6 +231,41 @@ Do not store clinical narrative here. Human timeline also logs concise `pipeline
 **Rules:** Duplicate internal `user_id` per meeting rejected in application layer. Activity logs must not include external email/phone. Archive preserves rows; permanent referral delete cascades attendees then meetings.
 
 **Services:** `MeetingAttendeeService` (+ `MeetingAttendeeRepository`). Responsibilities: `ReferralResponsibilityService` for champion / transition lead columns.
+
+---
+
+### `jmrs_local_authorities` — `local_authorities_table()` (Phase 5A.3)
+
+**Purpose:** Local Authority / commissioning organisation directory (platform configuration). Not linked to referral rows in this phase.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Unique** | `slug` |
+
+**Columns:** `name`, `slug`, `status` (`active` \| `inactive`), `contact_name`, `contact_email`, `contact_phone`, `website`, `notes`, timestamps.
+
+**Indexes:** `slug` (unique), `status`, `name`.
+
+**Notes:** Independent of `la_decisions` module. No mailbox tokens. See [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md).
+
+---
+
+### `jmrs_local_authority_sender_rules` — `local_authority_sender_rules_table()` (Phase 5A.3)
+
+**Purpose:** Recognised sender rules (`exact_email` / `domain`) per authority.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Unique** | `(local_authority_id, rule_type, rule_value)` |
+| **Logical FK** | `local_authority_id` → local authorities (app-enforced) |
+
+**Columns:** `rule_type`, `rule_value` (normalised lowercase), `status` (`active` \| `inactive`), timestamps.
+
+**Indexes:** `local_authority_id`, `rule_type`, `rule_value`, `status`, `(rule_type, rule_value, status)`.
+
+**Matcher:** Exact email precedes domain; label-boundary subdomain match; cross-authority conflicts → AMBIGUOUS. Recognition ≠ authenticity.
 
 ---
 
@@ -437,3 +473,4 @@ On `jmrs_referrals`:
 - `Migrator::maybe_migrate()` on `plugins_loaded` and activation.
 - Indexes/columns for current version are applied by re-running `Tables::create()` (`dbDelta`).
 - Legacy table rename: `{prefix}jm_referrals` → `jmrs_referrals` when needed.
+- **Phase 5A.3 (2.29.0 → 2.30.0):** additive `jmrs_local_authorities` + `jmrs_local_authority_sender_rules`. No referral/service backfill. See [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md).

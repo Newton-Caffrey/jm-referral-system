@@ -146,6 +146,13 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Purpose:** CRUD/active list; selectable checks for public/admin.
 - **Deps:** `ServiceTypeRepository`, `ReferralRepository`
 
+### `LocalAuthorityService` / `LocalAuthoritySenderMatcher` (Phase 5A.3)
+- **Purpose:** Local Authority directory CRUD; recognised sender rules (`exact_email` / `domain`); provider-neutral `matchSender()` returning MATCH / AMBIGUOUS / NO_MATCH / INVALID_SENDER. Recognition is not authenticity verification.
+- **Deps:** `LocalAuthorityRepository`, `SenderRuleRepository`, `LocalAuthoritySenderMatcher`
+- **Used by:** `LocalAuthorityController` (admin); future email intake (5C/5D)
+- **Docs:** [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md)
+- **Notes:** DB **2.30.0**; product **1.5.0**; rewrite **1.2.7**. Not gated by `la_decisions` module. No mailbox/Graph/Gmail.
+
 ### `HomeService` / `BedroomService` / `OccupancyService` / `HomeDashboardService`
 - **Purpose:** Supported living homes, bedrooms, historical placements (2B/2C), care-setting integration (2D), and home operational dashboard read model (2E). Capacity = active bedrooms; occupancy metrics shared via `OccupancyService::compute_metrics()`.
 - **Deps:** Home/Bedroom/Occupancy repositories, visit/care-plan/MAR repos (dashboard), `UserProvider`, `ReferralRepository`, `AccessPolicy`, `ReferralActivityService`

@@ -245,6 +245,26 @@ class Tables
     }
 
     /**
+     * Local Authority / commissioning organisation directory.
+     */
+    public static function local_authorities_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_local_authorities';
+    }
+
+    /**
+     * Recognised sender email/domain rules for Local Authorities.
+     */
+    public static function local_authority_sender_rules_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_local_authority_sender_rules';
+    }
+
+    /**
      * Creates or updates plugin database tables using dbDelta.
      */
     public static function create(): void
@@ -279,6 +299,8 @@ class Tables
         self::create_referral_la_decisions_table($charset);
         self::create_referral_meetings_table($charset);
         self::create_referral_meeting_attendees_table($charset);
+        self::create_local_authorities_table($charset);
+        self::create_local_authority_sender_rules_table($charset);
     }
 
     /**
@@ -1130,6 +1152,61 @@ class Tables
             KEY attendance_status (attendance_status),
             KEY meeting_id_user_id (meeting_id, user_id),
             KEY meeting_id_sort_order (meeting_id, sort_order)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Phase 5A.3: Local Authority directory (commissioning organisations).
+     */
+    private static function create_local_authorities_table(string $charset): void
+    {
+        $table = self::local_authorities_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(255) NOT NULL,
+            slug VARCHAR(255) NOT NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'active',
+            contact_name VARCHAR(255) NULL,
+            contact_email VARCHAR(190) NULL,
+            contact_phone VARCHAR(50) NULL,
+            website VARCHAR(255) NULL,
+            notes TEXT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY slug (slug),
+            KEY status (status),
+            KEY name (name)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Phase 5A.3: Recognised sender rules (exact email / domain) per authority.
+     */
+    private static function create_local_authority_sender_rules_table(string $charset): void
+    {
+        $table = self::local_authority_sender_rules_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            local_authority_id BIGINT UNSIGNED NOT NULL,
+            rule_type VARCHAR(30) NOT NULL,
+            rule_value VARCHAR(255) NOT NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'active',
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY authority_type_value (local_authority_id, rule_type, rule_value),
+            KEY local_authority_id (local_authority_id),
+            KEY rule_type (rule_type),
+            KEY rule_value (rule_value),
+            KEY status (status),
+            KEY type_value_status (rule_type, rule_value, status)
         ) {$charset};";
 
         dbDelta($sql);

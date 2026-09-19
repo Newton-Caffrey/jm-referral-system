@@ -73,14 +73,14 @@ Display label **Platform Administrator** (role slug unchanged). Formerly labelle
 
 All JMRS capabilities.
 
-### Settings capabilities (Phase 5A.2)
+### Settings capabilities (Phase 5A.2 / 5A.3)
 
 | Capability | Who |
 | --- | --- |
-| `jmrs_manage_settings` | Platform Administrator, WordPress Administrator — organisation, branding, terminology, modules |
+| `jmrs_manage_settings` | Platform Administrator, WordPress Administrator — organisation, branding, terminology, modules, **Local Authority directory** |
 | `jmrs_manage_service_types` | Existing service catalogue CRUD (unchanged) |
 
-Module and terminology settings use `jmrs_manage_settings` only. No new capabilities in Phase 5A.2.
+Module, terminology, and Local Authority directory settings use `jmrs_manage_settings` only. No new capabilities in Phase 5A.3.
 
 ### `jmrs_referral_manager` — Referral Manager
 

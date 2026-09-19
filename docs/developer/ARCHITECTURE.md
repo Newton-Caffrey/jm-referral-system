@@ -181,6 +181,7 @@ flowchart LR
 | Public PRG + receipt transient | Prevents duplicate POST; shows confirmation without putting PHI in the URL |
 | OrganisationSettings as branding source of truth | Client-facing org identity is configurable per install; `jmrs_*` technical IDs stay stable (Phase 5A.1) |
 | TerminologySettings + ModuleSettings | Display labels and operational module switches without renaming domain keys (Phase 5A.2) |
+| Local Authority directory + recognised sender rules | Platform config for commissioning orgs; provider-neutral matcher; recognition ≠ authenticity (Phase 5A.3, DB 2.30.0) |
 
 ---
 
@@ -194,6 +195,7 @@ flowchart LR
 - [`ORGANISATION_SETTINGS.md`](ORGANISATION_SETTINGS.md)
 - [`TERMINOLOGY_SETTINGS.md`](TERMINOLOGY_SETTINGS.md)
 - [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md)
+- [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md)
 - [`SERVICES.md`](SERVICES.md)
 - [`DEPENDENCY_INJECTION.md`](DEPENDENCY_INJECTION.md)
 - [`PROJECT_HISTORY.md`](PROJECT_HISTORY.md)

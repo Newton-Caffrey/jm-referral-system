@@ -72,6 +72,11 @@ use JMReferral\Scheduling\ScheduleController;
 use JMReferral\Scheduling\ScheduleGenerationService;
 use JMReferral\Scheduling\ScheduleRepository;
 use JMReferral\Scheduling\ScheduleService;
+use JMReferral\LocalAuthority\LocalAuthorityController;
+use JMReferral\LocalAuthority\LocalAuthorityRepository;
+use JMReferral\LocalAuthority\LocalAuthoritySenderMatcher;
+use JMReferral\LocalAuthority\LocalAuthorityService;
+use JMReferral\LocalAuthority\SenderRuleRepository;
 use JMReferral\Services\ServiceTypeController;
 use JMReferral\Services\ServiceTypeRepository;
 use JMReferral\Services\ServiceTypeService;
@@ -103,6 +108,8 @@ class Plugin
     private ?AccessPolicy $access_policy = null;
     private ?ServiceTypeController $service_type_controller = null;
     private ?ServiceTypeService $service_type_service = null;
+    private ?LocalAuthorityController $local_authority_controller = null;
+    private ?LocalAuthorityService $local_authority_service = null;
     private ?WorkflowStageController $workflow_stage_controller = null;
     private ?WorkflowStageService $workflow_stage_service = null;
     private ?ReferralCarePlanReviewController $care_plan_review_controller = null;
@@ -140,6 +147,8 @@ class Plugin
             $this->filters,
             $this->service_type_controller,
             $this->service_type_service,
+            $this->local_authority_controller,
+            $this->local_authority_service,
             $this->workflow_stage_controller,
             $this->workflow_stage_service,
             $this->access_policy,
@@ -339,6 +348,12 @@ class Plugin
         $service_type_repository       = new ServiceTypeRepository();
         $this->service_type_service    = new ServiceTypeService($service_type_repository, $repository);
         $this->service_type_controller = new ServiceTypeController($this->service_type_service);
+
+        $la_repository                     = new LocalAuthorityRepository();
+        $sender_rule_repository            = new SenderRuleRepository();
+        $la_matcher                        = new LocalAuthoritySenderMatcher($la_repository, $sender_rule_repository);
+        $this->local_authority_service     = new LocalAuthorityService($la_repository, $sender_rule_repository, $la_matcher);
+        $this->local_authority_controller  = new LocalAuthorityController($this->local_authority_service);
 
         $workflow_stage_repository       = new WorkflowStageRepository();
         $this->workflow_stage_service    = new WorkflowStageService($workflow_stage_repository, $repository);
@@ -656,6 +671,7 @@ class Plugin
         $this->schedule_controller->register();
         $this->medication_controller->register();
         $this->service_type_controller->register();
+        $this->local_authority_controller->register();
         $this->workflow_stage_controller->register();
     }
 

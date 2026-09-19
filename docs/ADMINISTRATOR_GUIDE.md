@@ -191,12 +191,15 @@ Filter groups on Reports: **Report Period**, **Vacancy Home**, **Visit Analytics
 | Terminology | Client-facing singular/plural labels only (does not rename technical keys) |
 | Modules | Enable/disable operational modules; historical data preserved; dependencies enforced |
 | Services | Link to existing service catalogue management (name, description, active/inactive) |
+| Local Authorities | Directory of commissioning organisations and recognised sender emails/domains (not mailbox connection; recognition is not authenticity proof) |
 | Public Referral | Enable form, heading/intro, notification email, uploads (identity comes from Organisation) |
 | Staff Portal | Enable portal, base path, optional wp-admin redirect (branding from Organisation) |
 | Pipeline Internal Targets | Optional operational stage wait targets |
 | Private Document Migration | Batch copy legacy Media Library files to private storage |
 | Data Integrity Check | Counts only — no automatic repair |
 | Backup / uninstall notes | Operational reminders |
+
+**Local Authorities menu:** **J&M Referrals → Local Authorities** (label follows Terminology). Requires `jmrs_manage_settings`. Configure recognised sender emails/domains for future intake; mailbox connection is not available yet.
 
 ---
 
