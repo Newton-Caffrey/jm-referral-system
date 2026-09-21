@@ -56,6 +56,9 @@ $tables = [
     Tables::referral_meetings_table(),
     Tables::referral_inbox_attachments_table(),
     Tables::referral_inbox_table(),
+    // Phase 5C.1: secrets before connections (no FK; order is intentional).
+    Tables::mailbox_connection_secrets_table(),
+    Tables::mailbox_connections_table(),
     Tables::local_authority_sender_rules_table(),
     Tables::local_authorities_table(),
     Tables::referral_documents_table(),

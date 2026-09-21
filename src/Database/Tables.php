@@ -284,6 +284,20 @@ class Tables
         return $wpdb->prefix . 'jmrs_referral_inbox_attachments';
     }
 
+    public static function mailbox_connections_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_mailbox_connections';
+    }
+
+    public static function mailbox_connection_secrets_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_mailbox_connection_secrets';
+    }
+
     /**
      * Creates or updates plugin database tables using dbDelta.
      */
@@ -323,6 +337,8 @@ class Tables
         self::create_local_authority_sender_rules_table($charset);
         self::create_referral_inbox_table($charset);
         self::create_referral_inbox_attachments_table($charset);
+        self::create_mailbox_connections_table($charset);
+        self::create_mailbox_connection_secrets_table($charset);
     }
 
     /**
@@ -1318,6 +1334,72 @@ class Tables
             KEY inbox_id (inbox_id),
             KEY sha256 (sha256),
             KEY storage_status (storage_status)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Phase 5C.1: provider-neutral mailbox connection configuration (no secrets).
+     *
+     * Product constraint (app layer): one active microsoft_graph connection.
+     * Schema intentionally allows future multi-mailbox rows.
+     */
+    private static function create_mailbox_connections_table(string $charset): void
+    {
+        $table = self::mailbox_connections_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            provider VARCHAR(50) NOT NULL,
+            auth_mode VARCHAR(50) NOT NULL,
+            credential_type VARCHAR(50) NOT NULL,
+            tenant_id VARCHAR(64) NOT NULL,
+            client_id VARCHAR(64) NOT NULL,
+            mailbox_identifier VARCHAR(255) NOT NULL,
+            mailbox_address VARCHAR(190) NOT NULL,
+            mailbox_type VARCHAR(20) NOT NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'configured',
+            is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+            last_verified_at DATETIME NULL,
+            last_sync_at DATETIME NULL,
+            last_successful_ingestion_at DATETIME NULL,
+            last_error_code VARCHAR(100) NULL,
+            last_error_at DATETIME NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY provider (provider),
+            KEY status (status),
+            KEY is_enabled (is_enabled),
+            KEY provider_enabled (provider, is_enabled)
+        ) {$charset};";
+
+        dbDelta($sql);
+    }
+
+    /**
+     * Phase 5C.1: encrypted credential vault for mailbox connections.
+     *
+     * Ciphertext only — never plaintext secrets, access tokens, or refresh tokens.
+     */
+    private static function create_mailbox_connection_secrets_table(string $charset): void
+    {
+        $table = self::mailbox_connection_secrets_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            connection_id BIGINT UNSIGNED NOT NULL,
+            secret_name VARCHAR(100) NOT NULL,
+            algorithm VARCHAR(50) NOT NULL,
+            key_version INT UNSIGNED NOT NULL,
+            nonce VARCHAR(255) NOT NULL,
+            ciphertext LONGTEXT NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY connection_secret (connection_id, secret_name),
+            KEY connection_id (connection_id)
         ) {$charset};";
 
         dbDelta($sql);

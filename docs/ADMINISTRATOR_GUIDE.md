@@ -191,6 +191,7 @@ Filter groups on Reports: **Report Period**, **Vacancy Home**, **Visit Analytics
 | Terminology | Client-facing singular/plural labels only (does not rename technical keys) |
 | Modules | Enable/disable operational modules; historical data preserved; dependencies enforced |
 | Services | Link to existing service catalogue management (name, description, active/inactive) |
+| Integrations → Microsoft 365 | Customer-owned Entra app + referral mailbox + encrypted client secret (Phase 5C.1). Status becomes Configured after save; Microsoft verification is a later phase. Requires encryption keys in wp-config (`JMRS_SECRET_*`). |
 | Local Authorities | Directory of commissioning organisations and recognised sender emails/domains (not mailbox connection; recognition is not authenticity proof) |
 | Public Referral | Enable form, heading/intro, notification email, uploads (identity comes from Organisation) |
 | Staff Portal | Enable portal, base path, optional wp-admin redirect (branding from Organisation) |
@@ -199,13 +200,19 @@ Filter groups on Reports: **Report Period**, **Vacancy Home**, **Visit Analytics
 | Data Integrity Check | Counts only — no automatic repair |
 | Backup / uninstall notes | Operational reminders |
 
-**Local Authorities menu:** **J&M Referrals → Local Authorities** (label follows Terminology). Requires `jmrs_manage_settings`. Configure recognised sender emails/domains for future intake; mailbox connection is not available yet.
+**Microsoft 365 menu:** **J&M Referrals → Microsoft 365** (also linked from Settings → Integrations). Requires `jmrs_manage_settings`. Configure tenant ID, client ID, mailbox, and client secret. Secrets are encrypted at rest; the secret field never shows a stored value. Test Connection / live Microsoft verification is not available yet.
+
+**Local Authorities menu:** **J&M Referrals → Local Authorities** (label follows Terminology). Requires `jmrs_manage_settings`. Configure recognised sender emails/domains for future intake.
+
+**Encryption key setup (administrators):** Generate a 32-byte key outside WordPress (example: `php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"`), then set `JMRS_SECRET_ACTIVE_KEY_VERSION` and `JMRS_SECRET_KEY_V1` in `wp-config.php`. Do not commit real keys. See developer docs `SECRET_STORAGE.md`.
+
+**Exchange onboarding note:** Production Microsoft access should use Exchange Online RBAC for Applications to scope Application Mail.Read to the referral mailbox. An additional unscoped Entra Mail.Read grant can broaden effective access because grants are additive. JMRS does not configure tenant RBAC automatically.
 
 ---
 
 ## Staff portal
 
-Optional frontend app at `/staff-portal/` (configurable). Includes dashboard, referral list/view, Supported Living (when enabled), and **Referral Inbox** for reviewing incoming referral opportunities before they enter the workflow (Phase 5B.3). Inbox access is limited to Platform Admin / JM Administrator / Referral Manager / Care Coordinator (not Assessor or Support Worker). Mailbox connection is not available yet — opportunities appear when an intake source adds them. Disabled by default.
+Optional frontend app at `/staff-portal/` (configurable). Includes dashboard, referral list/view, Supported Living (when enabled), and **Referral Inbox** for reviewing incoming referral opportunities before they enter the workflow (Phase 5B.3). Inbox access is limited to Platform Admin / JM Administrator / Referral Manager / Care Coordinator (not Assessor or Support Worker). Microsoft 365 credentials are configured in **wp-admin Settings only** (Phase 5C.1); live mailbox sync is not available yet. Disabled by default.
 
 Administrators normally keep using wp-admin. See `docs/STAFF_PORTAL.md` and `docs/STAFF_USER_GUIDE.md`. Developer notes: `docs/developer/REFERRAL_INBOX_UI.md`.
 

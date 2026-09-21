@@ -176,6 +176,13 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Docs:** [`REFERRAL_INBOX_INGESTION.md`](REFERRAL_INBOX_INGESTION.md)
 - **Notes:** DB **2.31.0**; rewrite **1.2.8**. Idempotent replay; missing attachments reconciled on EXISTING; PARTIAL keeps Inbox row; no Graph/Gmail; no detection/LA matching; no referral creation; no attachment binaries. EXISTING does not rewrite source-declared `attachment_count`.
 
+### `MicrosoftConnectionService` / secret vault (Phase 5C.1)
+- **Purpose:** Persist one active Microsoft Graph mailbox connection (application auth) with encrypted client secret; admin Settings UI only.
+- **Deps:** `MailboxConnectionRepository`, `MailboxConnectionSecretService` (`SecretCipher` + `SecretKeyProvider`), `MailboxConnectionSecretRepository`
+- **Used by:** `Microsoft365SettingsPage` (wp-admin; `jmrs_manage_settings`)
+- **Docs:** [`MICROSOFT_365_CONNECTION.md`](MICROSOFT_365_CONNECTION.md), [`SECRET_STORAGE.md`](SECRET_STORAGE.md)
+- **Notes:** DB **2.32.0**; product **1.5.0**; rewrite **1.2.8**. Status after save = `configured` (not `connected`). No Graph/OAuth/token storage. No Inbox schema change. Product rule: one enabled `microsoft_graph` connection (not a DB UNIQUE). Client secret ciphertext ≠ access token. Dedicated `JMRS_SECRET_KEY_V*` — no WP salt fallback.
+
 ### `HomeService` / `BedroomService` / `OccupancyService` / `HomeDashboardService`
 - **Purpose:** Supported living homes, bedrooms, historical placements (2B/2C), care-setting integration (2D), and home operational dashboard read model (2E). Capacity = active bedrooms; occupancy metrics shared via `OccupancyService::compute_metrics()`.
 - **Deps:** Home/Bedroom/Occupancy repositories, visit/care-plan/MAR repos (dashboard), `UserProvider`, `ReferralRepository`, `AccessPolicy`, `ReferralActivityService`

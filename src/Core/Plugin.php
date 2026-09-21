@@ -167,6 +167,7 @@ class Plugin
             $this->document_service
         );
         $menu->register();
+        $menu->microsoft365_settings_page()->register();
     }
 
     private function registerReferralControllers(): void

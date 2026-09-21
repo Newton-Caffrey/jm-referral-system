@@ -186,6 +186,7 @@ flowchart LR
 | Referral Inbox engine | Identity/dedupe, repositories, service, atomic transitions; no UI/connectors (Phase 5B.2, DB 2.31.0) |
 | Referral Inbox Staff Portal UI | List/detail, filters, Start Review / Ignore / Duplicate / error recovery; no Accept→referral; rewrite 1.2.8 (Phase 5B.3, DB 2.31.0) |
 | Referral Inbox ingestion gateway | Provider-neutral InboundMessage → ReferralInboxIngestionService; idempotent replay + attachment reconciliation; no connectors (Phase 5B.4, DB 2.31.0, rewrite 1.2.8) |
+| Microsoft 365 connection foundation | Customer-owned Entra app config + encrypted client-secret vault; one active microsoft_graph mailbox (product rule); Settings UI; no Graph/OAuth (Phase 5C.1, DB 2.32.0, rewrite 1.2.8) |
 
 ---
 
@@ -202,6 +203,8 @@ flowchart LR
 - [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md)
 - [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md)
 - [`REFERRAL_INBOX_SERVICE.md`](REFERRAL_INBOX_SERVICE.md)
+- [`MICROSOFT_365_CONNECTION.md`](MICROSOFT_365_CONNECTION.md)
+- [`SECRET_STORAGE.md`](SECRET_STORAGE.md)
 - [`SERVICES.md`](SERVICES.md)
 - [`DEPENDENCY_INJECTION.md`](DEPENDENCY_INJECTION.md)
 - [`PROJECT_HISTORY.md`](PROJECT_HISTORY.md)

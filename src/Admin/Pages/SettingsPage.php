@@ -54,6 +54,7 @@ class SettingsPage
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Settings', 'jm-referral-system') . '</h1>';
 
+        $this->render_integrations_section();
         $this->render_organisation_and_branding_settings();
         $this->render_terminology_settings();
         $this->render_module_settings();
@@ -188,6 +189,29 @@ class SettingsPage
         echo '</p>';
 
         echo '</div>';
+    }
+
+    private function render_integrations_section(): void
+    {
+        echo '<h2>' . esc_html__('Integrations', 'jm-referral-system') . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'External mailbox and identity connections for this JMRS installation.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+        echo '<table class="form-table" role="presentation"><tbody>';
+        echo '<tr><th scope="row">' . esc_html__('Microsoft 365', 'jm-referral-system') . '</th><td>';
+        echo '<a class="button" href="' . esc_url(admin_url('admin.php?page=jm-referrals-microsoft-365')) . '">';
+        echo esc_html__('Configure Microsoft 365', 'jm-referral-system');
+        echo '</a>';
+        echo '<p class="description">';
+        echo esc_html__(
+            'Customer-owned Entra application, referral mailbox, and encrypted client secret storage. Microsoft Graph verification is not performed in this phase.',
+            'jm-referral-system'
+        );
+        echo '</p></td></tr>';
+        echo '</tbody></table>';
     }
 
     private function maybe_save_organisation_settings(): void

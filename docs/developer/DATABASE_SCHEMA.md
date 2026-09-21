@@ -1,6 +1,6 @@
 # Database Schema — JM Referral System
 
-Schema version: **`2.31.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
+Schema version: **`2.32.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
 DDL authority: `JMReferral\Database\Tables::create()` via WordPress `dbDelta`.
 
 All physical names are `{wpdb->prefix}jmrs_*`. Methods below are on `Tables`.
@@ -38,6 +38,7 @@ erDiagram
   jmrs_referral_inbox ||--o{ jmrs_referral_inbox_attachments : has
   jmrs_local_authorities ||--o{ jmrs_referral_inbox : optional_match
   jmrs_referrals ||--o{ jmrs_referral_inbox : optional_link
+  jmrs_mailbox_connections ||--o{ jmrs_mailbox_connection_secrets : vault
 ```
 
 ---
@@ -313,6 +314,43 @@ Do not store clinical narrative here. Human timeline also logs concise `pipeline
 
 ---
 
+### `jmrs_mailbox_connections` — `mailbox_connections_table()` (Phase 5C.1)
+
+**Purpose:** Provider-neutral mailbox connection configuration (no secrets, no tokens).
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Indexes** | `provider`, `status`, `is_enabled`, `(provider, is_enabled)` |
+
+**Columns:** `provider` (initial `microsoft_graph`), `auth_mode` (`application`), `credential_type` (initial `client_secret`; schema allows future certificate), `tenant_id`, `client_id`, `mailbox_identifier`, `mailbox_address`, `mailbox_type` (`user` \| `shared`), `status`, `is_enabled`, `last_verified_at`, `last_sync_at`, `last_successful_ingestion_at`, `last_error_code`, `last_error_at`, timestamps.
+
+**Product constraint (app layer):** at most one **enabled** `microsoft_graph` connection. **Not** a permanent `UNIQUE(provider)` database limitation.
+
+**Docs:** [`MICROSOFT_365_CONNECTION.md`](MICROSOFT_365_CONNECTION.md).
+
+---
+
+### `jmrs_mailbox_connection_secrets` — `mailbox_connection_secrets_table()` (Phase 5C.1)
+
+**Purpose:** Encrypted credential vault for mailbox connections.
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **Unique** | `(connection_id, secret_name)` |
+| **Index** | `connection_id` |
+
+**Columns:** `algorithm`, `key_version`, `nonce`, `ciphertext`, timestamps.
+
+**Never store:** plaintext secrets, access tokens, refresh tokens, encryption keys.
+
+**Note:** Client secret **ciphertext ≠ access token**.
+
+**Docs:** [`SECRET_STORAGE.md`](SECRET_STORAGE.md).
+
+---
+
 ### `jmrs_referral_care_plans` — `referral_care_plans_table()`
 
 **Purpose:** Active care plan (one per referral).
@@ -519,3 +557,4 @@ On `jmrs_referrals`:
 - Legacy table rename: `{prefix}jm_referrals` → `jmrs_referrals` when needed.
 - **Phase 5A.3 (2.29.0 → 2.30.0):** additive `jmrs_local_authorities` + `jmrs_local_authority_sender_rules`. No referral/service backfill. See [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md).
 - **Phase 5B.1 (2.30.0 → 2.31.0):** additive `jmrs_referral_inbox` + `jmrs_referral_inbox_attachments`. No connectors/tokens/UI/detection/referral creation. See [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md).
+- **Phase 5C.1 (2.31.0 → 2.32.0):** additive `jmrs_mailbox_connections` + `jmrs_mailbox_connection_secrets`. No Graph/OAuth/token storage; no Inbox schema change. See [`MICROSOFT_365_CONNECTION.md`](MICROSOFT_365_CONNECTION.md), [`SECRET_STORAGE.md`](SECRET_STORAGE.md).

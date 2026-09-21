@@ -73,14 +73,14 @@ Display label **Platform Administrator** (role slug unchanged). Formerly labelle
 
 All JMRS capabilities.
 
-### Settings capabilities (Phase 5A.2 / 5A.3)
+### Settings capabilities (Phase 5A.2 / 5A.3 / 5C.1)
 
 | Capability | Who |
 | --- | --- |
-| `jmrs_manage_settings` | Platform Administrator, WordPress Administrator — organisation, branding, terminology, modules, **Local Authority directory** |
+| `jmrs_manage_settings` | Platform Administrator, WordPress Administrator — organisation, branding, terminology, modules, **Local Authority directory**, **Microsoft 365 connection / Integrations** |
 | `jmrs_manage_service_types` | Existing service catalogue CRUD (unchanged) |
 
-Module, terminology, and Local Authority directory settings use `jmrs_manage_settings` only. No new capabilities in Phase 5A.3.
+Module, terminology, Local Authority directory, and Microsoft 365 Settings use `jmrs_manage_settings` only. No new capabilities in Phase 5C.1. Referral Manager / Care Coordinator / Assessor / Support Worker are denied Microsoft credentials UI by default.
 
 ### `jmrs_referral_manager` — Referral Manager
 

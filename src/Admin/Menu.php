@@ -4,9 +4,16 @@ namespace JMReferral\Admin;
 
 use JMReferral\Admin\Pages\AddReferralPage;
 use JMReferral\Admin\Pages\DashboardPage;
+use JMReferral\Admin\Pages\Microsoft365SettingsPage;
 use JMReferral\Admin\Pages\OperationalAlertsPage;
 use JMReferral\Admin\Pages\ReferralsPage;
 use JMReferral\Admin\Pages\SettingsPage;
+use JMReferral\Mailbox\MailboxConnectionRepository;
+use JMReferral\Mailbox\MailboxConnectionSecretRepository;
+use JMReferral\Mailbox\MailboxConnectionSecretService;
+use JMReferral\Mailbox\MicrosoftConnectionService;
+use JMReferral\Security\SecretCipher;
+use JMReferral\Security\SecretKeyProvider;
 use JMReferral\Alerts\OperationalAlertService;
 use JMReferral\Assessment\ReferralAssessmentRepository;
 use JMReferral\CarePlan\ReferralCarePlanRepository;
@@ -82,6 +89,7 @@ class Menu
     private ReferralsPage $referrals_page;
     private AddReferralPage $add_referral_page;
     private SettingsPage $settings_page;
+    private Microsoft365SettingsPage $microsoft365_settings_page;
     private ReferralEditController $edit_controller;
     private ReferralViewController $view_controller;
     private ServiceTypeController $service_type_controller;
@@ -356,6 +364,20 @@ class Menu
             $document_service,
             new ReferralDependencyRepository()
         );
+
+        $secret_keys   = new SecretKeyProvider();
+        $secret_cipher = new SecretCipher($secret_keys);
+        $microsoft_connection_service = new MicrosoftConnectionService(
+            new MailboxConnectionRepository(),
+            new MailboxConnectionSecretService(
+                new MailboxConnectionSecretRepository(),
+                $secret_cipher
+            ),
+            $secret_keys,
+            $secret_cipher
+        );
+        $this->microsoft365_settings_page = new Microsoft365SettingsPage($microsoft_connection_service);
+
         $this->edit_controller           = $edit_controller;
         $this->view_controller           = $view_controller;
         $this->service_type_controller     = $service_type_controller;
@@ -649,5 +671,19 @@ class Menu
             'jm-referrals-settings',
             [$this->settings_page, 'render']
         );
+
+        add_submenu_page(
+            'jm-referrals',
+            __('Microsoft 365', 'jm-referral-system'),
+            __('Microsoft 365', 'jm-referral-system'),
+            Capabilities::MANAGE_SETTINGS,
+            'jm-referrals-microsoft-365',
+            [$this->microsoft365_settings_page, 'render']
+        );
+    }
+
+    public function microsoft365_settings_page(): Microsoft365SettingsPage
+    {
+        return $this->microsoft365_settings_page;
     }
 }
