@@ -111,6 +111,7 @@ class Plugin
     private ?LocalAuthorityController $local_authority_controller = null;
     private ?LocalAuthorityService $local_authority_service = null;
     private ?\JMReferral\ReferralInbox\ReferralInboxService $referral_inbox_service = null;
+    private ?\JMReferral\ReferralInbox\ReferralInboxIngestionService $referral_inbox_ingestion_service = null;
     private ?WorkflowStageController $workflow_stage_controller = null;
     private ?WorkflowStageService $workflow_stage_service = null;
     private ?ReferralCarePlanReviewController $care_plan_review_controller = null;
@@ -357,6 +358,7 @@ class Plugin
         $this->local_authority_controller  = new LocalAuthorityController($this->local_authority_service);
 
         // Phase 5B.2 Inbox engine — Staff Portal UI wired in Phase 5B.3.
+        // Phase 5B.4 ingestion gateway orchestrates create + attachment metadata.
         $inbox_repository                 = new \JMReferral\ReferralInbox\ReferralInboxRepository();
         $inbox_attachment_repository      = new \JMReferral\ReferralInbox\ReferralInboxAttachmentRepository();
         $this->referral_inbox_service = new \JMReferral\ReferralInbox\ReferralInboxService(
@@ -365,6 +367,9 @@ class Plugin
             new \JMReferral\ReferralInbox\ReferralInboxIdentity(),
             $la_repository,
             $repository
+        );
+        $this->referral_inbox_ingestion_service = new \JMReferral\ReferralInbox\ReferralInboxIngestionService(
+            $this->referral_inbox_service
         );
 
         $workflow_stage_repository       = new WorkflowStageRepository();

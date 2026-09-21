@@ -185,6 +185,7 @@ flowchart LR
 | Referral Inbox data foundation | Provider-neutral inbox + attachment metadata tables; lifecycle ≠ detection; no connectors/UI yet (Phase 5B.1, DB 2.31.0) |
 | Referral Inbox engine | Identity/dedupe, repositories, service, atomic transitions; no UI/connectors (Phase 5B.2, DB 2.31.0) |
 | Referral Inbox Staff Portal UI | List/detail, filters, Start Review / Ignore / Duplicate / error recovery; no Accept→referral; rewrite 1.2.8 (Phase 5B.3, DB 2.31.0) |
+| Referral Inbox ingestion gateway | Provider-neutral InboundMessage → ReferralInboxIngestionService; idempotent replay + attachment reconciliation; no connectors (Phase 5B.4, DB 2.31.0, rewrite 1.2.8) |
 
 ---
 

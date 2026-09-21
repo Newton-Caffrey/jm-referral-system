@@ -10,6 +10,7 @@ Provider-neutral **domain/service engine** on top of the Phase 5B.1 schema.
 **Still out of scope:** Graph/Gmail/OAuth/webhooks/sync/tokens, detection/classification, `ReferralService::create()`, attachment file I/O, cron.
 
 Staff Portal UI is documented in [`REFERRAL_INBOX_UI.md`](REFERRAL_INBOX_UI.md) (Phase 5B.3).
+Connector-facing ingestion gateway is documented in [`REFERRAL_INBOX_INGESTION.md`](REFERRAL_INBOX_INGESTION.md) (Phase 5B.4).
 
 ---
 

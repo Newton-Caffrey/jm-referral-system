@@ -170,6 +170,12 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Docs:** [`REFERRAL_INBOX_UI.md`](REFERRAL_INBOX_UI.md)
 - **Notes:** Product **1.5.0**; DB **2.31.0**; rewrite **1.2.8**. No Accept button, no connector, no detection, no attachment downloads. GET is non-mutating.
 
+### `ReferralInboxIngestionService` (Phase 5B.4)
+- **Purpose:** Provider-neutral connector boundary — accepts `InboundMessage`, orchestrates create + attachment metadata via `ReferralInboxService`.
+- **Deps:** `ReferralInboxService`, `InboundMessage`, `InboundAttachmentMetadata`
+- **Docs:** [`REFERRAL_INBOX_INGESTION.md`](REFERRAL_INBOX_INGESTION.md)
+- **Notes:** DB **2.31.0**; rewrite **1.2.8**. Idempotent replay; missing attachments reconciled on EXISTING; PARTIAL keeps Inbox row; no Graph/Gmail; no detection/LA matching; no referral creation; no attachment binaries. EXISTING does not rewrite source-declared `attachment_count`.
+
 ### `HomeService` / `BedroomService` / `OccupancyService` / `HomeDashboardService`
 - **Purpose:** Supported living homes, bedrooms, historical placements (2B/2C), care-setting integration (2D), and home operational dashboard read model (2E). Capacity = active bedrooms; occupancy metrics shared via `OccupancyService::compute_metrics()`.
 - **Deps:** Home/Bedroom/Occupancy repositories, visit/care-plan/MAR repos (dashboard), `UserProvider`, `ReferralRepository`, `AccessPolicy`, `ReferralActivityService`

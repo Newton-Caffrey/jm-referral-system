@@ -25,6 +25,7 @@ User Acceptance Testing materials for **JM Healthcare Referral Platform** / JM R
 | [UAT_PHASE_5B_1_REFERRAL_INBOX_DATA_FOUNDATION.md](UAT_PHASE_5B_1_REFERRAL_INBOX_DATA_FOUNDATION.md) | **Phase 5B.1** Referral Inbox data foundation (DB **2.31.0**; rewrite **1.2.7**; **PASS** 2026-09-19) |
 | [UAT_PHASE_5B_2_REFERRAL_INBOX_ENGINE.md](UAT_PHASE_5B_2_REFERRAL_INBOX_ENGINE.md) | **Phase 5B.2** Referral Inbox engine (repos/service/identity/transitions; DB **2.31.0**; **PASS** 2026-09-19) |
 | [UAT_PHASE_5B_3_REFERRAL_INBOX_UI.md](UAT_PHASE_5B_3_REFERRAL_INBOX_UI.md) | **Phase 5B.3** Staff Portal Referral Inbox UI (rewrite **1.2.8**; DB **2.31.0**; **PASS** 2026-09-19) |
+| [UAT_PHASE_5B_4_REFERRAL_INBOX_INGESTION.md](UAT_PHASE_5B_4_REFERRAL_INBOX_INGESTION.md) | **Phase 5B.4** provider-neutral Inbox ingestion gateway (DB **2.31.0**; rewrite **1.2.8**; **PASS** 2026-09-21) |
 | [../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md](../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md) | **Phase 4B.2.0** meetings UI/workflow audit (design) |
 | [UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md](UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md) | **Phase 4A** accuracy / privacy / existing-data parity (pre-release) |
 | [UAT_MANAGEMENT_DASHBOARD_V1_4.md](UAT_MANAGEMENT_DASHBOARD_V1_4.md) | **v1.4.0 Management Dashboard UAT** (visual + data acceptance) |
