@@ -912,7 +912,11 @@ class Plugin
             new LocalAuthorityRepository(),
             $repository,
             $this->access_policy,
-            $this->user_provider
+            $this->user_provider,
+            new LocalAuthoritySenderMatcher(
+                new LocalAuthorityRepository(),
+                new SenderRuleRepository()
+            )
         );
         $controller->set_inbox_handler($inbox_handler);
 

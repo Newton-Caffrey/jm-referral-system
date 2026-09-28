@@ -11,8 +11,9 @@ use JMReferral\LocalAuthority\LocalAuthoritySenderMatcher;
  * Inbox lifecycle, does not create referrals, and does not call external
  * classifiers. Automatic persistence is guarded: detection metadata is
  * written only while detection_status is still unclassified, and a Local
- * Authority id is written only when the current value is NULL and the
- * matcher returned MATCH.
+ * Authority id is written only when the current id and origin are both NULL
+ * and the matcher returned MATCH. A cleared or confirmed decision is never
+ * replaced.
  */
 class ReferralInboxDetectionService
 {
@@ -105,7 +106,7 @@ class ReferralInboxDetectionService
 
     /**
      * Evaluate and guarded-persist. Does not overwrite an existing
-     * classification or a non-null Local Authority id.
+     * classification, a non-null Local Authority id, or a recorded origin.
      *
      * @return array{
      *   outcome: string,

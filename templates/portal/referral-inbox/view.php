@@ -47,6 +47,24 @@ $nonce_field           = (string) ( $nonce_field ?? '' );
 $list_url              = (string) ( $list_url ?? '' );
 $detail_notice         = is_array( $detail_notice ?? null ) ? $detail_notice : null;
 $confirm_info          = (string) ( $confirm_info ?? '' );
+$la_status_label       = (string) ( $la_status_label ?? '' );
+$show_decision_meta    = ! empty( $show_decision_meta );
+$decision_by_display   = (string) ( $decision_by_display ?? '' );
+$decision_at_display   = (string) ( $decision_at_display ?? '' );
+$can_confirm_authority = ! empty( $can_confirm_authority );
+$can_clear_authority   = ! empty( $can_clear_authority );
+$authority_options     = is_array( $authority_options ?? null ) ? $authority_options : array();
+$selected_authority_id = absint( $selected_authority_id ?? 0 );
+$inactive_authority_note = (string) ( $inactive_authority_note ?? '' );
+$new_item_authority_hint = (string) ( $new_item_authority_hint ?? '' );
+$detection_explanation = (string) ( $detection_explanation ?? '' );
+$detection_reason_code = (string) ( $detection_reason_code ?? '' );
+$sender_state_label    = (string) ( $sender_state_label ?? '' );
+$sender_detail         = (string) ( $sender_detail ?? '' );
+$sender_matched_name   = (string) ( $sender_matched_name ?? '' );
+$sender_matched_by     = (string) ( $sender_matched_by ?? '' );
+$sender_disclaimer     = (string) ( $sender_disclaimer ?? '' );
+$sender_candidates     = is_array( $sender_candidates ?? null ) ? $sender_candidates : array();
 
 $body_preview = (string) ( $item['body_preview'] ?? '' );
 $sender_name  = (string) ( $item['sender_name'] ?? '' );
@@ -121,9 +139,146 @@ $detection_key = (string) ( $item['detection_status'] ?? '' );
 			<?php endif; ?>
 			<div>
 				<dt><?php echo esc_html( $la_label ); ?></dt>
-				<dd><?php echo esc_html( $la_name ); ?></dd>
+				<dd>
+					<?php echo esc_html( $la_name ); ?>
+					<?php if ( '' !== $la_status_label ) : ?>
+						<span class="jmrs-inbox-detail__hint"><?php echo esc_html( $la_status_label ); ?></span>
+					<?php endif; ?>
+				</dd>
 			</div>
 		</dl>
+	</div>
+
+	<div class="jmrs-inbox-detail__panel">
+		<h3><?php echo esc_html__( 'Detection', 'jm-referral-system' ); ?></h3>
+		<dl class="jmrs-inbox-detail__facts">
+			<div>
+				<dt><?php echo esc_html__( 'Detection', 'jm-referral-system' ); ?></dt>
+				<dd><?php echo esc_html( $detection_label ); ?></dd>
+			</div>
+			<div>
+				<dt><?php echo esc_html__( 'Why JMRS classified it this way', 'jm-referral-system' ); ?></dt>
+				<dd><?php echo esc_html( $detection_explanation ); ?></dd>
+			</div>
+		</dl>
+		<?php if ( '' !== $detection_reason_code ) : ?>
+			<p class="jmrs-inbox-detail__hint">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: stable detection reason code */
+						__( 'Classification code: %s', 'jm-referral-system' ),
+						$detection_reason_code
+					)
+				);
+				?>
+			</p>
+		<?php endif; ?>
+	</div>
+
+	<div class="jmrs-inbox-detail__panel">
+		<h3><?php echo esc_html__( 'Sender recognition', 'jm-referral-system' ); ?></h3>
+		<p><?php echo esc_html( $sender_state_label ); ?></p>
+		<?php if ( '' !== $sender_matched_name ) : ?>
+			<dl class="jmrs-inbox-detail__facts">
+				<div>
+					<dt><?php echo esc_html__( 'Matched Local Authority', 'jm-referral-system' ); ?></dt>
+					<dd><?php echo esc_html( $sender_matched_name ); ?></dd>
+				</div>
+				<?php if ( '' !== $sender_matched_by ) : ?>
+					<div>
+						<dt><?php echo esc_html__( 'Matched by', 'jm-referral-system' ); ?></dt>
+						<dd><?php echo esc_html( $sender_matched_by ); ?></dd>
+					</div>
+				<?php endif; ?>
+			</dl>
+		<?php endif; ?>
+		<?php if ( '' !== $sender_detail ) : ?>
+			<p><?php echo esc_html( $sender_detail ); ?></p>
+		<?php endif; ?>
+		<?php if ( ! empty( $sender_candidates ) ) : ?>
+			<ul>
+				<?php foreach ( $sender_candidates as $candidate_name ) : ?>
+					<li><?php echo esc_html( (string) $candidate_name ); ?></li>
+				<?php endforeach; ?>
+			</ul>
+		<?php endif; ?>
+		<?php if ( '' !== $sender_disclaimer ) : ?>
+			<p class="jmrs-inbox-detail__hint"><?php echo esc_html( $sender_disclaimer ); ?></p>
+		<?php endif; ?>
+	</div>
+
+	<div class="jmrs-inbox-detail__panel">
+		<h3><?php echo esc_html( $la_label ); ?></h3>
+		<dl class="jmrs-inbox-detail__facts">
+			<div>
+				<dt><?php echo esc_html__( 'Stored decision', 'jm-referral-system' ); ?></dt>
+				<dd><?php echo esc_html( $la_status_label ); ?></dd>
+			</div>
+			<?php if ( '—' !== $la_name ) : ?>
+				<div>
+					<dt><?php echo esc_html__( 'Linked authority', 'jm-referral-system' ); ?></dt>
+					<dd><?php echo esc_html( $la_name ); ?></dd>
+				</div>
+			<?php endif; ?>
+			<?php if ( $show_decision_meta ) : ?>
+				<div>
+					<dt><?php echo esc_html__( 'Decision by', 'jm-referral-system' ); ?></dt>
+					<dd><?php echo esc_html( $decision_by_display ); ?></dd>
+				</div>
+				<div>
+					<dt><?php echo esc_html__( 'Decision time', 'jm-referral-system' ); ?></dt>
+					<dd><?php echo esc_html( $decision_at_display ); ?></dd>
+				</div>
+			<?php endif; ?>
+		</dl>
+		<?php if ( '' !== $new_item_authority_hint ) : ?>
+			<p class="jmrs-inbox-detail__hint"><?php echo esc_html( $new_item_authority_hint ); ?></p>
+		<?php endif; ?>
+		<?php if ( '' !== $inactive_authority_note ) : ?>
+			<p class="jmrs-inbox-detail__hint"><?php echo esc_html( $inactive_authority_note ); ?></p>
+		<?php endif; ?>
+
+		<?php if ( $can_confirm_authority ) : ?>
+			<form method="post" action="<?php echo esc_url( $form_action ); ?>" class="jmrs-inbox-action-form">
+				<?php echo $nonce_field; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_nonce_field HTML. ?>
+				<input type="hidden" name="jmrs_inbox_action" value="confirm_local_authority" />
+				<p>
+					<label for="jmrs_local_authority_id"><?php echo esc_html( $la_label ); ?></label>
+					<select name="jmrs_local_authority_id" id="jmrs_local_authority_id">
+						<option value=""><?php echo esc_html__( 'Select a Local Authority', 'jm-referral-system' ); ?></option>
+						<?php foreach ( $authority_options as $option ) : ?>
+							<?php
+							$option_id   = absint( $option['id'] ?? 0 );
+							$option_name = (string) ( $option['name'] ?? '' );
+							?>
+							<option value="<?php echo esc_attr( (string) $option_id ); ?>" <?php selected( $selected_authority_id, $option_id ); ?>>
+								<?php echo esc_html( $option_name ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</p>
+				<button type="submit" class="jmrs-button jmrs-button--primary">
+					<?php echo esc_html__( 'Confirm Local Authority', 'jm-referral-system' ); ?>
+				</button>
+			</form>
+		<?php endif; ?>
+
+		<?php if ( $can_clear_authority ) : ?>
+			<form method="post" action="<?php echo esc_url( $form_action ); ?>" class="jmrs-inbox-action-form">
+				<?php echo $nonce_field; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_nonce_field HTML. ?>
+				<input type="hidden" name="jmrs_inbox_action" value="clear_local_authority" />
+				<p>
+					<label for="jmrs_inbox_clear_authority_confirm">
+						<input type="checkbox" name="jmrs_inbox_clear_authority_confirm" id="jmrs_inbox_clear_authority_confirm" value="1" />
+						<?php echo esc_html__( 'Clear the Local Authority association for this opportunity?', 'jm-referral-system' ); ?>
+					</label>
+				</p>
+				<button type="submit" class="jmrs-button">
+					<?php echo esc_html__( 'Clear Local Authority', 'jm-referral-system' ); ?>
+				</button>
+			</form>
+		<?php endif; ?>
 	</div>
 
 	<div class="jmrs-inbox-detail__panel">

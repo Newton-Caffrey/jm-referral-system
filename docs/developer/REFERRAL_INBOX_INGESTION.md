@@ -9,7 +9,7 @@ Provider-neutral **ingestion boundary** for future mailbox connectors.
 
 **Still out of scope:** Microsoft Graph / Outlook / Gmail / OAuth / webhooks / polling / sync cursors / tokens; referral creation; attachment file download/storage; production manual-intake UI.
 
-Phase **5D.1** adds advisory detection after a **newly inserted** Inbox row. See [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). DB remains **2.32.0**. Rewrite remains **1.2.8**.
+Phase **5D.1** adds advisory detection after a **newly inserted** Inbox row. See [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). Phase **5D.2** records suggestion provenance. DB **2.33.0**. Rewrite remains **1.2.8**.
 
 ---
 
@@ -39,7 +39,7 @@ InboundMessage
 
 Successful ingestion leaves lifecycle `status` = `new`.
 
-Phase 5D.1 may then set `detection_status`, `detection_reason`, and (only on a unique MATCH while the column is NULL) `local_authority_id`. `EXISTING` replays do not run detection again. A detection failure does not delete the row, does not set lifecycle `error`, and does not fail ingestion.
+Phase 5D.1 may then set `detection_status`, `detection_reason`, and (only on a unique MATCH while both `local_authority_id` and `local_authority_origin` are NULL) a suggested Local Authority. `EXISTING` replays do not run detection again. A detection failure does not delete the row, does not set lifecycle `error`, and does not fail ingestion.
 
 No `markNeedsReview`, no `ReferralService::create()`.
 

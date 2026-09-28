@@ -641,9 +641,11 @@ class ReferralInboxService
      * Guarded advisory detection write (Phase 5D.1).
      *
      * Updates detection_status and detection_reason only while the row is
-     * still unclassified. Sets local_authority_id only when it is NULL and a
-     * positive suggested id was supplied. Never clears an existing authority.
-     * Does not change lifecycle status and does not create a referral.
+     * still unclassified. Suggests a Local Authority only when both
+     * local_authority_id and local_authority_origin are NULL, then records
+     * origin suggested with no human actor. Never replaces a confirmed,
+     * cleared, or already-linked authority. Does not change lifecycle status
+     * and does not create a referral.
      *
      * Do not use {@see setDetectionMetadata()} for this path: that method
      * writes the authority column even when the argument is null.
@@ -723,6 +725,138 @@ class ReferralInboxService
             'detection_written' => $detection_written,
             'authority_written' => $authority_written,
             'item'              => $this->inbox_repository->findById($inbox_id),
+        ];
+    }
+
+    /**
+     * Staff confirmation of a Local Authority on a Needs Review item.
+     *
+     * Does not change detection_status or detection_reason.
+     *
+     * @return array{result: string, item?: array<string, mixed>|null, errors?: array<string, string>}
+     */
+    public function confirmLocalAuthority(int $inbox_id, int $authority_id, int $actor_id): array
+    {
+        $actor_error = $this->validate_actor($actor_id);
+        if (null !== $actor_error) {
+            return [
+                'result' => ReferralInboxResult::INVALID_ACTOR,
+                'errors' => ['actor_id' => $actor_error],
+            ];
+        }
+
+        $item = $this->inbox_repository->findById($inbox_id);
+        if (null === $item) {
+            return ['result' => ReferralInboxResult::NOT_FOUND];
+        }
+
+        if (ReferralInboxStatus::NEEDS_REVIEW !== (string) ($item['status'] ?? '')) {
+            return [
+                'result' => ReferralInboxResult::INVALID_STATE,
+                'item'   => $item,
+            ];
+        }
+
+        if ($authority_id <= 0) {
+            return [
+                'result' => ReferralInboxResult::INVALID_AUTHORITY,
+                'errors' => [
+                    'local_authority_id' => __('Please select an active Local Authority.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $authority = $this->authority_repository->findById($authority_id);
+        if (null === $authority || 'active' !== (string) ($authority['status'] ?? '')) {
+            return [
+                'result' => ReferralInboxResult::INVALID_AUTHORITY,
+                'errors' => [
+                    'local_authority_id' => __('Please select an active Local Authority.', 'jm-referral-system'),
+                ],
+            ];
+        }
+
+        $now      = current_time('mysql');
+        $affected = $this->inbox_repository->confirm_local_authority(
+            $inbox_id,
+            $authority_id,
+            $actor_id,
+            $now,
+            $now
+        );
+
+        return $this->authority_decision_result($inbox_id, $affected);
+    }
+
+    /**
+     * Staff decision that no Local Authority should currently be linked.
+     *
+     * Records origin cleared so automatic detection cannot re-suggest an authority.
+     * Does not change detection_status or detection_reason.
+     *
+     * @return array{result: string, item?: array<string, mixed>|null, errors?: array<string, string>}
+     */
+    public function clearLocalAuthority(int $inbox_id, int $actor_id): array
+    {
+        $actor_error = $this->validate_actor($actor_id);
+        if (null !== $actor_error) {
+            return [
+                'result' => ReferralInboxResult::INVALID_ACTOR,
+                'errors' => ['actor_id' => $actor_error],
+            ];
+        }
+
+        $item = $this->inbox_repository->findById($inbox_id);
+        if (null === $item) {
+            return ['result' => ReferralInboxResult::NOT_FOUND];
+        }
+
+        if (ReferralInboxStatus::NEEDS_REVIEW !== (string) ($item['status'] ?? '')) {
+            return [
+                'result' => ReferralInboxResult::INVALID_STATE,
+                'item'   => $item,
+            ];
+        }
+
+        $now      = current_time('mysql');
+        $affected = $this->inbox_repository->clear_local_authority(
+            $inbox_id,
+            $actor_id,
+            $now,
+            $now
+        );
+
+        return $this->authority_decision_result($inbox_id, $affected);
+    }
+
+    /**
+     * @return array{result: string, item?: array<string, mixed>|null, errors?: array<string, string>}
+     */
+    private function authority_decision_result(int $inbox_id, int $affected): array
+    {
+        $fresh = $this->inbox_repository->findById($inbox_id);
+        if (null === $fresh) {
+            return ['result' => ReferralInboxResult::NOT_FOUND];
+        }
+
+        if ($affected > 0) {
+            return [
+                'result' => ReferralInboxResult::SUCCESS,
+                'item'   => $fresh,
+            ];
+        }
+
+        if (ReferralInboxStatus::NEEDS_REVIEW !== (string) ($fresh['status'] ?? '')) {
+            return [
+                'result' => ReferralInboxResult::CONFLICT,
+                'item'   => $fresh,
+            ];
+        }
+
+        return [
+            'result' => ReferralInboxResult::PERSISTENCE_ERROR,
+            'item'   => $fresh,
+            'errors' => ['general' => __('The Local Authority decision could not be saved.', 'jm-referral-system')],
         ];
     }
 

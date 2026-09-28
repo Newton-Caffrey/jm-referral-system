@@ -1,6 +1,6 @@
 # Database Schema — JM Referral System
 
-Schema version: **`2.32.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
+Schema version: **`2.33.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
 DDL authority: `JMReferral\Database\Tables::create()` via WordPress `dbDelta`.
 
 All physical names are `{wpdb->prefix}jmrs_*`. Methods below are on `Tables`.
@@ -289,6 +289,8 @@ Do not store clinical narrative here. Human timeline also logs concise `pipeline
 
 **Lifecycle / detection:** `status` (`ReferralInboxStatus`), `detection_status` (`ReferralDetectionStatus`) — independent fields.
 
+**Local Authority provenance (Phase 5D.2):** `local_authority_origin` (`suggested`, `confirmed`, `cleared`, or `NULL`), `local_authority_decided_by`, `local_authority_decided_at`. `NULL` origin means legacy, unspecified, or no decision recorded. No extra index and no DB foreign key. Existing non-null `local_authority_id` rows are not backfilled.
+
 **Timing/actors:** `received_at`, review/accept/ignore + by, `response_started_at`, `response_sent_at`.
 
 **Errors:** `error_code`, `error_message` (≤500; no secrets).
@@ -558,3 +560,4 @@ On `jmrs_referrals`:
 - **Phase 5A.3 (2.29.0 → 2.30.0):** additive `jmrs_local_authorities` + `jmrs_local_authority_sender_rules`. No referral/service backfill. See [`LOCAL_AUTHORITY_DIRECTORY.md`](LOCAL_AUTHORITY_DIRECTORY.md).
 - **Phase 5B.1 (2.30.0 → 2.31.0):** additive `jmrs_referral_inbox` + `jmrs_referral_inbox_attachments`. No connectors/tokens/UI/detection/referral creation. See [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md).
 - **Phase 5C.1 (2.31.0 → 2.32.0):** additive `jmrs_mailbox_connections` + `jmrs_mailbox_connection_secrets`. No Graph/OAuth/token storage; no Inbox schema change. See [`MICROSOFT_365_CONNECTION.md`](MICROSOFT_365_CONNECTION.md), [`SECRET_STORAGE.md`](SECRET_STORAGE.md).
+- **Phase 5D.2 (2.32.0 → 2.33.0):** additive `local_authority_origin`, `local_authority_decided_by`, `local_authority_decided_at` on `jmrs_referral_inbox`. No historical backfill. No referral or attachment table change. See [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md).

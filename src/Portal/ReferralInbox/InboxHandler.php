@@ -3,14 +3,18 @@
 namespace JMReferral\Portal\ReferralInbox;
 
 use JMReferral\LocalAuthority\LocalAuthorityRepository;
+use JMReferral\LocalAuthority\LocalAuthoritySenderMatcher;
+use JMReferral\LocalAuthority\SenderRuleRepository;
 use JMReferral\Permissions\AccessPolicy;
 use JMReferral\Portal\Clinical\PortalViewHost;
 use JMReferral\Portal\PortalRouter;
 use JMReferral\Portal\PortalUrls;
 use JMReferral\Referral\ReferralRepository;
 use JMReferral\ReferralInbox\InboxAttachmentStatus;
+use JMReferral\ReferralInbox\LocalAuthorityOrigin;
 use JMReferral\ReferralInbox\ReferralDetectionStatus;
 use JMReferral\ReferralInbox\ReferralInboxAttachmentRepository;
+use JMReferral\ReferralInbox\ReferralInboxDetectionExplanation;
 use JMReferral\ReferralInbox\ReferralInboxRepository;
 use JMReferral\ReferralInbox\ReferralInboxResult;
 use JMReferral\ReferralInbox\ReferralInboxService;
@@ -45,7 +49,8 @@ class InboxHandler
         private LocalAuthorityRepository $local_authority_repository,
         private ReferralRepository $referral_repository,
         private AccessPolicy $access_policy,
-        private UserProvider $user_provider
+        private UserProvider $user_provider,
+        private LocalAuthoritySenderMatcher $sender_matcher
     ) {
     }
 
@@ -228,15 +233,8 @@ class InboxHandler
             $presented_attachments[] = $this->present_attachment($attachment);
         }
 
-        $la_name = '—';
-        $la_id   = absint($item['local_authority_id'] ?? 0);
-        if ($la_id > 0) {
-            $names  = $this->local_authority_repository->findNamesByIds([$la_id]);
-            $la_name = $names[$la_id] ?? '—';
-            if ('' === $la_name) {
-                $la_name = '—';
-            }
-        }
+        $authority_view = $this->present_authority($item, $can_manage, $status);
+        $sender_view    = $this->present_sender_recognition((string) ($item['sender_email'] ?? ''));
 
         $duplicate_of_id   = absint($item['duplicate_of_inbox_id'] ?? 0);
         $duplicate_of_url  = '';
@@ -299,8 +297,28 @@ class InboxHandler
             'ignored_at_display'   => $this->format_datetime((string) ($item['ignored_at'] ?? '')),
             'accepted_by_display'  => $this->format_user_display(absint($item['accepted_by'] ?? 0)),
             'accepted_at_display'  => $this->format_datetime((string) ($item['accepted_at'] ?? '')),
-            'la_name'              => $la_name,
+            'la_name'              => $authority_view['name'],
             'la_label'             => TerminologySettings::local_authority_singular(),
+            'la_status_label'      => $authority_view['status_label'],
+            'show_decision_meta'   => $authority_view['show_decision_meta'],
+            'decision_by_display'  => $authority_view['decision_by_display'],
+            'decision_at_display'  => $authority_view['decision_at_display'],
+            'can_confirm_authority'=> $authority_view['can_confirm'],
+            'can_clear_authority'  => $authority_view['can_clear'],
+            'authority_options'    => $authority_view['options'],
+            'selected_authority_id'=> $authority_view['selected_id'],
+            'inactive_authority_note' => $authority_view['inactive_note'],
+            'new_item_authority_hint' => $authority_view['new_item_hint'],
+            'detection_explanation'=> ReferralInboxDetectionExplanation::for_reason(
+                (string) ($item['detection_reason'] ?? '')
+            ),
+            'detection_reason_code'=> (string) ($item['detection_reason'] ?? ''),
+            'sender_state_label'   => $sender_view['state_label'],
+            'sender_detail'        => $sender_view['detail'],
+            'sender_matched_name'  => $sender_view['matched_name'],
+            'sender_matched_by'    => $sender_view['matched_by'],
+            'sender_disclaimer'    => $sender_view['disclaimer'],
+            'sender_candidates'    => $sender_view['candidates'],
             'referral_label'       => TerminologySettings::referral_singular(),
             'attachments'          => $presented_attachments,
             'can_manage'           => $can_manage,
@@ -412,14 +430,30 @@ class InboxHandler
         }
 
         $action = sanitize_key((string) ($_POST['jmrs_inbox_action'] ?? ''));
+        // Actor is the authenticated user. Posted actor ids are ignored.
         $actor  = get_current_user_id();
 
+        if (in_array($action, ['confirm_local_authority', 'clear_local_authority'], true)
+            && isset($_POST['jmrs_local_authority_id'])
+            && ! is_scalar($_POST['jmrs_local_authority_id'])
+        ) {
+            $this->redirect_detail(
+                $inbox_id,
+                'error',
+                __('Invalid request.', 'jm-referral-system')
+            );
+
+            return;
+        }
+
         $result = match ($action) {
-            'start_review'   => $this->action_start_review($inbox_id, $actor),
-            'ignore'         => $this->action_ignore($inbox_id, $actor),
-            'mark_duplicate' => $this->action_mark_duplicate($inbox_id, $actor),
-            'recover_error'  => $this->action_recover_error($inbox_id, $actor),
-            default          => [
+            'start_review'             => $this->action_start_review($inbox_id, $actor),
+            'ignore'                   => $this->action_ignore($inbox_id, $actor),
+            'mark_duplicate'           => $this->action_mark_duplicate($inbox_id, $actor),
+            'recover_error'            => $this->action_recover_error($inbox_id, $actor),
+            'confirm_local_authority'  => $this->action_confirm_local_authority($inbox_id, $actor),
+            'clear_local_authority'    => $this->action_clear_local_authority($inbox_id, $actor),
+            default                    => [
                 'type'    => 'error',
                 'message' => __('Unknown action.', 'jm-referral-system'),
             ],
@@ -503,6 +537,44 @@ class InboxHandler
     /**
      * @return array{type: string, message: string}
      */
+    private function action_confirm_local_authority(int $inbox_id, int $actor): array
+    {
+        $authority_id = absint($_POST['jmrs_local_authority_id'] ?? 0);
+        $result       = $this->inbox_service->confirmLocalAuthority($inbox_id, $authority_id, $actor);
+
+        return $this->map_service_result(
+            $result,
+            __('Local Authority confirmed.', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * @return array{type: string, message: string}
+     */
+    private function action_clear_local_authority(int $inbox_id, int $actor): array
+    {
+        $confirmed = ! empty($_POST['jmrs_inbox_clear_authority_confirm']);
+        if (! $confirmed) {
+            return [
+                'type'    => 'error',
+                'message' => __(
+                    'Please confirm that you want to clear the Local Authority association.',
+                    'jm-referral-system'
+                ),
+            ];
+        }
+
+        $result = $this->inbox_service->clearLocalAuthority($inbox_id, $actor);
+
+        return $this->map_service_result(
+            $result,
+            __('Local Authority association cleared.', 'jm-referral-system')
+        );
+    }
+
+    /**
+     * @return array{type: string, message: string}
+     */
     private function action_recover_error(int $inbox_id, int $actor): array
     {
         $transition = $this->inbox_service->markNeedsReview($inbox_id);
@@ -551,12 +623,21 @@ class InboxHandler
                 'message' => __('Inbox item was not found.', 'jm-referral-system'),
             ],
             ReferralInboxResult::INVALID_TRANSITION,
+            ReferralInboxResult::INVALID_STATE,
             ReferralInboxResult::CONFLICT => [
                 'type'    => 'warning',
                 'message' => __(
                     'This opportunity has already changed. Refresh the page to see its current status.',
                     'jm-referral-system'
                 ),
+            ],
+            ReferralInboxResult::INVALID_AUTHORITY => [
+                'type'    => 'error',
+                'message' => __('Please select an active Local Authority.', 'jm-referral-system'),
+            ],
+            ReferralInboxResult::INVALID_ACTOR => [
+                'type'    => 'error',
+                'message' => __('A valid staff user is required.', 'jm-referral-system'),
             ],
             ReferralInboxResult::VALIDATION_ERROR => [
                 'type'    => 'error',
@@ -734,6 +815,180 @@ class InboxHandler
         }
 
         return '—';
+    }
+
+    /**
+     * Read-only current sender-rule evaluation. Does not persist.
+     *
+     * @return array{
+     *   state_label: string,
+     *   detail: string,
+     *   matched_name: string,
+     *   matched_by: string,
+     *   disclaimer: string,
+     *   candidates: array<int, string>
+     * }
+     */
+    private function present_sender_recognition(string $sender_email): array
+    {
+        $match  = $this->sender_matcher->matchSender($sender_email);
+        $status = (string) ($match['status'] ?? '');
+
+        $empty = [
+            'state_label'  => '',
+            'detail'       => '',
+            'matched_name' => '',
+            'matched_by'   => '',
+            'disclaimer'   => '',
+            'candidates'   => [],
+        ];
+
+        if (LocalAuthoritySenderMatcher::MATCH === $status) {
+            $authority = is_array($match['authority'] ?? null) ? $match['authority'] : [];
+            $name      = trim((string) ($authority['name'] ?? ''));
+
+            return [
+                'state_label'  => __('Recognised sender', 'jm-referral-system'),
+                'detail'       => '',
+                'matched_name' => '' !== $name ? $name : '—',
+                'matched_by'   => $this->match_type_label((string) ($match['match_type'] ?? '')),
+                'disclaimer'   => ReferralInboxDetectionExplanation::recognised_sender_disclaimer(),
+                'candidates'   => [],
+            ];
+        }
+
+        if (LocalAuthoritySenderMatcher::AMBIGUOUS === $status) {
+            $names = [];
+            $candidates = is_array($match['candidates'] ?? null) ? $match['candidates'] : [];
+            foreach ($candidates as $candidate) {
+                if (! is_array($candidate)) {
+                    continue;
+                }
+                $name = trim((string) ($candidate['authority_name'] ?? ''));
+                if ('' === $name) {
+                    $id = absint($candidate['authority_id'] ?? 0);
+                    $name = $id > 0
+                        ? sprintf(
+                            /* translators: %d: Local Authority ID */
+                            __('Local Authority #%d', 'jm-referral-system'),
+                            $id
+                        )
+                        : '';
+                }
+                if ('' !== $name) {
+                    $names[] = $name;
+                }
+            }
+
+            return [
+                'state_label'  => __('Multiple Local Authorities match this sender', 'jm-referral-system'),
+                'detail'       => '',
+                'matched_name' => '',
+                'matched_by'   => '',
+                'disclaimer'   => '',
+                'candidates'   => $names,
+            ];
+        }
+
+        if (LocalAuthoritySenderMatcher::INVALID_SENDER === $status) {
+            $empty['state_label'] = __('Sender could not be evaluated', 'jm-referral-system');
+
+            return $empty;
+        }
+
+        $empty['state_label'] = __('No recognised sender rule', 'jm-referral-system');
+        $empty['detail']      = __('No configured Local Authority sender rule matches this address.', 'jm-referral-system');
+
+        return $empty;
+    }
+
+    private function match_type_label(string $match_type): string
+    {
+        return match ($match_type) {
+            SenderRuleRepository::TYPE_EXACT_EMAIL => __('Exact email rule', 'jm-referral-system'),
+            SenderRuleRepository::TYPE_DOMAIN      => __('Domain rule', 'jm-referral-system'),
+            default                                => '',
+        };
+    }
+
+    /**
+     * Stored Local Authority decision. Separate from the live sender match.
+     *
+     * @param array<string, mixed> $item
+     * @return array{
+     *   name: string,
+     *   status_label: string,
+     *   show_decision_meta: bool,
+     *   decision_by_display: string,
+     *   decision_at_display: string,
+     *   can_confirm: bool,
+     *   can_clear: bool,
+     *   options: array<int, array{id: int, name: string}>,
+     *   selected_id: int,
+     *   inactive_note: string,
+     *   new_item_hint: string
+     * }
+     */
+    private function present_authority(array $item, bool $can_manage, string $status): array
+    {
+        $authority_id = absint($item['local_authority_id'] ?? 0);
+        $origin       = (string) ($item['local_authority_origin'] ?? '');
+        $name         = '—';
+        if ($authority_id > 0) {
+            $names = $this->local_authority_repository->findNamesByIds([$authority_id]);
+            $resolved = trim((string) ($names[$authority_id] ?? ''));
+            $name = '' !== $resolved ? $resolved : '—';
+        }
+
+        $may_decide = $can_manage && ReferralInboxStatus::NEEDS_REVIEW === $status;
+        $options    = [];
+        $selected   = 0;
+        $inactive   = '';
+
+        if ($may_decide) {
+            foreach ($this->local_authority_repository->find_active() as $authority) {
+                $id = absint($authority['id'] ?? 0);
+                if ($id <= 0) {
+                    continue;
+                }
+                $options[] = [
+                    'id'   => $id,
+                    'name' => (string) ($authority['name'] ?? ''),
+                ];
+                if ($id === $authority_id) {
+                    $selected = $id;
+                }
+            }
+
+            if ($authority_id > 0 && 0 === $selected) {
+                $inactive = __(
+                    'The currently linked Local Authority is inactive. Choose an active Local Authority to confirm a new association.',
+                    'jm-referral-system'
+                );
+            }
+        }
+
+        $show_meta = in_array($origin, [LocalAuthorityOrigin::CONFIRMED, LocalAuthorityOrigin::CLEARED], true);
+
+        return [
+            'name'                => $name,
+            'status_label'        => LocalAuthorityOrigin::stored_summary($authority_id, $origin),
+            'show_decision_meta'  => $show_meta,
+            'decision_by_display' => $show_meta
+                ? $this->format_user_display(absint($item['local_authority_decided_by'] ?? 0))
+                : '',
+            'decision_at_display' => $show_meta
+                ? $this->format_datetime((string) ($item['local_authority_decided_at'] ?? ''))
+                : '',
+            'can_confirm'         => $may_decide && [] !== $options,
+            'can_clear'           => $may_decide,
+            'options'             => $options,
+            'selected_id'         => $selected,
+            'inactive_note'       => $inactive,
+            'new_item_hint'       => ReferralInboxStatus::NEW === $status
+                ? __('Start Review before confirming or changing the Local Authority.', 'jm-referral-system')
+                : '',
+        ];
     }
 
     private function format_datetime(string $mysql): string

@@ -1,7 +1,7 @@
 # Referral Inbox Detection (Phase 5D.1)
 
 **Product:** 1.5.0 (unchanged)  
-**Database:** **2.32.0** (unchanged — no migration)  
+**Database:** **2.33.0** (Phase 5D.2 adds Local Authority provenance columns)
 **Portal rewrite:** **1.2.8** (unchanged — no new route)  
 **Branch:** `feature/5d-referral-detection`
 
@@ -22,7 +22,7 @@ Recognised sender means a configured Local Authority sender rule matched. It doe
 | `ReferralInboxDetectionResult` | Advisory result. Only status + reason are persistence candidates |
 | `ReferralInboxService::applyGuardedDetection()` | Compare-and-set writer |
 | `ReferralInboxRepository::update_detection_if_unclassified()` | `WHERE detection_status = 'unclassified'` |
-| `ReferralInboxRepository::set_local_authority_if_null()` | `WHERE local_authority_id IS NULL` |
+| `ReferralInboxRepository::set_local_authority_if_null()` | `WHERE local_authority_id IS NULL AND local_authority_origin IS NULL` |
 
 `LocalAuthoritySenderMatcher` is reused. Sender-rule precedence and domain label boundaries are unchanged.
 
@@ -99,12 +99,12 @@ Rule 2 can classify a recognised sender’s invoice as `not_referral`. Rule 3 do
 
 Independent of detection status.
 
-| Matcher | Automatic `local_authority_id` write |
+| Matcher | Automatic authority write |
 | --- | --- |
-| `MATCH` | Set only when the column is currently `NULL` |
+| `MATCH` | Set `local_authority_id` and `local_authority_origin = suggested` only when **both** `local_authority_id` and `local_authority_origin` are `NULL`. `decided_by` and `decided_at` stay `NULL`. |
 | `AMBIGUOUS` | Never. Candidates stay on the result object and are not stored |
-| `NO_MATCH` | Never. Does not clear an existing id |
-| `INVALID_SENDER` | Never. Does not clear an existing id |
+| `NO_MATCH` | Never. Does not clear an existing id or a `cleared` origin |
+| `INVALID_SENDER` | Never. Does not clear an existing id or a `cleared` origin |
 
 Examples:
 
@@ -112,7 +112,7 @@ Examples:
 - Recognised sender + neutral message → `uncertain`, and the authority may still be stored if the column was null.
 - Ambiguous sender + referral subject → `uncertain`, authority stays null.
 
-A non-null authority is never replaced by a later automatic `MATCH` for a different authority.
+A non-null authority is never replaced by a later automatic `MATCH` for a different authority. A recorded origin of `confirmed` or `cleared` also blocks the automatic write, including when `cleared` has set the authority id back to `NULL`. Historical rows with a non-null id and a `NULL` origin are left unchanged and are not backfilled. Staff explanation and human confirm/clear are documented in [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md).
 
 ---
 
@@ -124,7 +124,7 @@ A non-null authority is never replaced by a later automatic `MATCH` for a differ
 
 1. Evaluates.
 2. Writes detection status and reason only while `detection_status = unclassified`.
-3. Writes the suggested authority only on `MATCH` when `local_authority_id IS NULL`.
+3. Writes the suggested authority only on `MATCH` when `local_authority_id IS NULL` and `local_authority_origin IS NULL`, and records origin `suggested`.
 4. Returns `applied`, `unchanged`, or `not_found`.
 
 There is no force/overwrite flag.

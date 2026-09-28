@@ -188,6 +188,7 @@ flowchart LR
 | Referral Inbox ingestion gateway | Provider-neutral InboundMessage → ReferralInboxIngestionService; idempotent replay + attachment reconciliation; no connectors (Phase 5B.4, DB 2.31.0, rewrite 1.2.8) |
 | Microsoft 365 connection foundation | Customer-owned Entra app config + encrypted client-secret vault; one active microsoft_graph mailbox (product rule); Settings UI; no Graph/OAuth (Phase 5C.1, DB 2.32.0, rewrite 1.2.8) |
 | Referral Inbox detection | Deterministic advisory classification on new Inbox rows only; recognised sender via existing matcher; guarded detection/authority writes; no lifecycle change and no referral creation (Phase 5D.1, DB 2.32.0, rewrite 1.2.8) |
+| Referral Inbox authority review | Staff explanation of detection and current sender recognition; human confirm/clear with provenance (`suggested` / `confirmed` / `cleared`) that automatic detection cannot replace; needs_review only; no referral creation and no detection re-run action (Phase 5D.2, DB 2.33.0, rewrite 1.2.8) |
 
 ---
 
@@ -205,6 +206,7 @@ flowchart LR
 - [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md)
 - [`REFERRAL_INBOX_SERVICE.md`](REFERRAL_INBOX_SERVICE.md)
 - [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md)
+- [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md)
 - [`MICROSOFT_365_CONNECTION.md`](MICROSOFT_365_CONNECTION.md)
 - [`SECRET_STORAGE.md`](SECRET_STORAGE.md)
 - [`SERVICES.md`](SERVICES.md)

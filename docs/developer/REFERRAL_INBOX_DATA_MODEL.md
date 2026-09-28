@@ -91,7 +91,9 @@ Conceptual lifecycle: `new` → `needs_review` → `accepted` | `ignored` | `dup
 
 ### Linkage (nullable; no backfill in 5B.1)
 
-- `local_authority_id` — future sender matching; null until later processing
+- `local_authority_id` — optional link. Automatic suggestion sets it only when this column and `local_authority_origin` are both null
+- `local_authority_origin` — `suggested` (automatic), `confirmed` (staff), `cleared` (staff rejected the link), or `NULL` (legacy / no decision recorded)
+- `local_authority_decided_by` / `local_authority_decided_at` — set for `confirmed` and `cleared` only
 - `linked_referral_id` — future Accept → referral link; no `ReferralService::create()` here
 - `duplicate_of_inbox_id` — points at another inbox row when marked duplicate
 

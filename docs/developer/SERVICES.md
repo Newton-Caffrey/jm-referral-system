@@ -168,7 +168,7 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Purpose:** Staff Portal list/detail for Inbox opportunities; Start Review / Ignore / Duplicate / error recovery via `ReferralInboxService`.
 - **Deps:** `InboxHandler`, `AccessPolicy::can_view_referral_inbox` / `can_manage_referral_inbox`, repository read methods
 - **Docs:** [`REFERRAL_INBOX_UI.md`](REFERRAL_INBOX_UI.md)
-- **Notes:** Product **1.5.0**; DB **2.31.0**; rewrite **1.2.8**. No Accept button, no connector, no detection controls, no attachment downloads. GET is non-mutating. The existing badge shows stored `detection_status` after Phase 5D.1 writes it.
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. No Accept button, no connector, no detection re-run control, no attachment downloads. GET is non-mutating. Detail shows the detection explanation, a live sender-recognition section, and confirm/clear only while `needs_review`.
 
 ### `ReferralInboxIngestionService` (Phase 5B.4)
 - **Purpose:** Provider-neutral connector boundary — accepts `InboundMessage`, orchestrates create + attachment metadata via `ReferralInboxService`.
@@ -180,7 +180,13 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Purpose:** Deterministic advisory classification from subject, body preview, attachment filenames, and `LocalAuthoritySenderMatcher`. Persists a short reason code and, on MATCH only, a Local Authority id when that column is still NULL.
 - **Deps:** `ReferralInboxService`, `LocalAuthoritySenderMatcher`, `ReferralInboxDetectionRules`
 - **Docs:** [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md)
-- **Notes:** Product **1.5.0**; DB **2.32.0**; rewrite **1.2.8**. No schema change, no new route, no AI, no referral creation, no lifecycle change, no historical backfill. `EXISTING` ingestion replays do not re-detect. `setDetectionMetadata()` is not the automatic writer.
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. No new route, no AI, no referral creation, no lifecycle change, no historical provenance backfill. Automatic authority suggestion also requires `local_authority_origin IS NULL` and records origin `suggested`. `EXISTING` ingestion replays do not re-detect. `setDetectionMetadata()` is not the automatic writer.
+
+### Referral Inbox authority review (Phase 5D.2)
+- **Purpose:** Explain a stored detection, show the current recognised-sender result without saving it, and let an authorised manager confirm or clear the Local Authority while the item is `needs_review`.
+- **Deps:** `ReferralInboxService::confirmLocalAuthority()` / `clearLocalAuthority()`, `LocalAuthorityOrigin`, `ReferralInboxDetectionExplanation`, `LocalAuthoritySenderMatcher` (read-only on GET), `InboxHandler`
+- **Docs:** [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. Same Inbox view/manage capabilities. No new route, no detection re-run button, no Accept/Create Referral. `cleared` blocks later automatic suggestion. GET does not mutate.
 
 ### `MicrosoftConnectionService` / secret vault (Phase 5C.1)
 - **Purpose:** Persist one active Microsoft Graph mailbox connection (application auth) with encrypted client secret; admin Settings UI only.

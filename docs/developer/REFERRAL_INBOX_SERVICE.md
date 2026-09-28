@@ -106,8 +106,11 @@ Guarded writes:
 | Method | SQL guard | Does not touch |
 | --- | --- | --- |
 | `ReferralInboxRepository::update_detection_if_unclassified()` | `detection_status = 'unclassified'` | lifecycle, `local_authority_id` |
-| `ReferralInboxRepository::set_local_authority_if_null()` | `local_authority_id IS NULL` | lifecycle, detection columns |
-| `ReferralInboxService::applyGuardedDetection()` | calls both | lifecycle; never clears an authority |
+| `ReferralInboxRepository::set_local_authority_if_null()` | `local_authority_id IS NULL` and `local_authority_origin IS NULL` | lifecycle, detection columns. Sets origin `suggested` and clears decision actor/time |
+| `ReferralInboxRepository::confirm_local_authority()` | `status = needs_review` | detection columns |
+| `ReferralInboxRepository::clear_local_authority()` | `status = needs_review` | detection columns. Sets origin `cleared` and does not reset it to `NULL` |
+| `ReferralInboxService::applyGuardedDetection()` | calls the detection and suggestion guards | lifecycle; never replaces a confirmed, cleared, or already-linked authority |
+| `ReferralInboxService::confirmLocalAuthority()` / `clearLocalAuthority()` | needs_review, valid actor, and for confirm an active authority | detection columns |
 
 `setDetectionMetadata()` remains for an explicit metadata write:
 
@@ -115,7 +118,7 @@ Guarded writes:
 - Does **not** change lifecycle status
 - Non-null LA ID must exist
 
-Rules, precedence, and ingestion wiring: [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). DB stays **2.32.0**. Rewrite stays **1.2.8**.
+Rules, precedence, and ingestion wiring: [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). Human confirm/clear: [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md). DB **2.33.0**. Rewrite stays **1.2.8**.
 
 ---
 
