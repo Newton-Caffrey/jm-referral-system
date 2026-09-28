@@ -99,11 +99,23 @@ Results: `SUCCESS`, `ALREADY_APPLIED`, `INVALID_TRANSITION`, `NOT_FOUND`, `CONFL
 
 ## Detection / Local Authority
 
-`setDetectionMetadata()` records `detection_status` / `detection_reason` / optional `local_authority_id` for future Phase 5D.
+Automatic Phase **5D.1** detection does **not** call `setDetectionMetadata()`. That method writes `detection_status`, `detection_reason`, and `local_authority_id` together, so a null authority argument clears a stored id.
+
+Guarded writes:
+
+| Method | SQL guard | Does not touch |
+| --- | --- | --- |
+| `ReferralInboxRepository::update_detection_if_unclassified()` | `detection_status = 'unclassified'` | lifecycle, `local_authority_id` |
+| `ReferralInboxRepository::set_local_authority_if_null()` | `local_authority_id IS NULL` | lifecycle, detection columns |
+| `ReferralInboxService::applyGuardedDetection()` | calls both | lifecycle; never clears an authority |
+
+`setDetectionMetadata()` remains for an explicit metadata write:
 
 - Does **not** call `LocalAuthoritySenderMatcher`
 - Does **not** change lifecycle status
 - Non-null LA ID must exist
+
+Rules, precedence, and ingestion wiring: [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). DB stays **2.32.0**. Rewrite stays **1.2.8**.
 
 ---
 

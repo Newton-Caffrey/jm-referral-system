@@ -369,8 +369,13 @@ class Plugin
             $la_repository,
             $repository
         );
+        $detection_service = new \JMReferral\ReferralInbox\ReferralInboxDetectionService(
+            $this->referral_inbox_service,
+            $la_matcher
+        );
         $this->referral_inbox_ingestion_service = new \JMReferral\ReferralInbox\ReferralInboxIngestionService(
-            $this->referral_inbox_service
+            $this->referral_inbox_service,
+            $detection_service
         );
 
         $workflow_stage_repository       = new WorkflowStageRepository();

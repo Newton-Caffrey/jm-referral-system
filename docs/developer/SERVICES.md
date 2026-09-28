@@ -168,13 +168,19 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Purpose:** Staff Portal list/detail for Inbox opportunities; Start Review / Ignore / Duplicate / error recovery via `ReferralInboxService`.
 - **Deps:** `InboxHandler`, `AccessPolicy::can_view_referral_inbox` / `can_manage_referral_inbox`, repository read methods
 - **Docs:** [`REFERRAL_INBOX_UI.md`](REFERRAL_INBOX_UI.md)
-- **Notes:** Product **1.5.0**; DB **2.31.0**; rewrite **1.2.8**. No Accept button, no connector, no detection, no attachment downloads. GET is non-mutating.
+- **Notes:** Product **1.5.0**; DB **2.31.0**; rewrite **1.2.8**. No Accept button, no connector, no detection controls, no attachment downloads. GET is non-mutating. The existing badge shows stored `detection_status` after Phase 5D.1 writes it.
 
 ### `ReferralInboxIngestionService` (Phase 5B.4)
 - **Purpose:** Provider-neutral connector boundary — accepts `InboundMessage`, orchestrates create + attachment metadata via `ReferralInboxService`.
-- **Deps:** `ReferralInboxService`, `InboundMessage`, `InboundAttachmentMetadata`
+- **Deps:** `ReferralInboxService`, `ReferralInboxDetectionService` (advisory, new rows only), `InboundMessage`, `InboundAttachmentMetadata`
 - **Docs:** [`REFERRAL_INBOX_INGESTION.md`](REFERRAL_INBOX_INGESTION.md)
-- **Notes:** DB **2.31.0**; rewrite **1.2.8**. Idempotent replay; missing attachments reconciled on EXISTING; PARTIAL keeps Inbox row; no Graph/Gmail; no detection/LA matching; no referral creation; no attachment binaries. EXISTING does not rewrite source-declared `attachment_count`.
+- **Notes:** DB **2.31.0** schema (product DB remains **2.32.0**). Rewrite **1.2.8**. Idempotent replay; missing attachments reconciled on EXISTING; PARTIAL keeps Inbox row; no Graph/Gmail; no referral creation; no attachment binaries. EXISTING does not rewrite source-declared `attachment_count`. Phase **5D.1** runs advisory detection only when this call inserted a new Inbox row.
+
+### `ReferralInboxDetectionService` (Phase 5D.1)
+- **Purpose:** Deterministic advisory classification from subject, body preview, attachment filenames, and `LocalAuthoritySenderMatcher`. Persists a short reason code and, on MATCH only, a Local Authority id when that column is still NULL.
+- **Deps:** `ReferralInboxService`, `LocalAuthoritySenderMatcher`, `ReferralInboxDetectionRules`
+- **Docs:** [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md)
+- **Notes:** Product **1.5.0**; DB **2.32.0**; rewrite **1.2.8**. No schema change, no new route, no AI, no referral creation, no lifecycle change, no historical backfill. `EXISTING` ingestion replays do not re-detect. `setDetectionMetadata()` is not the automatic writer.
 
 ### `MicrosoftConnectionService` / secret vault (Phase 5C.1)
 - **Purpose:** Persist one active Microsoft Graph mailbox connection (application auth) with encrypted client secret; admin Settings UI only.

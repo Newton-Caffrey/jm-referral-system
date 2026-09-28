@@ -317,6 +317,74 @@ class ReferralInboxRepository
     }
 
     /**
+     * Compare-and-set detection metadata.
+     *
+     * Does not touch local_authority_id or lifecycle status.
+     *
+     * @return int Rows affected (0 = missing row or detection already classified).
+     */
+    public function update_detection_if_unclassified(int $id, string $detection_status, string $detection_reason, string $updated_at): int
+    {
+        global $wpdb;
+
+        if ($id <= 0 || ! ReferralDetectionStatus::is_valid($detection_status)) {
+            return 0;
+        }
+
+        $table = Tables::referral_inbox_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table trusted.
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table}
+                SET detection_status = %s, detection_reason = %s, updated_at = %s
+                WHERE id = %d
+                  AND detection_status = %s",
+                $detection_status,
+                $detection_reason,
+                $updated_at,
+                $id,
+                ReferralDetectionStatus::UNCLASSIFIED
+            )
+        );
+
+        return (int) $wpdb->rows_affected;
+    }
+
+    /**
+     * Sets a recognised Local Authority only while the column is still NULL.
+     *
+     * Does not clear or replace an existing id. Does not touch detection fields.
+     *
+     * @return int Rows affected (0 = missing row or authority already set).
+     */
+    public function set_local_authority_if_null(int $id, int $local_authority_id, string $updated_at): int
+    {
+        global $wpdb;
+
+        if ($id <= 0 || $local_authority_id <= 0) {
+            return 0;
+        }
+
+        $table = Tables::referral_inbox_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table trusted.
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table}
+                SET local_authority_id = %d, updated_at = %s
+                WHERE id = %d
+                  AND local_authority_id IS NULL",
+                $local_authority_id,
+                $updated_at,
+                $id
+            )
+        );
+
+        return (int) $wpdb->rows_affected;
+    }
+
+    /**
      * Paginated Inbox list for Staff Portal UI (Phase 5B.3).
      *
      * @param array{status?: string, search?: string} $filters

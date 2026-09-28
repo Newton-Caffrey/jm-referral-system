@@ -8,7 +8,8 @@ use JMReferral\Referral\ReferralRepository;
 /**
  * Application boundary for Referral Inbox operations (Phase 5B.2).
  *
- * No UI, connectors, detection, referral creation, or attachment file I/O.
+ * No UI, connectors, referral creation, or attachment file I/O.
+ * Advisory detection persistence is {@see applyGuardedDetection()} only.
  *
  * attachment_count semantics: source-declared count from create input.
  * Metadata inserts do not rewrite attachment_count.
@@ -570,7 +571,10 @@ class ReferralInboxService
     }
 
     /**
-     * Low-level detection metadata for future Phase 5D — no matcher/classifier.
+     * Explicit detection metadata write. Writes status, reason, and authority together.
+     *
+     * Automatic detection must use {@see applyGuardedDetection()} instead.
+     * A null authority argument here clears a stored Local Authority id.
      *
      * @return array{result: string, item?: array<string, mixed>, errors?: array<string, string>}
      */
@@ -630,6 +634,95 @@ class ReferralInboxService
         return [
             'result' => ReferralInboxResult::SUCCESS,
             'item'   => $this->inbox_repository->findById($inbox_id),
+        ];
+    }
+
+    /**
+     * Guarded advisory detection write (Phase 5D.1).
+     *
+     * Updates detection_status and detection_reason only while the row is
+     * still unclassified. Sets local_authority_id only when it is NULL and a
+     * positive suggested id was supplied. Never clears an existing authority.
+     * Does not change lifecycle status and does not create a referral.
+     *
+     * Do not use {@see setDetectionMetadata()} for this path: that method
+     * writes the authority column even when the argument is null.
+     *
+     * @return array{
+     *   result: string,
+     *   item?: array<string, mixed>|null,
+     *   errors?: array<string, string>,
+     *   detection_written: bool,
+     *   authority_written: bool
+     * }
+     */
+    public function applyGuardedDetection(int $inbox_id, string $detection_status, string $detection_reason, ?int $suggested_local_authority_id): array
+    {
+        if (! ReferralDetectionStatus::is_valid($detection_status)) {
+            return [
+                'result'             => ReferralInboxResult::VALIDATION_ERROR,
+                'detection_written'  => false,
+                'authority_written'  => false,
+                'errors'             => ['detection_status' => __('Invalid detection status.', 'jm-referral-system')],
+            ];
+        }
+
+        $reason = strtolower(trim($detection_reason));
+        if (! preg_match('/^[a-z0-9_]{1,64}$/', $reason) || strlen($reason) > ReferralInboxLimits::DETECTION_REASON_MAX) {
+            return [
+                'result'            => ReferralInboxResult::VALIDATION_ERROR,
+                'detection_written' => false,
+                'authority_written' => false,
+                'errors'            => ['detection_reason' => __('Detection reason must be a short stable code.', 'jm-referral-system')],
+            ];
+        }
+
+        $item = $this->inbox_repository->findById($inbox_id);
+        if (null === $item) {
+            return [
+                'result'            => ReferralInboxResult::NOT_FOUND,
+                'detection_written' => false,
+                'authority_written' => false,
+            ];
+        }
+
+        $authority_id = null;
+        if (null !== $suggested_local_authority_id && $suggested_local_authority_id > 0) {
+            $authority = $this->authority_repository->findById($suggested_local_authority_id);
+            if (null !== $authority) {
+                $authority_id = $suggested_local_authority_id;
+            }
+        }
+
+        $now               = current_time('mysql');
+        $detection_written = false;
+        if (ReferralDetectionStatus::UNCLASSIFIED === (string) ($item['detection_status'] ?? '')) {
+            $affected = $this->inbox_repository->update_detection_if_unclassified(
+                $inbox_id,
+                $detection_status,
+                $reason,
+                $now
+            );
+            $detection_written = $affected > 0;
+        }
+
+        $authority_written = false;
+        if (null !== $authority_id) {
+            $affected_authority = $this->inbox_repository->set_local_authority_if_null(
+                $inbox_id,
+                $authority_id,
+                $now
+            );
+            $authority_written = $affected_authority > 0;
+        }
+
+        return [
+            'result'            => ($detection_written || $authority_written)
+                ? ReferralInboxResult::SUCCESS
+                : ReferralInboxResult::ALREADY_APPLIED,
+            'detection_written' => $detection_written,
+            'authority_written' => $authority_written,
+            'item'              => $this->inbox_repository->findById($inbox_id),
         ];
     }
 
