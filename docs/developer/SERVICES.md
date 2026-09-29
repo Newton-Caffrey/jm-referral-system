@@ -188,6 +188,12 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Docs:** [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md)
 - **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. Same Inbox view/manage capabilities. No new route, no detection re-run button, no Accept/Create Referral. `cleared` blocks later automatic suggestion. GET does not mutate.
 
+### `ReferralInboxCandidateExtractor` (Phase 5D.3)
+- **Purpose:** Derive advisory client, referrer, service-hint, and priority-hint candidates from stored Inbox metadata.
+- **Deps:** `ReferralInboxService` (read), `LocalAuthorityRepository` (stored authority name only), `ReferralInboxDetectionRules` (phrase boundaries)
+- **Docs:** [`REFERRAL_INBOX_CANDIDATE_EXTRACTION.md`](REFERRAL_INBOX_CANDIDATE_EXTRACTION.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. In memory only. No schema change, no new route, no production UI, no AI, no sender-matcher re-run, no referral creation. Ambiguous labels are not silently resolved. A cleared authority supplies no organisation.
+
 ### `MicrosoftConnectionService` / secret vault (Phase 5C.1)
 - **Purpose:** Persist one active Microsoft Graph mailbox connection (application auth) with encrypted client secret; admin Settings UI only.
 - **Deps:** `MailboxConnectionRepository`, `MailboxConnectionSecretService` (`SecretCipher` + `SecretKeyProvider`), `MailboxConnectionSecretRepository`
