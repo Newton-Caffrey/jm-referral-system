@@ -400,7 +400,8 @@ class Plugin
             $this->workflow_stage_service,
             $this->access_policy,
             $occupancy_repository,
-            $pipeline_service
+            $pipeline_service,
+            new \JMReferral\Referral\ReferralNumberLock()
         );
         $la_decision_repository = new \JMReferral\LaDecision\LaDecisionRepository();
         $la_decision_service    = new \JMReferral\LaDecision\LocalAuthorityDecisionService(
@@ -921,7 +922,16 @@ class Plugin
         $prepare_handler = new \JMReferral\Portal\ReferralInbox\PrepareHandler(
             $controller,
             $this->access_policy,
-            $preparation_service
+            $preparation_service,
+            new \JMReferral\ReferralInbox\ReferralInboxConversionService(
+                new \JMReferral\ReferralInbox\ReferralInboxRepository(),
+                $this->referral_inbox_service,
+                $preparation_service,
+                $this->service,
+                $repository,
+                new \JMReferral\Referral\ReferralNumberLock(),
+                new \JMReferral\Database\TransactionEngineGuard()
+            )
         );
         $inbox_handler = new \JMReferral\Portal\ReferralInbox\InboxHandler(
             $controller,

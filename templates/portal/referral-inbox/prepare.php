@@ -19,6 +19,8 @@ $notice                 = (string) ( $notice ?? '' );
 $stale_message          = (string) ( $stale_message ?? '' );
 $blocked_message        = (string) ( $blocked_message ?? '' );
 $ready_message          = (string) ( $ready_message ?? '' );
+$offer_create           = ! empty( $offer_create );
+$view_referral_url      = (string) ( $view_referral_url ?? '' );
 $not_created_message    = (string) ( $not_created_message ?? '' );
 $values                 = is_array( $values ?? null ) ? $values : array();
 $errors                 = is_array( $errors ?? null ) ? $errors : array();
@@ -155,6 +157,13 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 	<?php if ( ! $show_form ) : ?>
 		<div class="jmrs-inbox-detail__panel" role="status">
 			<p><?php echo esc_html( $blocked_message ); ?></p>
+			<?php if ( '' !== $view_referral_url ) : ?>
+				<p>
+					<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( $view_referral_url ); ?>">
+						<?php echo esc_html__( 'View Referral', 'jm-referral-system' ); ?>
+					</a>
+				</p>
+			<?php endif; ?>
 			<?php if ( '' !== $detail_url ) : ?>
 				<p>
 					<a class="jmrs-button" href="<?php echo esc_url( $detail_url ); ?>">
@@ -181,7 +190,6 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 
 		<form class="jmrs-portal-form jmrs-prepare-form" method="post" action="<?php echo esc_url( $form_action ); ?>">
 			<?php echo $nonce_field; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_nonce_field HTML. ?>
-			<input type="hidden" name="jmrs_prepare_action" value="validate" />
 			<input type="hidden" name="jmrs_prepare_inbox_id" value="<?php echo esc_attr( (string) $inbox_id ); ?>" />
 
 			<section class="jmrs-portal-section" aria-labelledby="jmrs-prepare-client-heading">
@@ -453,10 +461,30 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 				</div>
 			</section>
 
+			<?php if ( $offer_create ) : ?>
+				<div class="jmrs-portal-field jmrs-portal-field--full" id="jmrs_prepare_confirmation">
+					<p class="jmrs-prepare-hint">
+						<?php echo esc_html__( 'Creating the referral will accept this Inbox opportunity and link the two records.', 'jm-referral-system' ); ?>
+					</p>
+					<label for="jmrs_prepare_confirm">
+						<input type="checkbox" name="jmrs_prepare_confirm" id="jmrs_prepare_confirm" value="1" />
+						<?php echo esc_html__( 'I have reviewed these details and want to create the referral.', 'jm-referral-system' ); ?>
+					</label>
+					<?php if ( isset( $errors['confirmation'] ) ) : ?>
+						<p class="jmrs-portal-field-error" id="jmrs-prepare-error-confirmation"><?php echo esc_html( (string) $errors['confirmation'] ); ?></p>
+					<?php endif; ?>
+				</div>
+			<?php endif; ?>
+
 			<p class="jmrs-prepare-actions">
-				<button type="submit" class="jmrs-button jmrs-button--primary">
+				<button type="submit" class="<?php echo $offer_create ? 'jmrs-button' : 'jmrs-button jmrs-button--primary'; ?>" name="jmrs_prepare_action" value="validate">
 					<?php echo esc_html__( 'Validate Details', 'jm-referral-system' ); ?>
 				</button>
+				<?php if ( $offer_create ) : ?>
+					<button type="submit" class="jmrs-button jmrs-button--primary" name="jmrs_prepare_action" value="create_referral">
+						<?php echo esc_html__( 'Create Referral', 'jm-referral-system' ); ?>
+					</button>
+				<?php endif; ?>
 				<a class="jmrs-button" href="<?php echo esc_url( $detail_url ); ?>">
 					<?php echo esc_html__( 'Back to Referral Inbox Item', 'jm-referral-system' ); ?>
 				</a>

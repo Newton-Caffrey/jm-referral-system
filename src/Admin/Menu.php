@@ -171,17 +171,28 @@ class Menu
         $email_service        = new EmailNotificationService();
         $notification_service = new NotificationService($email_service, $user_provider);
         $occupancy_repository = new OccupancyRepository();
-        $service            ??= new ReferralService(
-            $repository,
-            $number_generator,
-            $activity_service,
-            $user_provider,
-            $notification_service,
-            $service_type_service,
-            $workflow_stage_service,
-            $access_policy,
-            $occupancy_repository
-        );
+        if (null === $service) {
+            $service = new ReferralService(
+                $repository,
+                $number_generator,
+                $activity_service,
+                $user_provider,
+                $notification_service,
+                $service_type_service,
+                $workflow_stage_service,
+                $access_policy,
+                $occupancy_repository,
+                new \JMReferral\Pipeline\ReferralPipelineService(
+                    $repository,
+                    $workflow_stage_repository,
+                    new \JMReferral\Pipeline\ReferralStageHistoryRepository(),
+                    $activity_service,
+                    $access_policy,
+                    $user_provider
+                ),
+                new \JMReferral\Referral\ReferralNumberLock()
+            );
+        }
         $validator = new ReferralValidator(
             $user_provider,
             $service_type_service,

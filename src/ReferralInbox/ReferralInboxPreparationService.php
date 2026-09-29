@@ -360,6 +360,21 @@ class ReferralInboxPreparationService
         return $errors;
     }
 
+    /**
+     * Re-check an already sanitized payload. Does not read POST and does not write.
+     *
+     * @param array<string, string> $values
+     * @return array<string, string>
+     */
+    public function revalidate_values(array $values, bool $can_assign): array
+    {
+        if (! $can_assign) {
+            $values['assigned_to'] = '0';
+        }
+
+        return $this->validate_values($values);
+    }
+
     private function scalar_text(mixed $value): string
     {
         if (! is_scalar($value)) {

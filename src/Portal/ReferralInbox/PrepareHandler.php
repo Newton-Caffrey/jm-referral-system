@@ -10,13 +10,15 @@ use JMReferral\Portal\PortalUrls;
 use JMReferral\ReferralInbox\LocalAuthorityOrigin;
 use JMReferral\ReferralInbox\ReferralDetectionStatus;
 use JMReferral\ReferralInbox\ReferralInboxDetectionExplanation;
+use JMReferral\ReferralInbox\ReferralInboxConversionResult;
+use JMReferral\ReferralInbox\ReferralInboxConversionService;
 use JMReferral\ReferralInbox\ReferralInboxPreparationService;
 use JMReferral\ReferralInbox\ReferralInboxStatus;
 
 /**
  * Staff Portal referral preparation screen (Phase 5D.4).
  *
- * GET is read-only. POST only validates the draft in memory.
+ * GET is read-only. POST validates a draft or creates one referral.
  */
 class PrepareHandler
 {
@@ -27,7 +29,8 @@ class PrepareHandler
     public function __construct(
         private PortalViewHost $view_host,
         private AccessPolicy $access_policy,
-        private ReferralInboxPreparationService $preparation
+        private ReferralInboxPreparationService $preparation,
+        private ReferralInboxConversionService $conversion
     ) {
     }
 
@@ -49,11 +52,13 @@ class PrepareHandler
         $can_assign = current_user_can(Capabilities::ASSIGN_REFERRALS);
         $notice     = '';
 
+        $offer_create = false;
+
         if ('POST' === ($_SERVER['REQUEST_METHOD'] ?? '')) {
             $posted_action = isset($_POST['jmrs_prepare_action'])
                 ? sanitize_key(wp_unslash((string) $_POST['jmrs_prepare_action']))
                 : '';
-            if ('validate' !== $posted_action) {
+            if (! in_array($posted_action, ['validate', 'create_referral'], true)) {
                 $notice = __('The request could not be processed.', 'jm-referral-system');
                 $payload = $this->preparation->present($inbox_id);
             } else {
@@ -61,15 +66,193 @@ class PrepareHandler
                 if (null !== $guard) {
                     $notice  = $guard;
                     $payload = $this->preparation->present($inbox_id);
+                } elseif ('create_referral' === $posted_action) {
+                    $handled = $this->handle_create($inbox_id, $can_assign);
+                    if (null === $handled) {
+                        return;
+                    }
+                    $payload      = $handled['payload'];
+                    $notice       = $handled['notice'];
+                    $offer_create = $handled['offer_create'];
                 } else {
                     $payload = $this->preparation->validateDraft($inbox_id, $_POST, $can_assign);
+                    $offer_create = ReferralInboxPreparationService::VALID === (string) ($payload['result'] ?? '');
                 }
             }
         } else {
             $payload = $this->preparation->present($inbox_id);
         }
 
-        $this->render($inbox_id, $payload, $can_assign, $notice);
+        $this->render($inbox_id, $payload, $can_assign, $notice, $offer_create);
+    }
+
+    /**
+     * @return array{payload: array<string, mixed>, notice: string, offer_create: bool}|null
+     */
+    private function handle_create(int $inbox_id, bool $can_assign): ?array
+    {
+        $draft  = $this->preparation->validateDraft($inbox_id, $_POST, $can_assign);
+        $result = (string) ($draft['result'] ?? '');
+
+        if (ReferralInboxPreparationService::NOT_FOUND === $result) {
+            $this->view_host->render_portal_error('404', __('Not Found', 'jm-referral-system'), 404);
+
+            return null;
+        }
+
+        if (ReferralInboxPreparationService::INVALID_STATE === $result) {
+            $existing = $this->conversion->existing($inbox_id);
+            if ($existing instanceof ReferralInboxConversionResult && $existing->redirects()) {
+                $this->redirect_detail($inbox_id, $existing);
+
+                return null;
+            }
+            $notice = $existing instanceof ReferralInboxConversionResult
+                && in_array($existing->outcome(), [
+                    ReferralInboxConversionResult::INCONSISTENT_LINK,
+                    ReferralInboxConversionResult::INCONSISTENT_STATE,
+                ], true)
+                ? $this->outcome_message($existing)
+                : '';
+
+            return [
+                'payload'      => $draft,
+                'notice'       => $notice,
+                'offer_create' => false,
+            ];
+        }
+
+        if (ReferralInboxPreparationService::VALIDATION_ERROR === $result) {
+            return [
+                'payload'      => $draft,
+                'notice'       => '',
+                'offer_create' => false,
+            ];
+        }
+
+        if (! $this->confirmed()) {
+            $errors = is_array($draft['errors'] ?? null) ? $draft['errors'] : [];
+            $errors['confirmation'] = __('Please confirm that you have reviewed the referral details.', 'jm-referral-system');
+            $draft['errors'] = $errors;
+
+            return [
+                'payload'      => $draft,
+                'notice'       => '',
+                'offer_create' => true,
+            ];
+        }
+
+        $outcome = $this->conversion->commit(
+            $inbox_id,
+            is_array($draft['values'] ?? null) ? $draft['values'] : [],
+            $can_assign,
+            get_current_user_id(),
+            true
+        );
+
+        if ($outcome->redirects()) {
+            $this->redirect_detail($inbox_id, $outcome);
+
+            return null;
+        }
+
+        if (ReferralInboxConversionResult::VALIDATION_ERROR === $outcome->outcome()) {
+            $draft['result'] = ReferralInboxPreparationService::VALIDATION_ERROR;
+            $draft['errors'] = $outcome->errors();
+
+            return [
+                'payload'      => $draft,
+                'notice'       => '',
+                'offer_create' => false,
+            ];
+        }
+
+        if (ReferralInboxConversionResult::ALREADY_CONVERTED === $outcome->outcome()) {
+            $this->redirect_detail($inbox_id, $outcome);
+
+            return null;
+        }
+
+        return [
+            'payload'      => $draft,
+            'notice'       => $this->outcome_message($outcome),
+            'offer_create' => ReferralInboxConversionResult::LOCK_TIMEOUT === $outcome->outcome(),
+        ];
+    }
+
+    private function confirmed(): bool
+    {
+        if (! isset($_POST['jmrs_prepare_confirm']) || ! is_scalar($_POST['jmrs_prepare_confirm'])) {
+            return false;
+        }
+
+        return '1' === sanitize_text_field(wp_unslash((string) $_POST['jmrs_prepare_confirm']));
+    }
+
+    private function redirect_detail(int $inbox_id, ReferralInboxConversionResult $result): void
+    {
+        $created = ReferralInboxConversionResult::SUCCESS === $result->outcome();
+        $warning = ReferralInboxConversionResult::WARNING_ASSIGNMENT_EMAIL === $result->warning();
+        $number  = $result->referral_number();
+        if ('' === $number) {
+            $number = '#' . $result->referral_id();
+        }
+
+        if ($created) {
+            $message = sprintf(
+                /* translators: %s: referral number */
+                __('Referral %s was created and linked to this opportunity.', 'jm-referral-system'),
+                $number
+            );
+            if ($warning) {
+                $message .= ' ' . __('Referral created successfully, but the assignment email could not be sent.', 'jm-referral-system');
+            }
+            $type = $warning ? 'warning' : 'success';
+        } else {
+            $message = sprintf(
+                /* translators: %s: referral number */
+                __('This opportunity has already been converted to referral %s.', 'jm-referral-system'),
+                $number
+            );
+            $type = 'info';
+        }
+
+        $args = [
+            'jmrs_inbox_notice' => sanitize_key($type),
+            'jmrs_inbox_msg'    => rawurlencode($message),
+        ];
+        wp_safe_redirect(add_query_arg($args, PortalUrls::referral_inbox_item($inbox_id)));
+        exit;
+    }
+
+    private function outcome_message(ReferralInboxConversionResult $result): string
+    {
+        return match ($result->outcome()) {
+            ReferralInboxConversionResult::TRANSACTION_UNAVAILABLE => __(
+                'Referral conversion is unavailable because the database does not support the required atomic transaction.',
+                'jm-referral-system'
+            ),
+            ReferralInboxConversionResult::LOCK_TIMEOUT => __(
+                'Another referral is currently being created. Please try again.',
+                'jm-referral-system'
+            ),
+            ReferralInboxConversionResult::INCONSISTENT_LINK => __(
+                'This opportunity already has a linked referral and was not changed.',
+                'jm-referral-system'
+            ),
+            ReferralInboxConversionResult::INCONSISTENT_STATE => __(
+                'This opportunity is accepted without a linked referral. It was not changed.',
+                'jm-referral-system'
+            ),
+            ReferralInboxConversionResult::INVALID_STATE => __(
+                'This opportunity has already changed. Refresh the page to see its current status.',
+                'jm-referral-system'
+            ),
+            default => __(
+                'The referral could not be created. No changes were saved.',
+                'jm-referral-system'
+            ),
+        };
     }
 
     private function guard_post(int $inbox_id): ?string
@@ -117,13 +300,14 @@ class PrepareHandler
             'jmrs_prepare_priority',
             'jmrs_prepare_assigned_to',
             'jmrs_prepare_notes',
+            'jmrs_prepare_confirm',
         ];
     }
 
     /**
      * @param array<string, mixed> $payload
      */
-    private function render(int $inbox_id, array $payload, bool $can_assign, string $notice): void
+    private function render(int $inbox_id, array $payload, bool $can_assign, string $notice, bool $offer_create = false): void
     {
         $result = (string) ($payload['result'] ?? '');
         if (ReferralInboxPreparationService::NOT_FOUND === $result) {
@@ -134,6 +318,8 @@ class PrepareHandler
 
         $item   = is_array($payload['item'] ?? null) ? $payload['item'] : [];
         $status = (string) ($payload['status'] ?? ($item['status'] ?? ''));
+        $linked_referral_id = absint($item['linked_referral_id'] ?? 0);
+        $view_referral_url  = $linked_referral_id > 0 ? PortalUrls::referral($linked_referral_id) : '';
         $show_form = in_array(
             $result,
             [
@@ -157,13 +343,15 @@ class PrepareHandler
             'stale_message'       => $stale
                 ? __('This opportunity has already changed. Refresh the page to see its current status.', 'jm-referral-system')
                 : '',
-            'blocked_message'     => $show_form ? '' : $this->blocked_message($status),
+            'blocked_message'     => $show_form ? '' : $this->blocked_message($status, $linked_referral_id),
             'ready_message'       => ReferralInboxPreparationService::VALID === $result
                 ? __('Referral details are valid and ready for confirmation.', 'jm-referral-system')
                 : '',
             'not_created_message' => ReferralInboxPreparationService::VALID === $result
                 ? __('No referral has been created yet.', 'jm-referral-system')
                 : '',
+            'offer_create'        => $offer_create && $show_form,
+            'view_referral_url'   => $view_referral_url,
             'values'              => is_array($payload['values'] ?? null) ? $payload['values'] : [],
             'errors'              => is_array($payload['errors'] ?? null) ? $payload['errors'] : [],
             'warnings'            => is_array($payload['warnings'] ?? null) ? $payload['warnings'] : [],
@@ -220,15 +408,19 @@ class PrepareHandler
         );
     }
 
-    private function blocked_message(string $status): string
+    private function blocked_message(string $status, int $linked_referral_id = 0): string
     {
+        if (ReferralInboxStatus::ACCEPTED === $status && $linked_referral_id <= 0) {
+            return __('This opportunity is accepted without a linked referral. It was not changed.', 'jm-referral-system');
+        }
+
         return match ($status) {
             ReferralInboxStatus::NEW => __(
                 'Start Review before preparing this opportunity as a referral.',
                 'jm-referral-system'
             ),
             ReferralInboxStatus::ACCEPTED => __(
-                'This opportunity has already been accepted. Preparation is no longer available.',
+                'This opportunity has already been converted to a referral.',
                 'jm-referral-system'
             ),
             ReferralInboxStatus::IGNORED => __(

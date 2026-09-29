@@ -295,7 +295,9 @@ Do not store clinical narrative here. Human timeline also logs concise `pipeline
 
 **Errors:** `error_code`, `error_message` (≤500; no secrets).
 
-**Indexes:** unique `dedupe_key`; `status`; `detection_status`; `received_at`; `(status, received_at)`; `(detection_status, received_at)`; `sender_email`; `sender_domain`; `local_authority_id`; `linked_referral_id`; `internet_message_id`; `source_provider`.
+**Indexes:** unique `dedupe_key`; `status`; `detection_status`; `received_at`; `(status, received_at)`; `(detection_status, received_at)`; `sender_email`; `sender_domain`; `local_authority_id`; `linked_referral_id` (not unique); `internet_message_id`; `source_provider`.
+
+**Phase 5D.5:** Conversion uses the existing `status`, `linked_referral_id`, `accepted_by`, and `accepted_at` columns. It locks the Inbox row inside a transaction. No new column and no migration. The referral table still has no `local_authority_id`. `submission_channel` for an Inbox conversion is the existing staff value `admin`.
 
 **Docs:** [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md).
 

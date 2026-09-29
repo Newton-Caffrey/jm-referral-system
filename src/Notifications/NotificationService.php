@@ -30,18 +30,18 @@ class NotificationService
      *
      * @param array<string, mixed> $referral
      */
-    public function notify_referral_created(array $referral): void
+    public function notify_referral_created(array $referral): bool
     {
         $assigned_to = absint($referral['assigned_to'] ?? 0);
 
         if ($assigned_to <= 0) {
-            return;
+            return true;
         }
 
         $email = $this->user_provider->get_email($assigned_to);
 
         if ('' === $email) {
-            return;
+            return false;
         }
 
         $context = $this->build_context($referral);
@@ -53,7 +53,7 @@ class NotificationService
             $context['referral_number']
         );
 
-        $this->email_service->send($email, $subject, self::TEMPLATE_CREATED, $context);
+        return $this->email_service->send($email, $subject, self::TEMPLATE_CREATED, $context);
     }
 
     /**

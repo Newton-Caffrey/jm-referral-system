@@ -74,4 +74,6 @@ If another field fails, the response keeps the values the staff member submitted
 
 This phase does not call `ReferralService::create()` or `ReferralInboxService::markAccepted()`. It does not generate a referral number, write referral activity, send a notification, change detection, or confirm or clear a Local Authority. Authority corrections stay on the Inbox detail screen via **Review Local Authority**.
 
-`submission_channel` is unchanged because no referral exists yet.
+`submission_channel` is unchanged because Validate Details does not create a referral.
+
+Phase **5D.5** adds **Create Referral** on this same route after the staff member confirms the validated details. That action is documented in [`REFERRAL_INBOX_CONVERSION.md`](REFERRAL_INBOX_CONVERSION.md). An accepted and linked item no longer shows the editable form.

@@ -190,6 +190,30 @@ class ReferralInboxRepository
     }
 
     /**
+     * Locks one Inbox row for the current transaction.
+     *
+     * Call only after START TRANSACTION on this connection.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function find_for_update(int $id): ?array
+    {
+        global $wpdb;
+
+        if ($id <= 0) {
+            return null;
+        }
+
+        $table = Tables::referral_inbox_table();
+        $sql   = 'SELECT ' . self::SELECT_COLUMNS . " FROM {$table} WHERE id = %d FOR UPDATE";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- column list is a class constant.
+        $row = $wpdb->get_row($wpdb->prepare($sql, $id), ARRAY_A);
+
+        return is_array($row) ? $row : null;
+    }
+
+    /**
      * Compare-and-set status transition.
      *
      * @param array<string, mixed> $extra Additional columns to set (already sanitised).

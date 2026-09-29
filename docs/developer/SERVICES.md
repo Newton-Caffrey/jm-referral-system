@@ -198,7 +198,13 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Purpose:** Build an in-memory preparation form from Inbox metadata and candidate extraction, then validate a submitted draft.
 - **Deps:** `ReferralInboxService` (read), `ReferralInboxCandidateExtractor`, `ReferralValidator`, `ServiceTypeService::get_active()`, `UserProvider`
 - **Docs:** [`REFERRAL_INBOX_PREPARATION.md`](REFERRAL_INBOX_PREPARATION.md)
-- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.9** (`referral_inbox_prepare`). Requires Inbox management and `CREATE_REFERRALS`. Editable only while `needs_review`. Service type, referral source, and priority start unselected. Priority is required here and is not defaulted to medium. No draft storage, no `ReferralService::create()`, no `markAccepted()`, no activity, and no notification.
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.9** (`referral_inbox_prepare`). Requires Inbox management and `CREATE_REFERRALS`. Editable only while `needs_review`. Service type, referral source, and priority start unselected. Priority is required here and is not defaulted to medium. Validate Details does not store a draft and does not create a referral. Phase **5D.5** reuses this validation on the final Create Referral POST.
+
+### `ReferralInboxConversionService` (Phase 5D.5)
+- **Purpose:** Create one referral from a reviewed Inbox item and accept that item in the same database transaction.
+- **Deps:** `ReferralInboxRepository::find_for_update()`, `ReferralInboxService::markAccepted()`, `ReferralInboxPreparationService::revalidate_values()`, `ReferralService::create_database_effects()`, `ReferralService::dispatch_created_notification()`, `ReferralNumberLock`, `TransactionEngineGuard`
+- **Docs:** [`REFERRAL_INBOX_CONVERSION.md`](REFERRAL_INBOX_CONVERSION.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.9**. No new route and no schema change. Critical write tables must be InnoDB or conversion fails closed. The referral-number advisory lock is held until commit or rollback. Assignment email runs only after commit. `submission_channel` stays `admin`. Local Authority id stays on the Inbox row.
 
 ### `MicrosoftConnectionService` / secret vault (Phase 5C.1)
 - **Purpose:** Persist one active Microsoft Graph mailbox connection (application auth) with encrypted client secret; admin Settings UI only.
