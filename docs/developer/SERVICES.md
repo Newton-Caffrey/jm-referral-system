@@ -192,7 +192,13 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Purpose:** Derive advisory client, referrer, service-hint, and priority-hint candidates from stored Inbox metadata.
 - **Deps:** `ReferralInboxService` (read), `LocalAuthorityRepository` (stored authority name only), `ReferralInboxDetectionRules` (phrase boundaries)
 - **Docs:** [`REFERRAL_INBOX_CANDIDATE_EXTRACTION.md`](REFERRAL_INBOX_CANDIDATE_EXTRACTION.md)
-- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. In memory only. No schema change, no new route, no production UI, no AI, no sender-matcher re-run, no referral creation. Ambiguous labels are not silently resolved. A cleared authority supplies no organisation.
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. In memory only. No schema change, no AI, no sender-matcher re-run, no referral creation. Ambiguous labels are not silently resolved. A cleared authority supplies no organisation. Phase **5D.4** reads this result on the preparation screen.
+
+### `ReferralInboxPreparationService` (Phase 5D.4)
+- **Purpose:** Build an in-memory preparation form from Inbox metadata and candidate extraction, then validate a submitted draft.
+- **Deps:** `ReferralInboxService` (read), `ReferralInboxCandidateExtractor`, `ReferralValidator`, `ServiceTypeService::get_active()`, `UserProvider`
+- **Docs:** [`REFERRAL_INBOX_PREPARATION.md`](REFERRAL_INBOX_PREPARATION.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.9** (`referral_inbox_prepare`). Requires Inbox management and `CREATE_REFERRALS`. Editable only while `needs_review`. Service type, referral source, and priority start unselected. Priority is required here and is not defaulted to medium. No draft storage, no `ReferralService::create()`, no `markAccepted()`, no activity, and no notification.
 
 ### `MicrosoftConnectionService` / secret vault (Phase 5C.1)
 - **Purpose:** Persist one active Microsoft Graph mailbox connection (application auth) with encrypted client secret; admin Settings UI only.

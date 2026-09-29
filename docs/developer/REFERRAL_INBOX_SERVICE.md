@@ -118,7 +118,7 @@ Guarded writes:
 - Does **not** change lifecycle status
 - Non-null LA ID must exist
 
-Rules, precedence, and ingestion wiring: [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). Human confirm/clear: [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md). In-memory candidate extraction: [`REFERRAL_INBOX_CANDIDATE_EXTRACTION.md`](REFERRAL_INBOX_CANDIDATE_EXTRACTION.md). DB **2.33.0**. Rewrite stays **1.2.8**. Candidate fields are not Inbox columns.
+Rules, precedence, and ingestion wiring: [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). Human confirm/clear: [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md). In-memory candidate extraction: [`REFERRAL_INBOX_CANDIDATE_EXTRACTION.md`](REFERRAL_INBOX_CANDIDATE_EXTRACTION.md). Preparation review: [`REFERRAL_INBOX_PREPARATION.md`](REFERRAL_INBOX_PREPARATION.md). DB **2.33.0**. The preparation route raises the portal rewrite to **1.2.9**. Candidate fields are not Inbox columns, and the preparation form does not store a draft.
 
 ---
 

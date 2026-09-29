@@ -30,6 +30,7 @@ User Acceptance Testing materials for **JM Healthcare Referral Platform** / JM R
 | [UAT_PHASE_5D_1_REFERRAL_DETECTION.md](UAT_PHASE_5D_1_REFERRAL_DETECTION.md) | **Phase 5D.1** trusted sender recognition and deterministic Inbox detection (DB **2.32.0**; rewrite **1.2.8**; **PASS** 2026-09-28) |
 | [UAT_PHASE_5D_2_AUTHORITY_REVIEW.md](UAT_PHASE_5D_2_AUTHORITY_REVIEW.md) | **Phase 5D.2** detection explanation and human Local Authority confirmation (DB **2.33.0**; rewrite **1.2.8**; **PASS** 2026-09-28) |
 | [UAT_PHASE_5D_3_CANDIDATE_EXTRACTION.md](UAT_PHASE_5D_3_CANDIDATE_EXTRACTION.md) | **Phase 5D.3** in-memory candidate field extraction (DB **2.33.0**; rewrite **1.2.8**; **PASS** 2026-09-29) |
+| [UAT_PHASE_5D_4_REFERRAL_PREPARATION.md](UAT_PHASE_5D_4_REFERRAL_PREPARATION.md) | **Phase 5D.4** referral preparation screen (DB **2.33.0**; rewrite **1.2.9**; **PASS** 2026-09-29) |
 | [../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md](../audits/PHASE_4B_2_MEETING_UI_WORKFLOW_AUDIT.md) | **Phase 4B.2.0** meetings UI/workflow audit (design) |
 | [UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md](UAT_MANAGEMENT_DASHBOARD_PHASE_4A.md) | **Phase 4A** accuracy / privacy / existing-data parity (pre-release) |
 | [UAT_MANAGEMENT_DASHBOARD_V1_4.md](UAT_MANAGEMENT_DASHBOARD_V1_4.md) | **v1.4.0 Management Dashboard UAT** (visual + data acceptance) |

@@ -30,6 +30,8 @@ $referral_label        = (string) ( $referral_label ?? __( 'Referral', 'jm-refer
 $attachments           = is_array( $attachments ?? null ) ? $attachments : array();
 $can_manage            = ! empty( $can_manage );
 $can_start_review      = ! empty( $can_start_review );
+$can_prepare_referral  = ! empty( $can_prepare_referral );
+$prepare_url           = (string) ( $prepare_url ?? '' );
 $can_ignore            = ! empty( $can_ignore );
 $can_duplicate         = ! empty( $can_duplicate );
 $can_recover_error     = ! empty( $can_recover_error );
@@ -449,6 +451,14 @@ $detection_key = (string) ( $item['detection_status'] ?? '' );
 
 			<?php if ( 'needs_review' === $status && '' !== $confirm_info ) : ?>
 				<p class="jmrs-inbox-detail__hint"><?php echo esc_html( $confirm_info ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( $can_prepare_referral && '' !== $prepare_url ) : ?>
+				<p class="jmrs-inbox-action-form">
+					<a class="jmrs-button jmrs-button--primary" href="<?php echo esc_url( $prepare_url ); ?>">
+						<?php echo esc_html__( 'Prepare Referral', 'jm-referral-system' ); ?>
+					</a>
+				</p>
 			<?php endif; ?>
 
 			<?php if ( $can_start_review ) : ?>

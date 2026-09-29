@@ -249,6 +249,27 @@ class AccessPolicy
     }
 
     /**
+     * Whether the user may open Referral Inbox preparation (Phase 5D.4).
+     *
+     * Requires Inbox management plus CREATE_REFERRALS. Does not add a capability.
+     * Assessor and Support Worker remain denied.
+     */
+    public function can_prepare_referral_from_inbox(?int $user_id = null): bool
+    {
+        $user = $this->resolve_user($user_id);
+
+        if (! $user instanceof \WP_User) {
+            return false;
+        }
+
+        if (! $this->can_manage_referral_inbox($user_id)) {
+            return false;
+        }
+
+        return user_can($user, Capabilities::CREATE_REFERRALS);
+    }
+
+    /**
      * Whether the user may view referral meetings (Phase 4B.2 read UI).
      *
      * Requires referral visibility. Explicitly denies Support Workers even when

@@ -39,6 +39,7 @@ class InboxHandler
     private const ROUTES = [
         'referral_inbox',
         'referral_inbox_item',
+        'referral_inbox_prepare',
     ];
 
     public function __construct(
@@ -50,7 +51,8 @@ class InboxHandler
         private ReferralRepository $referral_repository,
         private AccessPolicy $access_policy,
         private UserProvider $user_provider,
-        private LocalAuthoritySenderMatcher $sender_matcher
+        private LocalAuthoritySenderMatcher $sender_matcher,
+        private PrepareHandler $prepare_handler
     ) {
     }
 
@@ -62,9 +64,10 @@ class InboxHandler
     public function dispatch(string $route): void
     {
         match ($route) {
-            'referral_inbox'      => $this->render_list(),
-            'referral_inbox_item' => $this->render_detail(),
-            default               => $this->view_host->render_portal_error(
+            'referral_inbox'          => $this->render_list(),
+            'referral_inbox_item'     => $this->render_detail(),
+            'referral_inbox_prepare'  => $this->prepare_handler->dispatch(),
+            default                   => $this->view_host->render_portal_error(
                 '404',
                 __('Not Found', 'jm-referral-system'),
                 404
@@ -323,6 +326,9 @@ class InboxHandler
             'attachments'          => $presented_attachments,
             'can_manage'           => $can_manage,
             'can_start_review'     => $can_manage && ReferralInboxStatus::NEW === $status,
+            'can_prepare_referral' => $this->access_policy->can_prepare_referral_from_inbox()
+                && ReferralInboxStatus::NEEDS_REVIEW === $status,
+            'prepare_url'          => PortalUrls::referral_inbox_prepare($inbox_id),
             'can_ignore'           => $can_manage && ReferralInboxStatus::NEEDS_REVIEW === $status,
             'can_duplicate'        => $can_manage && in_array(
                 $status,

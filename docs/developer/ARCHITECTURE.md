@@ -189,7 +189,8 @@ flowchart LR
 | Microsoft 365 connection foundation | Customer-owned Entra app config + encrypted client-secret vault; one active microsoft_graph mailbox (product rule); Settings UI; no Graph/OAuth (Phase 5C.1, DB 2.32.0, rewrite 1.2.8) |
 | Referral Inbox detection | Deterministic advisory classification on new Inbox rows only; recognised sender via existing matcher; guarded detection/authority writes; no lifecycle change and no referral creation (Phase 5D.1, DB 2.32.0, rewrite 1.2.8) |
 | Referral Inbox authority review | Staff explanation of detection and current sender recognition; human confirm/clear with provenance (`suggested` / `confirmed` / `cleared`) that automatic detection cannot replace; needs_review only; no referral creation and no detection re-run action (Phase 5D.2, DB 2.33.0, rewrite 1.2.8) |
-| Referral Inbox candidate extraction | In-memory deterministic suggestions from stored Inbox metadata; ambiguity preserved; authority provenance respected; no schema change, no portal UI, and no referral creation (Phase 5D.3, DB 2.33.0, rewrite 1.2.8) |
+| Referral Inbox candidate extraction | In-memory deterministic suggestions from stored Inbox metadata; ambiguity preserved; authority provenance respected; no schema change and no referral creation (Phase 5D.3, DB 2.33.0, rewrite 1.2.8) |
+| Referral Inbox preparation | Staff review of candidate fields on `/referral-inbox/{id}/prepare/`; validation only; no draft storage and no referral creation (Phase 5D.4, DB 2.33.0, rewrite 1.2.9) |
 
 ---
 
@@ -209,6 +210,7 @@ flowchart LR
 - [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md)
 - [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md)
 - [`REFERRAL_INBOX_CANDIDATE_EXTRACTION.md`](REFERRAL_INBOX_CANDIDATE_EXTRACTION.md)
+- [`REFERRAL_INBOX_PREPARATION.md`](REFERRAL_INBOX_PREPARATION.md)
 - [`MICROSOFT_365_CONNECTION.md`](MICROSOFT_365_CONNECTION.md)
 - [`SECRET_STORAGE.md`](SECRET_STORAGE.md)
 - [`SERVICES.md`](SERVICES.md)

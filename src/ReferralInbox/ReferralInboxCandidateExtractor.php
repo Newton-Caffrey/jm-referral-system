@@ -160,7 +160,9 @@ class ReferralInboxCandidateExtractor
         return $this->labelled_field(
             $body,
             self::CLIENT_EMAIL_LABELS,
-            [$this, 'sanitise_email'],
+            function (string $raw): ?string {
+                return $this->sanitise_email($this->isolate_email_token($raw));
+            },
             'body_preview',
             'body_label_client_email',
             ReferralInboxCandidateField::BAND_STRONG,
@@ -173,7 +175,9 @@ class ReferralInboxCandidateExtractor
         return $this->labelled_field(
             $body,
             self::CLIENT_PHONE_LABELS,
-            [$this, 'sanitise_phone'],
+            function (string $raw): ?string {
+                return $this->sanitise_phone($this->isolate_phone_token($raw));
+            },
             'body_preview',
             'body_label_client_phone',
             ReferralInboxCandidateField::BAND_STRONG,
@@ -385,42 +389,200 @@ class ReferralInboxCandidateExtractor
     }
 
     /**
+     * Values for one field's labels.
+     *
+     * Inbox storage keeps body_preview as one line, so a label is recognised
+     * at the start of the preview or after whitespace, not only after a newline.
+     * The value ends at the next recognised label. Labels are fixed constants.
+     *
      * @param array<int, string> $labels
      * @return array<int, string>
      */
     private function labelled_values(string $text, array $labels): array
     {
-        $lines = preg_split('/\R/u', $text);
-        if (! is_array($lines)) {
-            $lines = preg_split('/\R/', $text);
-        }
-        if (! is_array($lines)) {
-            return [];
+        if (strlen($text) > ReferralInboxLimits::BODY_PREVIEW_MAX) {
+            $text = substr($text, 0, ReferralInboxLimits::BODY_PREVIEW_MAX);
         }
 
-        $lines  = array_slice($lines, 0, self::MAX_LINES);
-        $labels = $this->labels_longest_first($labels);
-        $found  = [];
+        $wanted = [];
+        foreach ($labels as $label) {
+            $wanted[strtolower($label)] = true;
+        }
 
-        foreach ($lines as $line) {
-            $line = trim((string) $line);
-            if ('' === $line) {
+        $spans = $this->label_spans($text);
+        $found = [];
+        $count = count($spans);
+        for ($index = 0; $index < $count; $index++) {
+            $label = $spans[$index]['label'];
+            if (! isset($wanted[$label])) {
                 continue;
             }
-            if (strlen($line) > ReferralInboxLimits::BODY_PREVIEW_MAX) {
-                $line = substr($line, 0, ReferralInboxLimits::BODY_PREVIEW_MAX);
+
+            $start = $spans[$index]['value_start'];
+            $end   = ($index + 1) < $count ? $spans[$index + 1]['label_start'] : strlen($text);
+            if ($end < $start) {
+                continue;
             }
 
-            foreach ($labels as $label) {
-                $pattern = '/^' . preg_quote($label, '/') . '\s*[:\-]\s*(.+)$/iu';
-                if (1 === preg_match($pattern, $line, $matches)) {
-                    $found[] = trim((string) ($matches[1] ?? ''));
-                    break;
-                }
+            $value = trim(substr($text, $start, $end - $start));
+            if ('' === $value) {
+                continue;
+            }
+
+            $found[] = $value;
+            if (count($found) >= self::MAX_ALTERNATIVES) {
+                break;
             }
         }
 
         return $found;
+    }
+
+    /**
+     * @return array<int, array{label: string, label_start: int, value_start: int}>
+     */
+    private function label_spans(string $text): array
+    {
+        $labels = $this->labels_longest_first($this->recognised_labels());
+        $length = strlen($text);
+        $spans  = [];
+        $offset = 0;
+        $guard  = 0;
+
+        while ($offset < $length && $guard < $length && count($spans) < self::MAX_LINES) {
+            $guard++;
+            if (! $this->is_label_boundary($text, $offset)) {
+                $offset++;
+                continue;
+            }
+
+            $match = $this->match_label_at($text, $offset, $labels);
+            if (null === $match) {
+                $offset++;
+                continue;
+            }
+
+            $spans[] = $match;
+            if ($match['value_start'] <= $offset) {
+                $offset++;
+                continue;
+            }
+
+            $offset = $match['value_start'];
+        }
+
+        return $spans;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function recognised_labels(): array
+    {
+        return array_values(array_unique(array_merge(
+            self::CLIENT_NAME_LABELS,
+            self::CLIENT_EMAIL_LABELS,
+            self::CLIENT_PHONE_LABELS
+        )));
+    }
+
+    private function is_label_boundary(string $text, int $offset): bool
+    {
+        if (0 === $offset) {
+            return true;
+        }
+
+        return 1 === preg_match('/\s/', $text[$offset - 1]);
+    }
+
+    /**
+     * @param array<int, string> $labels
+     * @return array{label: string, label_start: int, value_start: int}|null
+     */
+    private function match_label_at(string $text, int $offset, array $labels): ?array
+    {
+        $slice = substr($text, $offset);
+        foreach ($labels as $label) {
+            $pattern = '/^' . preg_quote($label, '/') . '\s*[:\-]\s*/iu';
+            if (1 !== preg_match($pattern, $slice, $matches)) {
+                continue;
+            }
+
+            $consumed = strlen((string) ($matches[0] ?? ''));
+            if ($consumed <= strlen($label)) {
+                continue;
+            }
+
+            return [
+                'label'       => strtolower($label),
+                'label_start' => $offset,
+                'value_start' => $offset + $consumed,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * The stored preview appends the rest of the message after the last label.
+     * Keep a single leading address. Two addresses in one value are left intact
+     * so neither is chosen.
+     */
+    private function isolate_email_token(string $raw): string
+    {
+        $raw = trim($raw);
+        if ('' === $raw || 1 !== substr_count($raw, '@')) {
+            return $raw;
+        }
+
+        if (1 !== preg_match('/^\S+/u', $raw, $matches)) {
+            return $raw;
+        }
+
+        $token = (string) ($matches[0] ?? '');
+        if ('' === $token || ! str_contains($token, '@') || $token === $raw) {
+            return $raw;
+        }
+
+        return $token;
+    }
+
+    /**
+     * Keep a leading phone when the stored preview continues with a sentence.
+     * A further phone-length number in that remainder is not discarded.
+     */
+    private function isolate_phone_token(string $raw): string
+    {
+        $raw = trim($raw);
+        if ('' === $raw || 1 !== preg_match('/[A-Za-z]/', $raw)) {
+            return $raw;
+        }
+
+        if (1 !== preg_match('/^(\+?[0-9][0-9() \-]*)/u', $raw, $matches)) {
+            return $raw;
+        }
+
+        $token = trim((string) ($matches[1] ?? ''));
+        $rest  = trim(substr($raw, strlen((string) ($matches[1] ?? ''))));
+        if ('' === $token || '' === $rest) {
+            return $raw;
+        }
+
+        $rest_digits = preg_replace('/\D/', '', $rest);
+        if (strlen((string) $rest_digits) >= 8) {
+            return $raw;
+        }
+
+        if (1 !== preg_match('/^\p{L}/u', $rest) && 1 !== preg_match('/^[A-Za-z]/', $rest)) {
+            return $raw;
+        }
+
+        $word_count = preg_match_all('/\p{L}{2,}/u', $rest);
+        if (false === $word_count || $word_count < 2) {
+            return $raw;
+        }
+
+        return $token;
     }
 
     /**

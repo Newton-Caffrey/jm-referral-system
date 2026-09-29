@@ -904,6 +904,25 @@ class Plugin
         );
         $controller->set_homes_handler($homes_handler);
 
+        $preparation_service = new \JMReferral\ReferralInbox\ReferralInboxPreparationService(
+            $this->referral_inbox_service,
+            new \JMReferral\ReferralInbox\ReferralInboxCandidateExtractor(
+                $this->referral_inbox_service,
+                new LocalAuthorityRepository()
+            ),
+            new ReferralValidator(
+                $this->user_provider,
+                $this->service_type_service,
+                $this->workflow_stage_service
+            ),
+            $this->service_type_service,
+            $this->user_provider
+        );
+        $prepare_handler = new \JMReferral\Portal\ReferralInbox\PrepareHandler(
+            $controller,
+            $this->access_policy,
+            $preparation_service
+        );
         $inbox_handler = new \JMReferral\Portal\ReferralInbox\InboxHandler(
             $controller,
             $this->referral_inbox_service,
@@ -916,7 +935,8 @@ class Plugin
             new LocalAuthoritySenderMatcher(
                 new LocalAuthorityRepository(),
                 new SenderRuleRepository()
-            )
+            ),
+            $prepare_handler
         );
         $controller->set_inbox_handler($inbox_handler);
 

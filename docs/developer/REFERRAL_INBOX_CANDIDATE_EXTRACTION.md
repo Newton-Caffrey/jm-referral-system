@@ -4,7 +4,7 @@
 **Database:** 2.33.0 (unchanged — no migration)  
 **Portal rewrite:** 1.2.8 (unchanged — no new route)
 
-`ReferralInboxCandidateExtractor` builds advisory referral-field suggestions from data already stored on an Inbox item. The result stays in memory. This phase does not create a referral and does not show candidates in the Staff Portal.
+`ReferralInboxCandidateExtractor` builds advisory referral-field suggestions from data already stored on an Inbox item. The result stays in memory. This phase does not create a referral. Phase 5D.4 displays the result on the preparation screen; the extractor still does not persist it.
 
 ## Read-only inputs
 
@@ -35,7 +35,7 @@ Detection classification does not force a service hint or suppress an explicitly
 
 Date of birth, NHS number, diagnosis, care needs, medication, financial data, and address are out of scope.
 
-Labels are fixed, case-insensitive, and require `:` or `-`. Matching is line-bounded inside `body_preview`. There is no caller-supplied pattern.
+Labels are fixed, case-insensitive, and require `:` or `-`. A value runs until the next recognised label or the end of the preview, including when Inbox storage has already turned line breaks into spaces. There is no caller-supplied pattern.
 
 ## Field states
 
@@ -72,6 +72,8 @@ Names are limited to 255 characters. Emails use WordPress sanitisation and `is_e
 
 The result objects have no string cast. Candidate values are not written into exceptions.
 
+Phase **5D.4** reads `extract()` when an authorised user opens `/referral-inbox/{id}/prepare/`. That screen copies only `single` values into the form. The extractor itself is unchanged: it still does not write, and it still does not choose a service type or priority.
+
 ## Boundaries
 
-No schema change. No new portal route. No production template change. No AI or external API. No Graph, OAuth, webhook, delta, or mailbox polling. No `ReferralService::create()`.
+No schema change. No AI or external API. No Graph, OAuth, webhook, delta, or mailbox polling. No `ReferralService::create()`. The preparation route is documented in [`REFERRAL_INBOX_PREPARATION.md`](REFERRAL_INBOX_PREPARATION.md).

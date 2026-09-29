@@ -212,7 +212,7 @@ Filter groups on Reports: **Report Period**, **Vacancy Home**, **Visit Analytics
 
 ## Staff portal
 
-Optional frontend app at `/staff-portal/` (configurable). Includes dashboard, referral list/view, Supported Living (when enabled), and **Referral Inbox** for reviewing incoming referral opportunities before they enter the workflow (Phase 5B.3). Inbox access is limited to Platform Admin / JM Administrator / Referral Manager / Care Coordinator (not Assessor or Support Worker). Microsoft 365 credentials are configured in **wp-admin Settings only** (Phase 5C.1); live mailbox sync is not available yet. Disabled by default.
+Optional frontend app at `/staff-portal/` (configurable). Includes dashboard, referral list/view, Supported Living (when enabled), and **Referral Inbox** for reviewing incoming referral opportunities before they enter the workflow (Phase 5B.3). From a Needs Review item, authorised staff can open **Prepare Referral** to check candidate details (Phase 5D.4, portal rewrite 1.2.9). That screen does not create a referral. Inbox access is limited to Platform Admin / JM Administrator / Referral Manager / Care Coordinator (not Assessor or Support Worker). Preparation also requires the existing create-referral capability. Microsoft 365 credentials are configured in **wp-admin Settings only** (Phase 5C.1); live mailbox sync is not available yet. Disabled by default.
 
 Administrators normally keep using wp-admin. See `docs/STAFF_PORTAL.md` and `docs/STAFF_USER_GUIDE.md`. Developer notes: `docs/developer/REFERRAL_INBOX_UI.md`.
 
