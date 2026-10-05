@@ -115,7 +115,7 @@ class PortalNavigation
                 'id'      => 'referral_inbox',
                 'label'   => __('Referral Inbox', 'jm-referral-system'),
                 'url'     => PortalUrls::referral_inbox(),
-                'current' => in_array($current_route, ['referral_inbox', 'referral_inbox_item'], true),
+                'current' => in_array($current_route, ['referral_inbox', 'referral_inbox_item', 'referral_inbox_prepare'], true),
                 'icon'    => 'referrals',
                 'section' => 'care',
             ];

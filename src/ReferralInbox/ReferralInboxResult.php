@@ -16,4 +16,7 @@ class ReferralInboxResult
     public const CONFLICT           = 'CONFLICT';
     public const VALIDATION_ERROR   = 'VALIDATION_ERROR';
     public const PERSISTENCE_ERROR  = 'PERSISTENCE_ERROR';
+    public const INVALID_AUTHORITY  = 'INVALID_AUTHORITY';
+    public const INVALID_ACTOR      = 'INVALID_ACTOR';
+    public const INVALID_STATE      = 'INVALID_STATE';
 }

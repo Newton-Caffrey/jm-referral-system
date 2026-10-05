@@ -1968,3 +1968,49 @@ body.admin-bar.jmrs-portal-body {
 		max-width: 100%;
 	}
 }
+
+.jmrs-prepare {
+	max-width: 100%;
+	min-width: 0;
+}
+
+.jmrs-prepare .jmrs-portal-form-grid,
+.jmrs-prepare .jmrs-inbox-detail__facts {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.jmrs-prepare-hint,
+.jmrs-prepare-alternatives {
+	margin: 0.35rem 0 0;
+	color: var(--jmrs-portal-muted);
+	font-size: 0.85rem;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
+.jmrs-prepare-alternatives ul {
+	margin: 0.35rem 0 0;
+	padding-left: 1.1rem;
+}
+
+.jmrs-prepare-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-top: 0.5rem;
+}
+
+.jmrs-prepare input:focus-visible,
+.jmrs-prepare select:focus-visible,
+.jmrs-prepare textarea:focus-visible,
+.jmrs-prepare a:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+@media (min-width: 768px) {
+	.jmrs-prepare .jmrs-portal-form-grid,
+	.jmrs-prepare .jmrs-inbox-detail__facts {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}

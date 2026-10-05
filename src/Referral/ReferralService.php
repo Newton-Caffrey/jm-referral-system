@@ -23,7 +23,8 @@ class ReferralService
         private WorkflowStageService $workflow_stage_service,
         private AccessPolicy $access_policy,
         private OccupancyRepository $occupancy_repository,
-        private ReferralPipelineService $pipeline_service
+        private ReferralPipelineService $pipeline_service,
+        private ReferralNumberLock $number_lock
     ) {
     }
 
@@ -36,6 +37,38 @@ class ReferralService
      * @return array{id: int, referral_number: string}|false
      */
     public function create(array $input): array|false
+    {
+        if (! $this->number_lock->acquire()) {
+            return false;
+        }
+
+        try {
+            $created = $this->create_database_effects($input);
+        } finally {
+            $this->number_lock->release();
+        }
+
+        if (false === $created) {
+            return false;
+        }
+
+        $this->dispatch_created_notification($created['id']);
+
+        return $created;
+    }
+
+    /**
+     * Inserts the referral and its in-database audit rows.
+     *
+     * Does not send email and does not acquire the referral-number lock.
+     * Callers that generate a number must already hold {@see ReferralNumberLock}.
+     * Does not start a transaction. When a transaction is already open on $wpdb,
+     * these statements join it.
+     *
+     * @param array<string, string> $input Sanitized and validated form data.
+     * @return array{id: int, referral_number: string}|false
+     */
+    public function create_database_effects(array $input): array|false
     {
         $now                      = current_time('mysql');
         $referral_number          = $this->number_generator->generate();
@@ -116,15 +149,29 @@ class ReferralService
             }
         }
 
-        $referral = $this->repository->find($id);
-        if (is_array($referral)) {
-            $this->notification_service->notify_referral_created($referral);
-        }
-
         return [
             'id'              => $id,
             'referral_number' => $referral_number,
         ];
+    }
+
+    /**
+     * Sends the same post-create assignment email as a normal create.
+     *
+     * An unassigned referral has nothing to send and reports success.
+     */
+    public function dispatch_created_notification(int $referral_id): bool
+    {
+        if ($referral_id <= 0) {
+            return false;
+        }
+
+        $referral = $this->repository->find($referral_id);
+        if (! is_array($referral)) {
+            return false;
+        }
+
+        return $this->notification_service->notify_referral_created($referral);
     }
 
     /**

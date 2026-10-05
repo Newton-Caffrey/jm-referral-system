@@ -6,7 +6,7 @@ use JMReferral\Database\Tables;
 
 class ReferralInboxRepository
 {
-    private const SELECT_COLUMNS = 'id, source_provider, mailbox_identifier, provider_message_id, internet_message_id, conversation_identifier, dedupe_key, sender_name, sender_email, sender_domain, recipient_summary, subject, body_preview, received_at, status, detection_status, detection_reason, local_authority_id, attachment_count, linked_referral_id, reviewed_by, reviewed_at, accepted_by, accepted_at, ignored_by, ignored_at, duplicate_of_inbox_id, response_started_at, response_sent_at, error_code, error_message, created_at, updated_at';
+    private const SELECT_COLUMNS = 'id, source_provider, mailbox_identifier, provider_message_id, internet_message_id, conversation_identifier, dedupe_key, sender_name, sender_email, sender_domain, recipient_summary, subject, body_preview, received_at, status, detection_status, detection_reason, local_authority_id, local_authority_origin, local_authority_decided_by, local_authority_decided_at, attachment_count, linked_referral_id, reviewed_by, reviewed_at, accepted_by, accepted_at, ignored_by, ignored_at, duplicate_of_inbox_id, response_started_at, response_sent_at, error_code, error_message, created_at, updated_at';
 
     /**
      * @return array<string, mixed>|null
@@ -190,6 +190,30 @@ class ReferralInboxRepository
     }
 
     /**
+     * Locks one Inbox row for the current transaction.
+     *
+     * Call only after START TRANSACTION on this connection.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function find_for_update(int $id): ?array
+    {
+        global $wpdb;
+
+        if ($id <= 0) {
+            return null;
+        }
+
+        $table = Tables::referral_inbox_table();
+        $sql   = 'SELECT ' . self::SELECT_COLUMNS . " FROM {$table} WHERE id = %d FOR UPDATE";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- column list is a class constant.
+        $row = $wpdb->get_row($wpdb->prepare($sql, $id), ARRAY_A);
+
+        return is_array($row) ? $row : null;
+    }
+
+    /**
      * Compare-and-set status transition.
      *
      * @param array<string, mixed> $extra Additional columns to set (already sanitised).
@@ -314,6 +338,164 @@ class ReferralInboxRepository
         );
 
         return false !== $result;
+    }
+
+    /**
+     * Compare-and-set detection metadata.
+     *
+     * Does not touch local_authority_id or lifecycle status.
+     *
+     * @return int Rows affected (0 = missing row or detection already classified).
+     */
+    public function update_detection_if_unclassified(int $id, string $detection_status, string $detection_reason, string $updated_at): int
+    {
+        global $wpdb;
+
+        if ($id <= 0 || ! ReferralDetectionStatus::is_valid($detection_status)) {
+            return 0;
+        }
+
+        $table = Tables::referral_inbox_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table trusted.
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table}
+                SET detection_status = %s, detection_reason = %s, updated_at = %s
+                WHERE id = %d
+                  AND detection_status = %s",
+                $detection_status,
+                $detection_reason,
+                $updated_at,
+                $id,
+                ReferralDetectionStatus::UNCLASSIFIED
+            )
+        );
+
+        return (int) $wpdb->rows_affected;
+    }
+
+    /**
+     * Suggests a recognised Local Authority only when no link and no provenance exist.
+     *
+     * Requires both local_authority_id and local_authority_origin to be NULL.
+     * A cleared, confirmed, or legacy non-null link is left unchanged.
+     * Does not touch detection fields or lifecycle status.
+     *
+     * @return int Rows affected (0 = missing row, or a link/provenance already recorded).
+     */
+    public function set_local_authority_if_null(int $id, int $local_authority_id, string $updated_at): int
+    {
+        global $wpdb;
+
+        if ($id <= 0 || $local_authority_id <= 0) {
+            return 0;
+        }
+
+        $table = Tables::referral_inbox_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table trusted.
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table}
+                SET local_authority_id = %d,
+                    local_authority_origin = %s,
+                    local_authority_decided_by = NULL,
+                    local_authority_decided_at = NULL,
+                    updated_at = %s
+                WHERE id = %d
+                  AND local_authority_id IS NULL
+                  AND local_authority_origin IS NULL",
+                $local_authority_id,
+                LocalAuthorityOrigin::SUGGESTED,
+                $updated_at,
+                $id
+            )
+        );
+
+        return (int) $wpdb->rows_affected;
+    }
+
+    /**
+     * Staff confirmation of a Local Authority while the item is still needs_review.
+     *
+     * Does not change detection_status or detection_reason.
+     *
+     * @return int Rows affected (0 = missing row or lifecycle no longer needs_review).
+     */
+    public function confirm_local_authority(int $id, int $local_authority_id, int $actor_id, string $decided_at, string $updated_at): int
+    {
+        global $wpdb;
+
+        if ($id <= 0 || $local_authority_id <= 0 || $actor_id <= 0) {
+            return 0;
+        }
+
+        $table = Tables::referral_inbox_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table trusted.
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table}
+                SET local_authority_id = %d,
+                    local_authority_origin = %s,
+                    local_authority_decided_by = %d,
+                    local_authority_decided_at = %s,
+                    updated_at = %s
+                WHERE id = %d
+                  AND status = %s",
+                $local_authority_id,
+                LocalAuthorityOrigin::CONFIRMED,
+                $actor_id,
+                $decided_at,
+                $updated_at,
+                $id,
+                ReferralInboxStatus::NEEDS_REVIEW
+            )
+        );
+
+        return (int) $wpdb->rows_affected;
+    }
+
+    /**
+     * Staff decision that no Local Authority should currently be linked.
+     *
+     * Sets origin to cleared. Does not reset origin to NULL, so later automatic
+     * suggestion cannot refill the authority. Does not change detection fields.
+     *
+     * @return int Rows affected (0 = missing row or lifecycle no longer needs_review).
+     */
+    public function clear_local_authority(int $id, int $actor_id, string $decided_at, string $updated_at): int
+    {
+        global $wpdb;
+
+        if ($id <= 0 || $actor_id <= 0) {
+            return 0;
+        }
+
+        $table = Tables::referral_inbox_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table trusted.
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table}
+                SET local_authority_id = NULL,
+                    local_authority_origin = %s,
+                    local_authority_decided_by = %d,
+                    local_authority_decided_at = %s,
+                    updated_at = %s
+                WHERE id = %d
+                  AND status = %s",
+                LocalAuthorityOrigin::CLEARED,
+                $actor_id,
+                $decided_at,
+                $updated_at,
+                $id,
+                ReferralInboxStatus::NEEDS_REVIEW
+            )
+        );
+
+        return (int) $wpdb->rows_affected;
     }
 
     /**

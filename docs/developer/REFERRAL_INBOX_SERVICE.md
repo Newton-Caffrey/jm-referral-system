@@ -99,11 +99,26 @@ Results: `SUCCESS`, `ALREADY_APPLIED`, `INVALID_TRANSITION`, `NOT_FOUND`, `CONFL
 
 ## Detection / Local Authority
 
-`setDetectionMetadata()` records `detection_status` / `detection_reason` / optional `local_authority_id` for future Phase 5D.
+Automatic Phase **5D.1** detection does **not** call `setDetectionMetadata()`. That method writes `detection_status`, `detection_reason`, and `local_authority_id` together, so a null authority argument clears a stored id.
+
+Guarded writes:
+
+| Method | SQL guard | Does not touch |
+| --- | --- | --- |
+| `ReferralInboxRepository::update_detection_if_unclassified()` | `detection_status = 'unclassified'` | lifecycle, `local_authority_id` |
+| `ReferralInboxRepository::set_local_authority_if_null()` | `local_authority_id IS NULL` and `local_authority_origin IS NULL` | lifecycle, detection columns. Sets origin `suggested` and clears decision actor/time |
+| `ReferralInboxRepository::confirm_local_authority()` | `status = needs_review` | detection columns |
+| `ReferralInboxRepository::clear_local_authority()` | `status = needs_review` | detection columns. Sets origin `cleared` and does not reset it to `NULL` |
+| `ReferralInboxService::applyGuardedDetection()` | calls the detection and suggestion guards | lifecycle; never replaces a confirmed, cleared, or already-linked authority |
+| `ReferralInboxService::confirmLocalAuthority()` / `clearLocalAuthority()` | needs_review, valid actor, and for confirm an active authority | detection columns |
+
+`setDetectionMetadata()` remains for an explicit metadata write:
 
 - Does **not** call `LocalAuthoritySenderMatcher`
 - Does **not** change lifecycle status
 - Non-null LA ID must exist
+
+Rules, precedence, and ingestion wiring: [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). Human confirm/clear: [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md). In-memory candidate extraction: [`REFERRAL_INBOX_CANDIDATE_EXTRACTION.md`](REFERRAL_INBOX_CANDIDATE_EXTRACTION.md). Preparation review: [`REFERRAL_INBOX_PREPARATION.md`](REFERRAL_INBOX_PREPARATION.md). Conversion: [`REFERRAL_INBOX_CONVERSION.md`](REFERRAL_INBOX_CONVERSION.md). DB **2.33.0**. The preparation route is portal rewrite **1.2.9**. Candidate fields are not Inbox columns, and the preparation form does not store a draft. Create Referral uses that same route.
 
 ---
 

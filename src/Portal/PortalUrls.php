@@ -56,6 +56,14 @@ class PortalUrls
         );
     }
 
+    public static function referral_inbox_prepare(int $inbox_id): string
+    {
+        return home_url(
+            '/' . PortalSettings::base_path()
+            . '/referral-inbox/' . max(0, $inbox_id) . '/prepare/'
+        );
+    }
+
     public static function referral(int $referral_id): string
     {
         return home_url('/' . PortalSettings::base_path() . '/referrals/' . max(0, $referral_id) . '/');

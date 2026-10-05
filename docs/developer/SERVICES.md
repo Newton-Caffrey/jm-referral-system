@@ -168,13 +168,43 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Purpose:** Staff Portal list/detail for Inbox opportunities; Start Review / Ignore / Duplicate / error recovery via `ReferralInboxService`.
 - **Deps:** `InboxHandler`, `AccessPolicy::can_view_referral_inbox` / `can_manage_referral_inbox`, repository read methods
 - **Docs:** [`REFERRAL_INBOX_UI.md`](REFERRAL_INBOX_UI.md)
-- **Notes:** Product **1.5.0**; DB **2.31.0**; rewrite **1.2.8**. No Accept button, no connector, no detection, no attachment downloads. GET is non-mutating.
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. No Accept button, no connector, no detection re-run control, no attachment downloads. GET is non-mutating. Detail shows the detection explanation, a live sender-recognition section, and confirm/clear only while `needs_review`.
 
 ### `ReferralInboxIngestionService` (Phase 5B.4)
 - **Purpose:** Provider-neutral connector boundary — accepts `InboundMessage`, orchestrates create + attachment metadata via `ReferralInboxService`.
-- **Deps:** `ReferralInboxService`, `InboundMessage`, `InboundAttachmentMetadata`
+- **Deps:** `ReferralInboxService`, `ReferralInboxDetectionService` (advisory, new rows only), `InboundMessage`, `InboundAttachmentMetadata`
 - **Docs:** [`REFERRAL_INBOX_INGESTION.md`](REFERRAL_INBOX_INGESTION.md)
-- **Notes:** DB **2.31.0**; rewrite **1.2.8**. Idempotent replay; missing attachments reconciled on EXISTING; PARTIAL keeps Inbox row; no Graph/Gmail; no detection/LA matching; no referral creation; no attachment binaries. EXISTING does not rewrite source-declared `attachment_count`.
+- **Notes:** DB **2.31.0** schema (product DB remains **2.32.0**). Rewrite **1.2.8**. Idempotent replay; missing attachments reconciled on EXISTING; PARTIAL keeps Inbox row; no Graph/Gmail; no referral creation; no attachment binaries. EXISTING does not rewrite source-declared `attachment_count`. Phase **5D.1** runs advisory detection only when this call inserted a new Inbox row.
+
+### `ReferralInboxDetectionService` (Phase 5D.1)
+- **Purpose:** Deterministic advisory classification from subject, body preview, attachment filenames, and `LocalAuthoritySenderMatcher`. Persists a short reason code and, on MATCH only, a Local Authority id when that column is still NULL.
+- **Deps:** `ReferralInboxService`, `LocalAuthoritySenderMatcher`, `ReferralInboxDetectionRules`
+- **Docs:** [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. No new route, no AI, no referral creation, no lifecycle change, no historical provenance backfill. Automatic authority suggestion also requires `local_authority_origin IS NULL` and records origin `suggested`. `EXISTING` ingestion replays do not re-detect. `setDetectionMetadata()` is not the automatic writer.
+
+### Referral Inbox authority review (Phase 5D.2)
+- **Purpose:** Explain a stored detection, show the current recognised-sender result without saving it, and let an authorised manager confirm or clear the Local Authority while the item is `needs_review`.
+- **Deps:** `ReferralInboxService::confirmLocalAuthority()` / `clearLocalAuthority()`, `LocalAuthorityOrigin`, `ReferralInboxDetectionExplanation`, `LocalAuthoritySenderMatcher` (read-only on GET), `InboxHandler`
+- **Docs:** [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. Same Inbox view/manage capabilities. No new route, no detection re-run button, no Accept/Create Referral. `cleared` blocks later automatic suggestion. GET does not mutate.
+
+### `ReferralInboxCandidateExtractor` (Phase 5D.3)
+- **Purpose:** Derive advisory client, referrer, service-hint, and priority-hint candidates from stored Inbox metadata.
+- **Deps:** `ReferralInboxService` (read), `LocalAuthorityRepository` (stored authority name only), `ReferralInboxDetectionRules` (phrase boundaries)
+- **Docs:** [`REFERRAL_INBOX_CANDIDATE_EXTRACTION.md`](REFERRAL_INBOX_CANDIDATE_EXTRACTION.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.8**. In memory only. No schema change, no AI, no sender-matcher re-run, no referral creation. Ambiguous labels are not silently resolved. A cleared authority supplies no organisation. Phase **5D.4** reads this result on the preparation screen.
+
+### `ReferralInboxPreparationService` (Phase 5D.4)
+- **Purpose:** Build an in-memory preparation form from Inbox metadata and candidate extraction, then validate a submitted draft.
+- **Deps:** `ReferralInboxService` (read), `ReferralInboxCandidateExtractor`, `ReferralValidator`, `ServiceTypeService::get_active()`, `UserProvider`
+- **Docs:** [`REFERRAL_INBOX_PREPARATION.md`](REFERRAL_INBOX_PREPARATION.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.9** (`referral_inbox_prepare`). Requires Inbox management and `CREATE_REFERRALS`. Editable only while `needs_review`. Service type, referral source, and priority start unselected. Priority is required here and is not defaulted to medium. Validate Details does not store a draft and does not create a referral. Phase **5D.5** reuses this validation on the final Create Referral POST.
+
+### `ReferralInboxConversionService` (Phase 5D.5)
+- **Purpose:** Create one referral from a reviewed Inbox item and accept that item in the same database transaction.
+- **Deps:** `ReferralInboxRepository::find_for_update()`, `ReferralInboxService::markAccepted()`, `ReferralInboxPreparationService::revalidate_values()`, `ReferralService::create_database_effects()`, `ReferralService::dispatch_created_notification()`, `ReferralNumberLock`, `TransactionEngineGuard`
+- **Docs:** [`REFERRAL_INBOX_CONVERSION.md`](REFERRAL_INBOX_CONVERSION.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.9**. No new route and no schema change. Critical write tables must be InnoDB or conversion fails closed. The referral-number advisory lock is held until commit or rollback. Assignment email runs only after commit. `submission_channel` stays `admin`. Local Authority id stays on the Inbox row.
 
 ### `MicrosoftConnectionService` / secret vault (Phase 5C.1)
 - **Purpose:** Persist one active Microsoft Graph mailbox connection (application auth) with encrypted client secret; admin Settings UI only.

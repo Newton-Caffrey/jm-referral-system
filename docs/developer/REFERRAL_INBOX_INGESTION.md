@@ -7,7 +7,9 @@
 
 Provider-neutral **ingestion boundary** for future mailbox connectors.
 
-**Still out of scope:** Microsoft Graph / Outlook / Gmail / OAuth / webhooks / polling / sync cursors / tokens; detection/classification; Local Authority sender matching; referral creation; attachment file download/storage; production manual-intake UI.
+**Still out of scope:** Microsoft Graph / Outlook / Gmail / OAuth / webhooks / polling / sync cursors / tokens; referral creation; attachment file download/storage; production manual-intake UI.
+
+Phase **5D.1** adds advisory detection after a **newly inserted** Inbox row. See [`REFERRAL_INBOX_DETECTION.md`](REFERRAL_INBOX_DETECTION.md). Phase **5D.2** records suggestion provenance. DB **2.33.0**. Rewrite remains **1.2.8**.
 
 ---
 
@@ -31,16 +33,15 @@ InboundMessage
   → ReferralInboxIngestionService::ingest()
     → ReferralInboxService::create()   // identity + dedupe + row
     → ReferralInboxService::addAttachmentMetadata() per attachment
+    → ReferralInboxDetectionService::evaluateAndApply() only if create() returned CREATED
   → structured result
 ```
 
-Successful ingestion leaves lifecycle:
+Successful ingestion leaves lifecycle `status` = `new`.
 
-- `status` = `new`
-- `detection_status` = `unclassified`
-- `local_authority_id` = `NULL`
+Phase 5D.1 may then set `detection_status`, `detection_reason`, and (only on a unique MATCH while both `local_authority_id` and `local_authority_origin` are NULL) a suggested Local Authority. `EXISTING` replays do not run detection again. A detection failure does not delete the row, does not set lifecycle `error`, and does not fail ingestion.
 
-No `markNeedsReview`, no detection, no LA matching, no `ReferralService::create()`.
+No `markNeedsReview`, no `ReferralService::create()`.
 
 ---
 

@@ -369,8 +369,13 @@ class Plugin
             $la_repository,
             $repository
         );
+        $detection_service = new \JMReferral\ReferralInbox\ReferralInboxDetectionService(
+            $this->referral_inbox_service,
+            $la_matcher
+        );
         $this->referral_inbox_ingestion_service = new \JMReferral\ReferralInbox\ReferralInboxIngestionService(
-            $this->referral_inbox_service
+            $this->referral_inbox_service,
+            $detection_service
         );
 
         $workflow_stage_repository       = new WorkflowStageRepository();
@@ -395,7 +400,8 @@ class Plugin
             $this->workflow_stage_service,
             $this->access_policy,
             $occupancy_repository,
-            $pipeline_service
+            $pipeline_service,
+            new \JMReferral\Referral\ReferralNumberLock()
         );
         $la_decision_repository = new \JMReferral\LaDecision\LaDecisionRepository();
         $la_decision_service    = new \JMReferral\LaDecision\LocalAuthorityDecisionService(
@@ -899,6 +905,34 @@ class Plugin
         );
         $controller->set_homes_handler($homes_handler);
 
+        $preparation_service = new \JMReferral\ReferralInbox\ReferralInboxPreparationService(
+            $this->referral_inbox_service,
+            new \JMReferral\ReferralInbox\ReferralInboxCandidateExtractor(
+                $this->referral_inbox_service,
+                new LocalAuthorityRepository()
+            ),
+            new ReferralValidator(
+                $this->user_provider,
+                $this->service_type_service,
+                $this->workflow_stage_service
+            ),
+            $this->service_type_service,
+            $this->user_provider
+        );
+        $prepare_handler = new \JMReferral\Portal\ReferralInbox\PrepareHandler(
+            $controller,
+            $this->access_policy,
+            $preparation_service,
+            new \JMReferral\ReferralInbox\ReferralInboxConversionService(
+                new \JMReferral\ReferralInbox\ReferralInboxRepository(),
+                $this->referral_inbox_service,
+                $preparation_service,
+                $this->service,
+                $repository,
+                new \JMReferral\Referral\ReferralNumberLock(),
+                new \JMReferral\Database\TransactionEngineGuard()
+            )
+        );
         $inbox_handler = new \JMReferral\Portal\ReferralInbox\InboxHandler(
             $controller,
             $this->referral_inbox_service,
@@ -907,7 +941,12 @@ class Plugin
             new LocalAuthorityRepository(),
             $repository,
             $this->access_policy,
-            $this->user_provider
+            $this->user_provider,
+            new LocalAuthoritySenderMatcher(
+                new LocalAuthorityRepository(),
+                new SenderRuleRepository()
+            ),
+            $prepare_handler
         );
         $controller->set_inbox_handler($inbox_handler);
 

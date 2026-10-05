@@ -7,7 +7,11 @@ namespace JMReferral\ReferralInbox;
  *
  * Future mailbox connectors construct {@see InboundMessage} and call {@see ingest()}.
  * Orchestrates {@see ReferralInboxService} only — no repository/identity access,
- * no Graph/Gmail, no detection, no Local Authority matching, no referral creation.
+ * no Graph/Gmail, no referral creation.
+ *
+ * After a newly inserted Inbox row (including when attachment handling returns
+ * PARTIAL), advisory detection may run once. EXISTING replays do not
+ * re-detect. Detection failure does not delete the row or change lifecycle.
  *
  * attachment_count semantics (preserved from 5B.2):
  * source-declared count from InboundMessage::declared_attachment_count().
@@ -24,7 +28,8 @@ namespace JMReferral\ReferralInbox;
 class ReferralInboxIngestionService
 {
     public function __construct(
-        private ReferralInboxService $inbox_service
+        private ReferralInboxService $inbox_service,
+        private ?ReferralInboxDetectionService $detection_service = null
     ) {
     }
 
@@ -136,7 +141,18 @@ class ReferralInboxIngestionService
             $attachment_results[] = $row;
         }
 
-        // Refresh item for caller (status/detection unchanged by ingestion attachments).
+        // Advisory detection only for the row this call inserted.
+        // EXISTING replays skip it so later staff corrections are preserved.
+        // PARTIAL attachment results still detect against metadata that saved.
+        // A detection failure leaves the Inbox row and lifecycle untouched.
+        if (ReferralInboxResult::CREATED === $create_result && $this->detection_service instanceof ReferralInboxDetectionService) {
+            try {
+                $this->detection_service->evaluateAndApply($inbox_id);
+            } catch (\Throwable $exception) {
+                unset($exception);
+            }
+        }
+
         $fresh = $this->inbox_service->find($inbox_id);
 
         $outcome = ReferralInboxResult::CREATED === $create_result
