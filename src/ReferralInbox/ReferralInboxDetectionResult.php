@@ -21,6 +21,9 @@ final class ReferralInboxDetectionResult
     public const REASON_MIXED_SIGNALS                          = 'mixed_referral_and_non_referral_signals';
     public const REASON_NO_DETERMINISTIC_SIGNAL                = 'no_deterministic_referral_signal';
 
+    /** Not a detection outcome: staff uploaded the file as a referral form (Phase 5E.1). */
+    public const REASON_STAFF_UPLOADED_FORM                    = 'staff_uploaded_referral_form';
+
     /**
      * @param array{id: int, rule_type: string, local_authority_id: int}|null $matched_rule
      * @param array<int, string> $evidence_codes

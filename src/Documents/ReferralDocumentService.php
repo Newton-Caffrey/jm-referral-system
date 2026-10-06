@@ -328,6 +328,77 @@ class ReferralDocumentService
     }
 
     /**
+     * Records a file that is already in private storage as a referral document (Phase 5E.1).
+     *
+     * Used when a Referral Inbox item created from an uploaded form becomes a
+     * referral. The file was type- and size-checked when it was uploaded, and
+     * the caller has already authorised the conversion. This method moves no
+     * bytes: it checks the path resolves inside the private root and that the
+     * file still matches the recorded checksum, then adds the document row.
+     *
+     * @param array<string, mixed> $file original_name, mime_type, relative_path, checksum_sha256.
+     * @return int|false Document id on success.
+     */
+    public function attach_private_file(int $referral_id, array $file, int $uploaded_by): int|false
+    {
+        if ($referral_id <= 0 || null === $this->referral_repository->find($referral_id)) {
+            return false;
+        }
+
+        $relative_path = $this->private_storage->normalize_relative_path((string) ($file['relative_path'] ?? ''));
+        if (null === $relative_path) {
+            return false;
+        }
+
+        $absolute = $this->private_storage->resolve_safe_path($relative_path);
+        if (null === $absolute) {
+            return false;
+        }
+
+        $mime_type = (string) ($file['mime_type'] ?? '');
+        if (! $this->is_allowed_mime($mime_type)) {
+            return false;
+        }
+
+        $file_size = (int) filesize($absolute);
+        if ($file_size <= 0 || $file_size > self::MAX_FILE_SIZE) {
+            return false;
+        }
+
+        $checksum = hash_file('sha256', $absolute);
+        $expected = strtolower((string) ($file['checksum_sha256'] ?? ''));
+        if (! is_string($checksum) || 64 !== strlen($checksum) || ! hash_equals($expected, $checksum)) {
+            return false;
+        }
+
+        $original_name = $this->sanitize_original_name((string) ($file['original_name'] ?? ''));
+
+        $document_id = $this->document_repository->create(
+            [
+                'referral_id'     => $referral_id,
+                'attachment_id'   => 0,
+                'original_name'   => $original_name,
+                'mime_type'       => $mime_type,
+                'file_size'       => $file_size,
+                'uploaded_by'     => max(0, $uploaded_by),
+                'created_at'      => current_time('mysql'),
+                'storage_type'    => PrivateDocumentStorage::STORAGE_PRIVATE,
+                'relative_path'   => $relative_path,
+                'stored_name'     => basename($relative_path),
+                'checksum_sha256' => $checksum,
+            ]
+        );
+
+        if (false === $document_id) {
+            return false;
+        }
+
+        $this->activity_service->log_document_uploaded($referral_id, $original_name);
+
+        return $document_id;
+    }
+
+    /**
      * Returns documents for a referral when the user may download them.
      *
      * @return array<int, array<string, mixed>>|array{errors: array<string, string>}

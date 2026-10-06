@@ -6,6 +6,7 @@ use JMReferral\Database\TransactionEngineGuard;
 use JMReferral\Referral\ReferralNumberLock;
 use JMReferral\Referral\ReferralRepository;
 use JMReferral\Referral\ReferralService;
+use JMReferral\ReferralInbox\Document\ReferralInboxDocumentService;
 
 /**
  * Atomic Inbox → referral conversion (Phase 5D.5).
@@ -13,6 +14,10 @@ use JMReferral\Referral\ReferralService;
  * Either one referral is created and the Inbox row is accepted and linked,
  * or the transaction rolls back and the Inbox row is unchanged.
  * Email is sent only after commit.
+ *
+ * Phase 5E.1: an uploaded referral form held by the Inbox item is added to the
+ * new referral's documents after commit. Like the email, a failure there is
+ * reported as a warning and never undoes the referral.
  */
 class ReferralInboxConversionService
 {
@@ -23,7 +28,8 @@ class ReferralInboxConversionService
         private ReferralService $referral_service,
         private ReferralRepository $referral_repository,
         private ReferralNumberLock $number_lock,
-        private TransactionEngineGuard $engine_guard
+        private TransactionEngineGuard $engine_guard,
+        private ?ReferralInboxDocumentService $document_service = null
     ) {
     }
 
@@ -111,16 +117,28 @@ class ReferralInboxConversionService
             return $result;
         }
 
-        $warning = '';
+        $warnings = [];
+
+        if ($this->document_service instanceof ReferralInboxDocumentService) {
+            try {
+                $attached = $this->document_service->promote_to_referral($inbox_id, $result->referral_id(), $actor_id);
+            } catch (\Throwable $e) {
+                $attached = false;
+            }
+            if (! $attached) {
+                $warnings[] = ReferralInboxConversionResult::WARNING_DOCUMENT_ATTACH;
+            }
+        }
+
         if (! $this->referral_service->dispatch_created_notification($result->referral_id())) {
-            $warning = ReferralInboxConversionResult::WARNING_ASSIGNMENT_EMAIL;
+            $warnings[] = ReferralInboxConversionResult::WARNING_ASSIGNMENT_EMAIL;
         }
 
         return ReferralInboxConversionResult::of(
             ReferralInboxConversionResult::SUCCESS,
             $result->referral_id(),
             $result->referral_number(),
-            $warning
+            implode(',', $warnings)
         );
     }
 
@@ -219,6 +237,15 @@ class ReferralInboxConversionService
             'priority'               => (string) ($values['priority'] ?? ''),
             'assigned_to'            => (string) ($values['assigned_to'] ?? '0'),
             'notes'                  => (string) ($values['notes'] ?? ''),
+            'client_date_of_birth'   => (string) ($values['client_date_of_birth'] ?? ''),
+            'address_line_1'         => (string) ($values['address_line_1'] ?? ''),
+            'address_line_2'         => (string) ($values['address_line_2'] ?? ''),
+            'city'                   => (string) ($values['city'] ?? ''),
+            'postcode'               => (string) ($values['postcode'] ?? ''),
+            'referrer_phone'         => (string) ($values['referrer_phone'] ?? ''),
+            'relationship_to_client' => (string) ($values['relationship_to_client'] ?? ''),
+            'care_requirements'      => (string) ($values['care_requirements'] ?? ''),
+            'care_start_date'        => (string) ($values['care_start_date'] ?? ''),
             'status'                 => 'new',
             'submission_channel'     => 'admin',
         ];

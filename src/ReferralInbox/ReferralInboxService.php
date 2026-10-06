@@ -930,6 +930,133 @@ class ReferralInboxService
     }
 
     /**
+     * Record a file that has already been written to private storage (Phase 5E.1).
+     *
+     * Used by staff document upload only. Connector ingestion still goes through
+     * {@see addAttachmentMetadata()} and stays metadata_only. The caller has
+     * validated and stored the file; this method does no file I/O.
+     *
+     * Idempotent per inbox_id + provider_attachment_id, like metadata rows.
+     *
+     * @param array<string, mixed> $input filename, mime_type, size_bytes, sha256, private_path, provider_attachment_id.
+     * @return array{result: string, attachment?: array<string, mixed>, errors?: array<string, string>}
+     */
+    public function addStoredAttachment(int $inbox_id, array $input): array
+    {
+        $item = $this->inbox_repository->findById($inbox_id);
+        if (null === $item) {
+            return ['result' => ReferralInboxResult::NOT_FOUND];
+        }
+
+        $errors = [];
+
+        $provider_attachment_id = $this->optional_opaque(
+            (string) ($input['provider_attachment_id'] ?? ''),
+            ReferralInboxLimits::PROVIDER_ATTACHMENT_ID_MAX
+        );
+        $filename = $this->bound_plain_text((string) ($input['filename'] ?? ''), ReferralInboxLimits::FILENAME_MAX);
+        $mime     = $this->bound_plain_text((string) ($input['mime_type'] ?? ''), ReferralInboxLimits::MIME_TYPE_MAX);
+
+        $size_bytes = (int) ($input['size_bytes'] ?? 0);
+        if ($size_bytes <= 0) {
+            $errors['size_bytes'] = __('Size must be a positive integer.', 'jm-referral-system');
+        }
+
+        $sha256 = strtolower(trim((string) ($input['sha256'] ?? '')));
+        if (1 !== preg_match('/^[a-f0-9]{64}$/', $sha256)) {
+            $errors['sha256'] = __('SHA-256 must be a 64-character lowercase hex string.', 'jm-referral-system');
+        }
+
+        // Same shape PrivateDocumentStorage accepts: YYYY/MM/stored-name.
+        $private_path = trim((string) ($input['private_path'] ?? ''));
+        if (1 !== preg_match('#^\d{4}/\d{2}/[A-Za-z0-9._-]+$#', $private_path)
+            || str_contains($private_path, '..')
+            || strlen($private_path) > ReferralInboxLimits::PRIVATE_PATH_MAX
+        ) {
+            $errors['private_path'] = __('Invalid private path.', 'jm-referral-system');
+        }
+
+        if ([] !== $errors) {
+            return [
+                'result' => ReferralInboxResult::VALIDATION_ERROR,
+                'errors' => $errors,
+            ];
+        }
+
+        if (null !== $provider_attachment_id && '' !== $provider_attachment_id) {
+            $existing = $this->attachment_repository->findByInboxAndProviderAttachmentId(
+                $inbox_id,
+                $provider_attachment_id
+            );
+            if (null !== $existing) {
+                return [
+                    'result'     => ReferralInboxResult::EXISTING,
+                    'attachment' => $existing,
+                ];
+            }
+        }
+
+        $now = current_time('mysql');
+        $id  = $this->attachment_repository->insert(
+            [
+                'inbox_id'               => $inbox_id,
+                'provider_attachment_id' => $provider_attachment_id,
+                'filename'               => '' !== $filename ? $filename : null,
+                'mime_type'              => '' !== $mime ? $mime : null,
+                'size_bytes'             => $size_bytes,
+                'sha256'                 => $sha256,
+                'storage_status'         => InboxAttachmentStatus::STORED,
+                'private_path'           => $private_path,
+                'created_at'             => $now,
+                'updated_at'             => $now,
+            ]
+        );
+
+        if (false === $id) {
+            return [
+                'result' => ReferralInboxResult::PERSISTENCE_ERROR,
+                'errors' => ['general' => __('Unable to save attachment metadata.', 'jm-referral-system')],
+            ];
+        }
+
+        return [
+            'result'     => ReferralInboxResult::CREATED,
+            'attachment' => $this->attachment_repository->findById($id),
+        ];
+    }
+
+    /**
+     * Mark a stored attachment as promoted to a referral document (Phase 5E.1).
+     *
+     * @return array{result: string}
+     */
+    public function markAttachmentPromoted(int $attachment_id): array
+    {
+        $attachment = $this->attachment_repository->findById($attachment_id);
+        if (null === $attachment) {
+            return ['result' => ReferralInboxResult::NOT_FOUND];
+        }
+
+        $status = (string) ($attachment['storage_status'] ?? '');
+        if (InboxAttachmentStatus::PROMOTED === $status) {
+            return ['result' => ReferralInboxResult::ALREADY_APPLIED];
+        }
+
+        if (InboxAttachmentStatus::STORED !== $status) {
+            return ['result' => ReferralInboxResult::INVALID_TRANSITION];
+        }
+
+        $affected = $this->attachment_repository->transition_storage_status(
+            $attachment_id,
+            InboxAttachmentStatus::STORED,
+            InboxAttachmentStatus::PROMOTED,
+            current_time('mysql')
+        );
+
+        return ['result' => $affected > 0 ? ReferralInboxResult::SUCCESS : ReferralInboxResult::CONFLICT];
+    }
+
+    /**
      * @param array<string, mixed> $input
      * @return array{fields: array<string, mixed>}|array{errors: array<string, string>}
      */

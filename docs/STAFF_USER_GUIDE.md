@@ -90,6 +90,30 @@ If download fails while “redirect staff away from wp-admin” is on, ask an ad
 
 ---
 
+## Uploading a referral form
+
+If you can prepare referrals from the Referral Inbox, you can upload a completed referral form instead of typing it in.
+
+1. Open **Referral Inbox** and choose **Upload Referral Form**.
+2. Pick the form. It must be a Word file (`.docx`) or a PDF, up to 10 MB. Upload one form at a time.
+3. Choose **Upload and Read Form**. **Prepare Referral** opens with the details that were found already filled in.
+4. Check every field against the form. Fields marked “Suggested from uploaded form” came from the file. Open **Show the text read from the form** to copy anything that was missed.
+5. Choose the service type, referral source, and priority yourself. They are never filled in for you, though a suggestion may be shown.
+6. Choose **Validate Details**, tick the confirmation, then **Create Referral**.
+
+Things to know:
+
+- Nothing is created until you confirm. Uploading only adds the form to the Inbox.
+- If the form gives two different values for one field, such as a telephone and a mobile number, the field is left blank and both values are listed. Enter the right one.
+- A scanned or photographed form cannot be read. It is still stored, and you enter the details by hand.
+- An older `.doc` file must be saved as `.docx` or PDF first.
+- The same file uploaded twice takes you to the Inbox item it already created.
+- The form is added to the referral's documents when the referral is created.
+
+If a form's details are rarely picked up, tell an administrator which labels the form uses. They can be added under Settings.
+
+---
+
 ## Permissions
 
 You only see what your capabilities and AccessPolicy allow. If a referral is missing or returns “Not found”, it may be inaccessible rather than absent — this is intentional.

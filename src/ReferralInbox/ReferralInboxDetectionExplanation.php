@@ -50,6 +50,10 @@ final class ReferralInboxDetectionExplanation
                 'JMRS did not find enough deterministic information to classify this message.',
                 'jm-referral-system'
             ),
+            ReferralInboxDetectionResult::REASON_STAFF_UPLOADED_FORM => __(
+                'A member of staff uploaded this file as a referral form. It was not classified automatically.',
+                'jm-referral-system'
+            ),
             default => __(
                 'JMRS does not have a detailed explanation for this classification.',
                 'jm-referral-system'
