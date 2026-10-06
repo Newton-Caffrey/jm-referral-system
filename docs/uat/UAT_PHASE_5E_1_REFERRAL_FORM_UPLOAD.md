@@ -121,11 +121,13 @@ Staging UAT on the real stack is required before this phase is treated as accept
 | Screen reader and keyboard-only pass | **NOT RUN** |
 | `languages/jm-referral-system.pot` regeneration for the new strings | **NOT DONE** |
 
-## Observed during verification, outside this phase
+## Existing defects found and fixed alongside this phase
 
-These were seen on unchanged code and were not altered.
+Both were in unchanged code and are also present in the 1.5.0 package. They were seen on the test site only; confirm on staging.
 
-1. **Portal referral view stops rendering for users who can override the pipeline stage.** `templates/referrals/partials/pipeline-panel.php` calls `submit_button()`, which WordPress defines only in wp-admin. On the test site the page was cut off at the pipeline panel for Referral Manager and administrator, and rendered fully for Care Coordinator. Also present in the 1.5.0 package.
-2. **Prepare Referral shows Subject and Sender as “—”.** `templates/portal/layout.php` leaves its navigation loop variable `$item` set, and the view model is extracted with `EXTR_SKIP`, so `templates/portal/referral-inbox/prepare.php` reads the navigation item instead of the Inbox row.
+| Defect | Fix | Result on test site |
+| --- | --- | --- |
+| Staff Portal referral view was cut off at the pipeline panel for users who can override the pipeline stage (Referral Manager, administrator). `templates/referrals/partials/pipeline-panel.php` called `submit_button()`, which exists only in wp-admin | The panel renders a portal button when `$context` is `portal`, as the other shared panels do. wp-admin output is unchanged | Page renders to the end for Referral Manager, administrator, Care Coordinator; override submits from the portal and reports success; wp-admin view still renders — **PASS** |
+| Referral Inbox detail and Prepare Referral showed Subject and Sender as “—” and no message preview. `templates/portal/layout.php` left its navigation loop variable `$item` set, and the view model is extracted with `EXTR_SKIP` | The layout unsets its navigation loop variables before extracting the view model. `item` was the only view key affected | Subject, sender and preview shown on both pages for uploaded and email-style items; dashboard, referrals, management, homes, occupancy and Inbox pages still render — **PASS** |
 
-Confirm both on staging before acting on them.
+The 81 end-to-end checks were re-run after these fixes: **PASS**.

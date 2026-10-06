@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Portal rewrite `1.2.9` → `1.2.10` for the new `/referral-inbox/upload/` route (version-gated flush).
 - Inbox items from the `manual` source are labelled “Uploaded form” in the Inbox list.
 
+### Fixed
+
+- Staff Portal referral view no longer stops rendering for users who can override the pipeline stage (Referral Manager, administrator). The shared pipeline panel called `submit_button()`, which exists only in wp-admin; in the portal it now renders its own button, like the other shared panels.
+- Referral Inbox detail and Prepare Referral now show the item's Subject, Sender, and message preview. The portal layout left its navigation loop variable `$item` set, which hid the Inbox row passed to those pages.
+
 ### Database
 
 - No schema change. Database remains `2.33.0`. New option `jmrs_referral_form_labels` is created only when the label lists are saved.
