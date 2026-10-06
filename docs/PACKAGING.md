@@ -27,6 +27,7 @@ jm-referral-system-1.5.0.zip
     ├── templates/
     ├── assets/
     ├── languages/
+    ├── lib/                   (required from Phase 5E.1 — bundled PDF reader and its licence)
     ├── vendor/                (required — vendor/autoload.php is mandatory)
     └── docs/                  (optional lean operator subset; see exclusions)
 ```
@@ -84,6 +85,7 @@ Compress-Archive -Path $stage -DestinationPath $dest
 - `jm-referral-system.php`
 - `uninstall.php`
 - `src/`, `templates/`, `assets/`
+- `lib/` (Phase 5E.1: `lib/smalot-pdfparser/` including its `LICENSE.txt`; without it PDF referral forms cannot be read)
 - `vendor/` (**`vendor/autoload.php` mandatory**)
 - `composer.json`
 - `languages/`

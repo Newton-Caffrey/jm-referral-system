@@ -2014,3 +2014,60 @@ body.admin-bar.jmrs-portal-body {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
+
+/* Referral Inbox: uploaded referral form (Phase 5E.1). */
+.jmrs-prepare-document__file {
+	margin: 0 0 0.75rem;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.jmrs-prepare-document__text summary {
+	cursor: pointer;
+	font-weight: 600;
+	padding: 0.35rem 0;
+}
+
+.jmrs-prepare-document__text .jmrs-inbox-body-preview {
+	max-height: 24rem;
+	overflow-y: auto;
+	margin-top: 0.5rem;
+}
+
+.jmrs-prepare-document__text summary:focus-visible,
+.jmrs-prepare-document__text .jmrs-inbox-body-preview:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.jmrs-inbox-upload__form {
+	display: grid;
+	gap: 1rem;
+	max-width: 40rem;
+}
+
+.jmrs-inbox-upload__form input[type="file"] {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	padding: 0.6rem;
+	border: 1px dashed var(--jmrs-portal-border);
+	border-radius: var(--jmrs-portal-radius);
+	background: #f8faf9;
+}
+
+.jmrs-inbox-upload__form input[type="file"]:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.jmrs-inbox-upload__notes {
+	margin: 0;
+	padding-left: 1.1rem;
+	color: var(--jmrs-portal-muted);
+	font-size: 0.9rem;
+}
+
+.jmrs-inbox-upload__notes li {
+	margin: 0.25rem 0;
+}
