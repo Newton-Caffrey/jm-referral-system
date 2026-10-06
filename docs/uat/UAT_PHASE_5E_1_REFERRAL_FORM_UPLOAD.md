@@ -26,10 +26,15 @@ The project owner installed the staging test build and reported the following. N
 | Check | Result |
 | --- | --- |
 | Upload the made-up sample form `sample-referral-form.pdf` from the Referral Inbox | **PASS** |
+| Every prefilled value on Prepare Referral was correct for that form | **PASS** |
 | Create the referral from the details read from that form | **PASS** |
+| Fix: Staff Portal referral view renders for users who can override the pipeline stage | **PASS** |
+| Fix: Subject and Sender shown on Prepare Referral | **PASS** |
 | Project owner satisfied with the staging build | **ACCEPTED** |
 
-Not reported, and so still open on staging: which staff role was used, whether each prefilled value and the attached document were checked, the Word version of the sample, rejected files, duplicate uploads, the label settings, the two portal fixes, and any real care-provider form.
+Not reported, and so still open on staging: which staff role was used, whether the form appears under the referral's documents and downloads, the Word version of the sample, rejected files, duplicate uploads, and the label settings.
+
+**Pending:** a real care-provider form. The project owner will test one when the client supplies a sample.
 
 ---
 
