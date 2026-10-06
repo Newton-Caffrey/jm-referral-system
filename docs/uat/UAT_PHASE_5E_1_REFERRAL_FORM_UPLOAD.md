@@ -6,7 +6,7 @@
 **Previous checkpoint:** `39b9434` (Merge Phase 5D referral inbox workflow)  
 **Branch:** `develop/1.6.0` (changes uncommitted at hand-over)
 
-**Overall result:** **DEVELOPMENT VERIFICATION ONLY — STAGING UAT NOT RUN**
+**Overall result:** **DEVELOPMENT VERIFICATION PASS · STAGING SMOKE PASS (one form, 2026-10-06) · full staging UAT not run**
 
 **Verification date:** 2026-10-06
 
@@ -19,7 +19,17 @@
 - Email delivery was not available.
 - Browser checks were screenshots at desktop and phone width only. No assistive-technology pass.
 
-Staging UAT on the real stack is required before this phase is treated as accepted.
+## Staging smoke (project owner, 2026-10-06)
+
+The project owner installed the staging test build and reported the following. Nothing beyond this was reported, so nothing beyond this is recorded.
+
+| Check | Result |
+| --- | --- |
+| Upload the made-up sample form `sample-referral-form.pdf` from the Referral Inbox | **PASS** |
+| Create the referral from the details read from that form | **PASS** |
+| Project owner satisfied with the staging build | **ACCEPTED** |
+
+Not reported, and so still open on staging: which staff role was used, whether each prefilled value and the attached document were checked, the Word version of the sample, rejected files, duplicate uploads, the label settings, the two portal fixes, and any real care-provider form.
 
 ---
 
@@ -111,8 +121,8 @@ Staging UAT on the real stack is required before this phase is treated as accept
 
 | Item | Status |
 | --- | --- |
-| MySQL / InnoDB transaction, number lock, rollback with the new post-commit step | **NOT RUN** |
-| Upgrade of an existing site (rewrite flush `1.2.9` → `1.2.10`) | **NOT RUN — CODE REVIEWED** |
+| MySQL / InnoDB transaction, number lock, rollback with the new post-commit step | One successful conversion on staging; lock contention and rollback **NOT RUN** |
+| Upgrade of an existing site (rewrite flush `1.2.9` → `1.2.10`) | Upload route reachable on staging after install; upgrade path not separately reported |
 | A real care-provider referral form | **NOT RUN — no sample available** |
 | Private-directory web protection | **NOT RUN** |
 | Assignment email after conversion from an uploaded form | **NOT RUN** |
