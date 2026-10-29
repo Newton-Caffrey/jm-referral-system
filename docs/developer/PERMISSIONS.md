@@ -58,6 +58,7 @@ Role slugs are still used for:
 | `MANAGE_HOMES` | `jmrs_manage_homes` |
 | `MANAGE_OCCUPANCIES` | `jmrs_manage_occupancies` |
 | `OVERRIDE_PIPELINE_STAGE` | `jmrs_override_pipeline_stage` |
+| `REGISTER_EXISTING_RESIDENTS` | `jmrs_register_existing_residents` (Phase 5F.1 — Add Existing Residents, single and bulk import) |
 
 Helpers: `Capabilities::all()`, `grant_to_administrators()`, `revoke_from_administrators()`, `current_user_can()`.
 
@@ -84,7 +85,7 @@ Module, terminology, Local Authority directory, and Microsoft 365 Settings use `
 
 ### `jmrs_referral_manager` — Referral Manager
 
-All except: `manage_service_types`, `manage_workflow_stages`, `manage_settings`. Includes supported living view + manage homes + manage occupancies, and **`override_pipeline_stage`**. May **Express Interest**.
+All except: `manage_service_types`, `manage_workflow_stages`, `manage_settings`. Includes supported living view + manage homes + manage occupancies, **`override_pipeline_stage`** and **`register_existing_residents`** (Phase 5F.1). May **Express Interest**.
 
 ### `jmrs_care_coordinator` — Care Coordinator
 

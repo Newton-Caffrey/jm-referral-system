@@ -7,7 +7,7 @@ namespace JMReferral\Portal;
  */
 class PortalRouter
 {
-    public const REWRITE_VERSION = '1.2.10';
+    public const REWRITE_VERSION = '1.2.11';
 
     public const QV_PORTAL = 'jmrs_portal';
     public const QV_ROUTE = 'jmrs_portal_route';
@@ -78,6 +78,10 @@ class PortalRouter
             ['/referral-inbox/upload/?$', 'referral_inbox_upload', null, null, null],
             ['/referral-inbox/([0-9]+)/prepare/?$', 'referral_inbox_prepare', '$matches[1]', null, null],
             ['/referral-inbox/([0-9]+)/?$', 'referral_inbox_item', '$matches[1]', null, null],
+            ['/residents/existing/?$', 'residents_existing', null, null, null],
+            ['/residents/existing/new/?$', 'resident_existing_new', null, null, null],
+            ['/residents/existing/import/?$', 'resident_import', null, null, null],
+            ['/residents/existing/import/template/?$', 'resident_import_template', null, null, null],
             ['/homes/?$', 'homes', null, null, null],
             ['/homes/new/?$', 'home_new', null, null, null],
             ['/homes/([0-9]+)/edit/?$', 'home_edit', '$matches[1]', null, null],

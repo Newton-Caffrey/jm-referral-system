@@ -606,6 +606,103 @@ class ReferralRepository
     }
 
     /**
+     * Phase 5F.1: marks a just-inserted record as an existing resident at Care Started.
+     *
+     * Only for use inside ExistingResidentRegistrationService's transaction. Sets the
+     * real care dates and the registration provenance in one statement.
+     *
+     * @param array{
+     *     record_origin: string,
+     *     admission_date: string,
+     *     care_commenced_at: string,
+     *     care_setting: string,
+     *     workflow_stage_id: int,
+     *     registered_at: string,
+     *     registered_by: int,
+     *     registration_batch: string|null
+     * } $data
+     */
+    public function apply_existing_resident_registration(int $id, array $data): bool
+    {
+        global $wpdb;
+
+        if ($id <= 0 || (int) $data['workflow_stage_id'] <= 0) {
+            return false;
+        }
+
+        $fields = [
+            'record_origin'             => (string) $data['record_origin'],
+            'admission_date'            => (string) $data['admission_date'],
+            'care_commenced_at'         => (string) $data['care_commenced_at'],
+            'care_setting'              => (string) $data['care_setting'],
+            'workflow_stage_id'         => (int) $data['workflow_stage_id'],
+            'workflow_stage_entered_at' => (string) $data['care_commenced_at'],
+            'registered_at'             => (string) $data['registered_at'],
+            'registered_by'             => (int) $data['registered_by'],
+            'updated_at'                => (string) $data['registered_at'],
+        ];
+        $formats = ['%s', '%s', '%s', '%s', '%d', '%s', '%s', '%d', '%s'];
+
+        if (null !== ($data['registration_batch'] ?? null) && '' !== (string) $data['registration_batch']) {
+            $fields['registration_batch'] = (string) $data['registration_batch'];
+            $formats[]                    = '%s';
+        }
+
+        $result = $wpdb->update(Tables::referrals_table(), $fields, ['id' => $id], $formats, ['%d']);
+
+        return false !== $result && (int) $result > 0;
+    }
+
+    /**
+     * Phase 5F.1: records with the same first name, last name and date of birth (any archive state).
+     *
+     * Used to stop the same person being registered twice.
+     *
+     * @return array<int, array{id: int, referral_number: string}>
+     */
+    public function find_by_client_identity(string $first_name, string $last_name, string $date_of_birth, int $limit = 5): array
+    {
+        global $wpdb;
+
+        $first_name = trim($first_name);
+        $last_name  = trim($last_name);
+        if ('' === $first_name || '' === $last_name || '' === $date_of_birth) {
+            return [];
+        }
+
+        $table = Tables::referrals_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is trusted.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT id, referral_number FROM {$table}
+                WHERE LOWER(client_first_name) = LOWER(%s)
+                  AND LOWER(client_last_name) = LOWER(%s)
+                  AND client_date_of_birth = %s
+                ORDER BY id ASC
+                LIMIT %d",
+                $first_name,
+                $last_name,
+                $date_of_birth,
+                max(1, $limit)
+            ),
+            ARRAY_A
+        );
+
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        return array_map(
+            static fn (array $row): array => [
+                'id'              => (int) ($row['id'] ?? 0),
+                'referral_number' => (string) ($row['referral_number'] ?? ''),
+            ],
+            $rows
+        );
+    }
+
+    /**
      * Updates pipeline pointer and timing columns only.
      */
     public function update_pipeline_state(
@@ -956,8 +1053,11 @@ class ReferralRepository
      * @param array<int, string> $slugs
      * @return array<string, int> slug => count
      */
-    public function count_active_by_pipeline_slugs(array $slugs, ?int $access_assigned_to = null): array
-    {
+    public function count_active_by_pipeline_slugs(
+        array $slugs,
+        ?int $access_assigned_to = null,
+        bool $exclude_existing_residents = false
+    ): array {
         global $wpdb;
 
         $slugs = array_values(array_filter(array_map('strval', $slugs), static function (string $slug): bool {
@@ -987,6 +1087,12 @@ class ReferralRepository
         if (null !== $access_assigned_to && $access_assigned_to > 0) {
             $where[]  = 'r.assigned_to = %d';
             $params[] = $access_assigned_to;
+        }
+
+        // Phase 5F.1: acquisition counts leave out clients registered as existing residents.
+        if ($exclude_existing_residents) {
+            $where[]  = '(r.record_origin IS NULL OR r.record_origin <> %s)';
+            $params[] = \JMReferral\Residents\ExistingResident::ORIGIN;
         }
 
         $sql = "SELECT s.slug AS stage_slug, COUNT(*) AS total

@@ -11,7 +11,7 @@ class Migrator
     /**
      * Current database schema version.
      */
-    public const DB_VERSION = '2.33.0';
+    public const DB_VERSION = '2.34.0';
 
     /**
      * Option key used to store the installed DB version.
@@ -229,6 +229,15 @@ class Migrator
             // Phase 5D.2: local_authority_origin, local_authority_decided_by, local_authority_decided_at
             // on jmrs_referral_inbox via Tables::create() / dbDelta.
             // Additive only — no historical provenance backfill and no referral creation.
+        }
+
+        if (version_compare($from_version, '2.34.0', '<')) {
+            // Phase 5F.1: record_origin, admission_date, registered_at, registered_by, registration_batch
+            // on jmrs_referrals and the jmrs_funding_arrangements table via Tables::create() / dbDelta.
+            // Additive only — existing referrals keep record_origin NULL (genuine referrals).
+            // Grants the new register-existing-residents capability.
+            Capabilities::grant_to_administrators();
+            Roles::register();
         }
     }
 

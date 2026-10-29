@@ -114,6 +114,34 @@ If a form's details are rarely picked up, tell an administrator which labels the
 
 ---
 
+## Adding existing residents
+
+Use this for people who already receive care from you, for example when you first move onto the platform. They are added straight to **Care Started** with their real dates. No referral, assessment, costing or Local Authority decision steps are created, and they are not counted in referral reports. You need the **Register existing residents** permission (Referral Manager or administrator).
+
+Before you start, add every property and bedroom under **Homes**. The **Add Existing Residents** page lists each property and its free bedrooms.
+
+**One person at a time**
+
+1. Open **Add Existing Residents** and choose **Add One Resident**.
+2. Enter their name, date of birth, **admission date** (the day they joined your service) and **care start date** (the day your care began). Neither can be in the future.
+3. Choose **Supported Living** and pick their property and bedroom, or **Own Home** and enter their address. If they moved rooms after admission, enter the date they moved into their current bedroom.
+4. Optionally record funding: funding type, Local Authority (or other funder), reference, start date, weekly package value, weekly support hours and a short description of the package.
+5. Tick the confirmation and choose **Add Resident**. Their record opens.
+
+**Many people from a spreadsheet**
+
+1. Choose **Import from Spreadsheet** and download the Excel template (or the CSV template).
+2. Add one resident per row on the *Residents* sheet. Type property and bedroom names exactly as they appear under Homes. Dates can be typed as day/month/year. The example row is skipped automatically.
+3. Upload the file and choose **Upload and Check**. Every row is checked and listed. Nothing is saved yet.
+4. If any row needs correcting, the list says which row and what is wrong. Fix the spreadsheet and upload it again. Residents are only imported when every row is correct, so you never end up with half an import.
+5. When every row is ready, choose **Import N Residents**. Each record shows the same import reference.
+
+Afterwards, add each person's care plan, risk assessments and documents from their record. Occupancy and the dashboards update straight away.
+
+If someone was added by mistake, archive their record. Wrong details can be corrected with **Edit Referral**, and placements changed from **Vacancies / Occupancy**.
+
+---
+
 ## Permissions
 
 You only see what your capabilities and AccessPolicy allow. If a referral is missing or returns “Not found”, it may be inaccessible rather than absent — this is intentional.

@@ -243,6 +243,11 @@ $jmrs_partials_path = JMRS_PLUGIN_PATH . 'templates/portal/partials/';
 <?php endif; ?>
 
 <?php
+// Phase 5F.1: existing resident registration + funding arrangement.
+include JMRS_PLUGIN_PATH . 'templates/portal/referrals/partials/existing-resident.php';
+?>
+
+<?php
 $context              = 'portal';
 $override_form_action = '';
 include JMRS_PLUGIN_PATH . 'templates/referrals/partials/pipeline-panel.php';

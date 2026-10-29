@@ -249,3 +249,4 @@ Planned themes (not committed scope):
 **Next versions:** Post-1.4 backlog (structured movement From/To metadata, occupancy trend chart, automated tests, deferred management prototype metrics) — see sections above and `docs/SUPPORTED_LIVING.md`.
 
 See `CHANGELOG.md` for release detail and `README.md` for current system documentation.
+- [x] Phase 5F.1: Add Existing Residents — single form + all-or-nothing spreadsheet import, funding arrangements, excluded from referral reporting (DB 2.34.0)

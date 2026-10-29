@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 5F.1 — Add Existing Residents.** Referral Managers and administrators can register clients who already receive care, one at a time or from an Excel/CSV spreadsheet, without going through referral, assessment, costing and Local Authority approval. Each person is added at Care Started with their real admission and care start dates, placed in their current property and bedroom (Supported Living) or recorded at their own home, with optional funding and support package. Bulk import checks every row and shows the problems before anything is saved, and saves all rows or none. Existing residents are left out of referral reports and pipeline outcome counts and included in caseload and occupancy. See `docs/developer/EXISTING_RESIDENTS.md`.
+- New capability `jmrs_register_existing_residents` (administrator, Platform Administrator, Referral Manager).
+- Client record: **Existing resident** / **Funding and support package** panel.
+
 - **Phase 5E.1 — Referral form upload.** Staff with Inbox management and create-referral access can upload a completed referral form (Word `.docx` or PDF, up to 10 MB) from the Staff Portal Referral Inbox. The details are read from the form on the server and offered on Prepare Referral for review. No referral is created until staff validate the details and confirm. See `docs/developer/REFERRAL_INBOX_DOCUMENT_UPLOAD.md`.
 - Prepare Referral fields: Date of Birth, Address Line 1 and 2, Town / City, Postcode, Referrer Phone, Relationship to Client, Care Start Date, Care Requirements. All optional.
 - The uploaded form is kept in private storage and added to the referral's documents when the referral is created.
@@ -17,17 +21,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Portal rewrite `1.2.10` → `1.2.11` for the `/residents/existing/` routes (version-gated flush).
 - Portal rewrite `1.2.9` → `1.2.10` for the new `/referral-inbox/upload/` route (version-gated flush).
 - Inbox items from the `manual` source are labelled “Uploaded form” in the Inbox list.
 
 ### Fixed
+
+- Acquisition report queries for staff restricted to their own records added the assignee condition after `GROUP BY` / `ORDER BY`, which made the stage distribution, assessment outcome and export queries fail for those users. The condition is now placed before those clauses.
 
 - Staff Portal referral view no longer stops rendering for users who can override the pipeline stage (Referral Manager, administrator). The shared pipeline panel called `submit_button()`, which exists only in wp-admin; in the portal it now renders its own button, like the other shared panels.
 - Referral Inbox detail and Prepare Referral now show the item's Subject, Sender, and message preview. The portal layout left its navigation loop variable `$item` set, which hid the Inbox row passed to those pages.
 
 ### Database
 
-- No schema change. Database remains `2.33.0`. New option `jmrs_referral_form_labels` is created only when the label lists are saved.
+- `2.33.0` → `2.34.0` (Phase 5F.1, additive): `record_origin`, `admission_date`, `registered_at`, `registered_by`, `registration_batch` on `jmrs_referrals`; new table `jmrs_funding_arrangements`. Existing referrals keep `record_origin` NULL. No backfill.
+- Phase 5E.1 itself made no schema change. New option `jmrs_referral_form_labels` is created only when the label lists are saved.
 
 ### Known limitations (summary)
 

@@ -24,6 +24,7 @@ class ReportRepository
             WHERE DATE(r.created_at) >= %s
               AND DATE(r.created_at) <= %s";
         $params = [$start_date, $end_date];
+        $this->append_genuine_referrals($sql, $params, 'r');
         $this->append_referral_access($sql, $params, $access_assigned_to, 'r');
 
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -43,6 +44,7 @@ class ReportRepository
               AND DATE(r.created_at) >= %s
               AND DATE(r.created_at) <= %s";
         $params = ['new', $start_date, $end_date];
+        $this->append_genuine_referrals($sql, $params, 'r');
         $this->append_referral_access($sql, $params, $access_assigned_to, 'r');
 
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -620,6 +622,7 @@ class ReportRepository
             WHERE DATE(r.created_at) >= %s
               AND DATE(r.created_at) <= %s";
         $params = [$start_date, $end_date];
+        $this->append_genuine_referrals($sql, $params, 'r');
         $this->append_referral_access($sql, $params, $access_assigned_to, 'r');
         $sql .= ' GROUP BY month_key ORDER BY month_key ASC';
 
@@ -647,6 +650,7 @@ class ReportRepository
             WHERE DATE(r.created_at) >= %s
               AND DATE(r.created_at) <= %s";
         $params = [__('Unassigned', 'jm-referral-system'), $start_date, $end_date];
+        $this->append_genuine_referrals($sql, $params, 'r');
         $this->append_referral_access($sql, $params, $access_assigned_to, 'r');
         $sql .= ' GROUP BY group_key, group_label ORDER BY aggregate_count DESC, group_label ASC';
 
@@ -674,6 +678,7 @@ class ReportRepository
             WHERE DATE(r.created_at) >= %s
               AND DATE(r.created_at) <= %s";
         $params = [__('Unassigned', 'jm-referral-system'), $start_date, $end_date];
+        $this->append_genuine_referrals($sql, $params, 'r');
         $this->append_referral_access($sql, $params, $access_assigned_to, 'r');
         $sql .= ' GROUP BY group_key, group_label ORDER BY aggregate_count DESC, group_label ASC';
 
@@ -697,6 +702,7 @@ class ReportRepository
             WHERE DATE(r.created_at) >= %s
               AND DATE(r.created_at) <= %s";
         $params = ['medium', $start_date, $end_date];
+        $this->append_genuine_referrals($sql, $params, 'r');
         $this->append_referral_access($sql, $params, $access_assigned_to, 'r');
         $sql .= ' GROUP BY group_key ORDER BY aggregate_count DESC, group_key ASC';
 
@@ -1239,6 +1245,17 @@ class ReportRepository
 
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         return (int) $wpdb->get_var($wpdb->prepare($sql, ...$params));
+    }
+
+    /**
+     * Phase 5F.1: referral-received figures leave out clients registered as existing residents.
+     *
+     * @param array<int|string, mixed> $params
+     */
+    private function append_genuine_referrals(string &$sql, array &$params, string $alias): void
+    {
+        $sql     .= " AND ({$alias}.record_origin IS NULL OR {$alias}.record_origin <> %s)";
+        $params[] = \JMReferral\Residents\ExistingResident::ORIGIN;
     }
 
     /**

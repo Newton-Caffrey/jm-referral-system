@@ -78,7 +78,8 @@ class PipelineAttentionService
         ];
 
         $active_counts = $this->referral_repository->count_active_by_pipeline_slugs($active_slugs, $access);
-        $terminal_counts = $this->referral_repository->count_active_by_pipeline_slugs($terminal_slugs, $access);
+        // Phase 5F.1: existing residents are not referral outcomes.
+        $terminal_counts = $this->referral_repository->count_active_by_pipeline_slugs($terminal_slugs, $access, true);
         $legacy_count = $this->referral_repository->count_active_legacy_workflow($access);
 
         $rows = $this->referral_repository->find_active_pipeline_referrals($active_slugs, $access, self::QUEUE_LIMIT);
