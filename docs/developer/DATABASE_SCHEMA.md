@@ -1,6 +1,6 @@
 # Database Schema — JM Referral System
 
-Schema version: **`2.33.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
+Schema version: **`2.34.0`** (`Migrator::DB_VERSION`, option `jmrs_db_version`).
 DDL authority: `JMReferral\Database\Tables::create()` via WordPress `dbDelta`.
 
 All physical names are `{wpdb->prefix}jmrs_*`. Methods below are on `Tables`.
@@ -54,9 +54,9 @@ erDiagram
 | **PK** | `id` |
 | **FKs (logical)** | `service_type_id` → service types; `workflow_stage_id` → workflow stages; `assigned_to` / `archived_by` → WP users |
 
-**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **`care_start_date`** (preferred/requested intake date from referral form — **not** actual care commencement), **`workflow_stage_entered_at`**, **`next_action_due_at`** (Phase 3B pipeline timing; no SLA hardcoding), **interest response milestone (Phase 3C):** `interest_expressed_at`, `interest_expressed_by`, `interest_response_method` (`email` \| `phone` \| `other`), `interest_response_recipient`, `interest_email_status` (`sent` \| `failed` \| `not_applicable`), `interest_email_sent_at`, **care commencement milestone (Phase 3G / 4H.1):** `care_commenced_at`, `care_commenced_by` (actual recorded commencement — NULL until explicit Confirm Care Commenced; record-once via conditional UPDATE; no backfill; no correction/reopen columns), **responsibility metadata (Phase 4B.1):** `champion_user_id`, `transition_lead_user_id` (nullable WP users; **not** access grants; `assigned_to` remains owner), **archive:** `archived_at`, `archived_by`, `archive_reason`, timestamps. **No** `proposed_home_id` / `proposed_bedroom_id` / transition-plan table (Phase 4H.1 deliberately omitted).
+**Major columns:** `referral_number`, client identity/contact/address fields, referrer fields, `priority`, `status`, `assigned_to`, `referral_source`, `care_requirements`, **`care_setting`** (`supported_living` \| `own_home` \| NULL — Phase 2D), `submission_channel`, `public_consent_at`, `public_consent_version`, **`care_start_date`** (preferred/requested intake date from referral form — **not** actual care commencement), **`workflow_stage_entered_at`**, **`next_action_due_at`** (Phase 3B pipeline timing; no SLA hardcoding), **interest response milestone (Phase 3C):** `interest_expressed_at`, `interest_expressed_by`, `interest_response_method` (`email` \| `phone` \| `other`), `interest_response_recipient`, `interest_email_status` (`sent` \| `failed` \| `not_applicable`), `interest_email_sent_at`, **care commencement milestone (Phase 3G / 4H.1):** `care_commenced_at`, `care_commenced_by` (actual recorded commencement — NULL until explicit Confirm Care Commenced; record-once via conditional UPDATE; no backfill; no correction/reopen columns), **responsibility metadata (Phase 4B.1):** `champion_user_id`, `transition_lead_user_id` (nullable WP users; **not** access grants; `assigned_to` remains owner), **archive:** `archived_at`, `archived_by`, `archive_reason`, **existing resident registration (Phase 5F.1):** `record_origin` (`existing_resident` \| NULL for genuine referrals), `admission_date`, `registered_at`, `registered_by`, `registration_batch`, timestamps. **No** `proposed_home_id` / `proposed_bedroom_id` / transition-plan table (Phase 4H.1 deliberately omitted).
 
-**Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, `care_setting`, `workflow_stage_entered_at`, `next_action_due_at`, `interest_expressed_at`, `champion_user_id`, `transition_lead_user_id`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
+**Indexes (selected):** `status`, `priority`, `assigned_to`, `service_type_id`, `workflow_stage_id`, `submission_channel`, `archived_at`, `care_setting`, `workflow_stage_entered_at`, `next_action_due_at`, `interest_expressed_at`, `champion_user_id`, `transition_lead_user_id`, `record_origin`, `registration_batch`, composites `archived_at_status`, `status_priority`, `assigned_to_archived_at`.
 
 **Workflows:** Create (admin/public → default canonical `interest_required`), edit (pipeline stages locked on generic form), assign, legacy stage change, pipeline override (Manager/Admin), **Express Interest** (`InterestResponseService`), **Transition Planning / Care Commencement** (`TransitionPlanningService` / `CareCommencementService`), list/export/filter by care setting + pipeline stage, archive/restore, portal view.
 
@@ -563,3 +563,20 @@ On `jmrs_referrals`:
 - **Phase 5B.1 (2.30.0 → 2.31.0):** additive `jmrs_referral_inbox` + `jmrs_referral_inbox_attachments`. No connectors/tokens/UI/detection/referral creation. See [`REFERRAL_INBOX_DATA_MODEL.md`](REFERRAL_INBOX_DATA_MODEL.md).
 - **Phase 5C.1 (2.31.0 → 2.32.0):** additive `jmrs_mailbox_connections` + `jmrs_mailbox_connection_secrets`. No Graph/OAuth/token storage; no Inbox schema change. See [`MICROSOFT_365_CONNECTION.md`](MICROSOFT_365_CONNECTION.md), [`SECRET_STORAGE.md`](SECRET_STORAGE.md).
 - **Phase 5D.2 (2.32.0 → 2.33.0):** additive `local_authority_origin`, `local_authority_decided_by`, `local_authority_decided_at` on `jmrs_referral_inbox`. No historical backfill. No referral or attachment table change. See [`REFERRAL_INBOX_AUTHORITY_REVIEW.md`](REFERRAL_INBOX_AUTHORITY_REVIEW.md).
+
+---
+
+### `jmrs_funding_arrangements` — `funding_arrangements_table()` (Phase 5F.1)
+
+**Purpose:** Funding currently in place for a client and the support package it pays for. Separate from `jmrs_referral_la_decisions` (an acquisition event).
+
+| | |
+| --- | --- |
+| **PK** | `id` |
+| **FKs (logical)** | `referral_id` → referrals; `local_authority_id` → local authorities; `created_by` → WP users |
+
+**Columns:** `funding_type` (`local_authority` \| `nhs_chc` \| `joint` \| `self_funded` \| `other`), `local_authority_id`, `funder_name` (when not in the directory), `funding_reference`, `start_date`, `weekly_amount` DECIMAL(12,2), `weekly_support_hours` DECIMAL(6,2), `package_summary`, `status` (`active`), `source` (`existing_resident` when written at registration), `created_by`, timestamps.
+
+**Indexes:** `referral_id`, `referral_id_status`, `local_authority_id`, `funding_type`.
+
+**Workflows:** Written only by existing resident registration in 5F.1; shown on the client record. See `EXISTING_RESIDENTS.md`.

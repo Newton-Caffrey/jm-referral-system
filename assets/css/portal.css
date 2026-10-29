@@ -2071,3 +2071,118 @@ body.admin-bar.jmrs-portal-body {
 .jmrs-inbox-upload__notes li {
 	margin: 0.25rem 0;
 }
+
+/* ------------------------------------------------------------------
+ * Phase 5F.1: Add Existing Residents (single form + spreadsheet import)
+ * ------------------------------------------------------------------ */
+.jmrs-er-intro {
+	margin: 0 0 0.85rem;
+	max-width: 52rem;
+	color: var(--jmrs-portal-text);
+	line-height: 1.55;
+}
+
+.jmrs-er-choices {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
+.jmrs-er-choice {
+	background: #f8faf9;
+	border: 1px solid var(--jmrs-portal-border);
+	border-radius: var(--jmrs-portal-radius);
+	padding: 1rem 1.1rem;
+}
+
+.jmrs-er-choice p {
+	margin: 0.4rem 0 0.75rem;
+}
+
+.jmrs-er-choice p:last-child {
+	margin-bottom: 0;
+}
+
+.jmrs-er-form fieldset.jmrs-portal-field {
+	border: 0;
+	margin: 0 0 1rem;
+	padding: 0;
+	min-width: 0;
+}
+
+.jmrs-er-form fieldset legend {
+	font-weight: 600;
+	margin-bottom: 0.4rem;
+	padding: 0;
+}
+
+.jmrs-er-form fieldset label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0.35rem 0;
+	font-weight: 400;
+}
+
+.jmrs-er-form .jmrs-portal-subsection__title {
+	margin: 1.1rem 0 0.4rem;
+}
+
+.jmrs-er-form > .jmrs-portal-field--checkbox label {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+	font-weight: 600;
+}
+
+.jmrs-er-upload {
+	display: grid;
+	gap: 1rem;
+	max-width: 40rem;
+}
+
+.jmrs-er-upload input[type="file"] {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	padding: 0.6rem;
+	border: 1px dashed var(--jmrs-portal-border);
+	border-radius: var(--jmrs-portal-radius);
+	background: #f8faf9;
+}
+
+.jmrs-import-steps {
+	padding-left: 1.25rem;
+}
+
+.jmrs-import-steps li {
+	margin: 0.3rem 0;
+}
+
+.jmrs-import-preview td {
+	vertical-align: top;
+}
+
+.jmrs-import-row--error td:first-child {
+	box-shadow: inset 3px 0 0 #b32d2e;
+}
+
+.jmrs-import-errors {
+	margin: 0;
+	padding-left: 1rem;
+	color: #8a1f1f;
+}
+
+.jmrs-import-errors li {
+	margin: 0.15rem 0;
+}
+
+.jmrs-existing-resident dd {
+	overflow-wrap: anywhere;
+}
+
+.jmrs-er-form > .jmrs-portal-field--checkbox {
+	display: block;
+	margin: 1rem 0;
+}

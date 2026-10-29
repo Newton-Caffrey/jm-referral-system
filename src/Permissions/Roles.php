@@ -66,6 +66,7 @@ class Roles
                     Capabilities::MANAGE_HOMES,
                     Capabilities::MANAGE_OCCUPANCIES,
                     Capabilities::OVERRIDE_PIPELINE_STAGE,
+                    Capabilities::REGISTER_EXISTING_RESIDENTS,
                 ],
             ],
             self::CARE_COORDINATOR => [

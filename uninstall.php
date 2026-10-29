@@ -61,6 +61,7 @@ $tables = [
     Tables::mailbox_connections_table(),
     Tables::local_authority_sender_rules_table(),
     Tables::local_authorities_table(),
+    Tables::funding_arrangements_table(),
     Tables::referral_documents_table(),
     Tables::referral_notes_table(),
     Tables::referral_activity_table(),

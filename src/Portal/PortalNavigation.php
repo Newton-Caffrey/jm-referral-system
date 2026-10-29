@@ -121,6 +121,21 @@ class PortalNavigation
             ];
         }
 
+        if (Capabilities::current_user_can(Capabilities::REGISTER_EXISTING_RESIDENTS)) {
+            $items[] = [
+                'id'      => 'residents_existing',
+                'label'   => __('Add Existing Residents', 'jm-referral-system'),
+                'url'     => PortalUrls::residents_existing(),
+                'current' => in_array(
+                    $current_route,
+                    ['residents_existing', 'resident_existing_new', 'resident_import'],
+                    true
+                ),
+                'icon'    => 'referrals',
+                'section' => 'care',
+            ];
+        }
+
         if (
             ModuleSettings::is_enabled(ModuleSettings::SUPPORTED_LIVING)
             && Capabilities::current_user_can(Capabilities::VIEW_HOMES)

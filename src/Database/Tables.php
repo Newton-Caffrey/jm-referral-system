@@ -284,6 +284,13 @@ class Tables
         return $wpdb->prefix . 'jmrs_referral_inbox_attachments';
     }
 
+    public static function funding_arrangements_table(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'jmrs_funding_arrangements';
+    }
+
     public static function mailbox_connections_table(): string
     {
         global $wpdb;
@@ -339,6 +346,44 @@ class Tables
         self::create_referral_inbox_attachments_table($charset);
         self::create_mailbox_connections_table($charset);
         self::create_mailbox_connection_secrets_table($charset);
+        self::create_funding_arrangements_table($charset);
+    }
+
+    /**
+     * Phase 5F.1: who funds a client's care and the package they are funded for.
+     *
+     * Separate from the Local Authority decision table: a decision is an acquisition
+     * event, while an arrangement describes funding that is in place. Existing
+     * residents registered without a referral history get an arrangement only.
+     */
+    private static function create_funding_arrangements_table(string $charset): void
+    {
+        $table = self::funding_arrangements_table();
+
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            referral_id BIGINT UNSIGNED NOT NULL,
+            funding_type VARCHAR(30) NOT NULL,
+            local_authority_id BIGINT UNSIGNED NULL,
+            funder_name VARCHAR(255) NULL,
+            funding_reference VARCHAR(190) NULL,
+            start_date DATE NULL,
+            weekly_amount DECIMAL(12,2) NULL,
+            weekly_support_hours DECIMAL(6,2) NULL,
+            package_summary TEXT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'active',
+            source VARCHAR(30) NULL,
+            created_by BIGINT UNSIGNED NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY referral_id (referral_id),
+            KEY referral_id_status (referral_id, status),
+            KEY local_authority_id (local_authority_id),
+            KEY funding_type (funding_type)
+        ) {$charset};";
+
+        dbDelta($sql);
     }
 
     /**
@@ -397,6 +442,11 @@ class Tables
             care_commenced_by BIGINT UNSIGNED NULL,
             champion_user_id BIGINT UNSIGNED NULL,
             transition_lead_user_id BIGINT UNSIGNED NULL,
+            record_origin VARCHAR(30) NULL,
+            admission_date DATE NULL,
+            registered_at DATETIME NULL,
+            registered_by BIGINT UNSIGNED NULL,
+            registration_batch VARCHAR(40) NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -416,6 +466,8 @@ class Tables
             KEY interest_expressed_at (interest_expressed_at),
             KEY champion_user_id (champion_user_id),
             KEY transition_lead_user_id (transition_lead_user_id),
+            KEY record_origin (record_origin),
+            KEY registration_batch (registration_batch),
             KEY archived_at_status (archived_at, status),
             KEY status_priority (status, priority),
             KEY assigned_to_archived_at (assigned_to, archived_at)

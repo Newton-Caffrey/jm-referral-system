@@ -90,6 +90,12 @@ class PortalController implements PortalViewHost
      */
     private ?OccupancyHandler $occupancy_handler = null;
 
+    /** Phase 5F.1: add existing residents (single + bulk import). */
+    private ?\JMReferral\Portal\Residents\ExistingResidentHandler $existing_resident_handler = null;
+
+    /** Phase 5F.1: funding arrangement shown on the client record. */
+    private ?\JMReferral\Residents\FundingArrangementRepository $funding_repository = null;
+
     private ?OccupancyService $occupancy_service = null;
 
     private ?ServiceLocationResolver $service_location_resolver = null;
@@ -171,6 +177,16 @@ class PortalController implements PortalViewHost
     public function set_inbox_handler(InboxHandler $inbox_handler): void
     {
         $this->inbox_handler = $inbox_handler;
+    }
+
+    public function set_existing_resident_handler(\JMReferral\Portal\Residents\ExistingResidentHandler $handler): void
+    {
+        $this->existing_resident_handler = $handler;
+    }
+
+    public function set_funding_repository(\JMReferral\Residents\FundingArrangementRepository $repository): void
+    {
+        $this->funding_repository = $repository;
     }
 
     public function set_occupancy_handler(OccupancyHandler $occupancy_handler): void
@@ -290,6 +306,12 @@ class PortalController implements PortalViewHost
             return;
         }
 
+        if (null !== $this->existing_resident_handler && $this->existing_resident_handler->handles($route)) {
+            $this->existing_resident_handler->dispatch($route);
+
+            return;
+        }
+
         if (null !== $this->occupancy_handler && $this->occupancy_handler->handles($route)) {
             $this->occupancy_handler->dispatch($route);
 
@@ -306,6 +328,78 @@ class PortalController implements PortalViewHost
             'referral_care_plan'   => $this->render_referral_care_plan(),
             default                => $this->render_error('404', __('Not Found', 'jm-referral-system'), 404),
         };
+    }
+
+    /**
+     * Phase 5F.1: registration and funding details for the client record.
+     *
+     * Shown for every record that has a funding arrangement, and always for existing residents.
+     *
+     * @param array<string, mixed> $referral
+     * @return array<string, mixed>|null
+     */
+    private function existing_resident_panel(array $referral): ?array
+    {
+        $is_existing = \JMReferral\Residents\ExistingResident::is_existing_resident($referral);
+        $funding     = null !== $this->funding_repository
+            ? $this->funding_repository->current_for_referral(absint($referral['id'] ?? 0))
+            : null;
+
+        if (! $is_existing && null === $funding) {
+            return null;
+        }
+
+        $date_format = (string) get_option('date_format');
+        $fmt_date    = static function (string $value) use ($date_format): string {
+            $value = trim($value);
+            if ('' === $value || '0000-00-00' === substr($value, 0, 10)) {
+                return '';
+            }
+
+            return (string) mysql2date($date_format, $value);
+        };
+
+        $panel = [
+            'is_existing'      => $is_existing,
+            'admission_date'   => $fmt_date((string) ($referral['admission_date'] ?? '')),
+            'care_started'     => $fmt_date((string) ($referral['care_commenced_at'] ?? '')),
+            'registered_at'    => $fmt_date((string) ($referral['registered_at'] ?? '')),
+            'registered_by'    => absint($referral['registered_by'] ?? 0) > 0
+                ? $this->user_provider->get_display_name(absint($referral['registered_by']))
+                : '',
+            'batch'            => (string) ($referral['registration_batch'] ?? ''),
+            'just_registered'  => $is_existing
+                && isset($_GET['jmrs_resident_registered'])
+                && '1' === (string) wp_unslash($_GET['jmrs_resident_registered']),
+            'funding'          => null,
+        ];
+
+        if (is_array($funding)) {
+            $funder = '';
+            $la_id  = absint($funding['local_authority_id'] ?? 0);
+            if ($la_id > 0) {
+                $names  = (new \JMReferral\LocalAuthority\LocalAuthorityRepository())->findNamesByIds([$la_id]);
+                $funder = (string) ($names[$la_id] ?? '');
+            }
+            if ('' === $funder) {
+                $funder = (string) ($funding['funder_name'] ?? '');
+            }
+
+            $amount = (string) ($funding['weekly_amount'] ?? '');
+            $hours  = (string) ($funding['weekly_support_hours'] ?? '');
+
+            $panel['funding'] = [
+                'type'      => \JMReferral\Residents\ExistingResident::funding_type_label((string) ($funding['funding_type'] ?? '')),
+                'funder'    => $funder,
+                'reference' => (string) ($funding['funding_reference'] ?? ''),
+                'start'     => $fmt_date((string) ($funding['start_date'] ?? '')),
+                'weekly'    => '' !== $amount ? '£' . number_format((float) $amount, 2) : '',
+                'hours'     => '' !== $hours ? rtrim(rtrim(number_format((float) $hours, 2, '.', ''), '0'), '.') : '',
+                'package'   => (string) ($funding['package_summary'] ?? ''),
+            ];
+        }
+
+        return $panel;
     }
 
     private function render_management_dashboard(): void
@@ -1244,6 +1338,7 @@ class PortalController implements PortalViewHost
             'la_decision_notice'         => $this->la_decision_notice_from_request(),
             'non_proceeding_notice'      => $this->non_proceeding_notice_from_request(),
             'care_commenced_notice'      => $this->care_commenced_notice_from_request(),
+            'existing_resident_panel'    => $this->existing_resident_panel($referral),
             'is_archived'                => $is_archived,
             'archived_at'                => (string) ($referral['archived_at'] ?? ''),
             'archive_reason'             => (string) ($referral['archive_reason'] ?? ''),

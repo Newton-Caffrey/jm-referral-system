@@ -69,7 +69,8 @@ class ManagementPipelineBoardService
                 PipelineStage::DECLINED,
                 PipelineStage::NOT_PROCEEDING,
             ]),
-            $access
+            $access,
+            true
         );
 
         $live_count = 0;

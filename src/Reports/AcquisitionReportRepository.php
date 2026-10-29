@@ -7,6 +7,7 @@ use JMReferral\Database\Tables;
 use JMReferral\LaDecision\LaDecision;
 use JMReferral\PackageCost\PackageCost;
 use JMReferral\Pipeline\PipelineStage;
+use JMReferral\Residents\ExistingResident;
 
 /**
  * Acquisition cohort aggregates. Includes archived historical records.
@@ -722,13 +723,33 @@ class AcquisitionReportRepository
     }
 
     /**
+     * Restricts a cohort query to genuine referrals and, when scoped, to the user's own records.
+     *
+     * Phase 5F.1: existing residents (record_origin = existing_resident) were never referred,
+     * so they are left out of every acquisition figure. Conditions are inserted before a
+     * trailing GROUP BY / ORDER BY so the SQL stays valid.
+     *
      * @param array<int|string, mixed> $params
      */
     private function append_assigned_scope(string &$sql, array &$params, ?int $access_assigned_to, string $alias): void
     {
+        $conditions = " AND ({$alias}.record_origin IS NULL OR {$alias}.record_origin <> %s)";
+        $extra      = [ExistingResident::ORIGIN];
+
         if (null !== $access_assigned_to && $access_assigned_to > 0) {
-            $sql     .= " AND {$alias}.assigned_to = %d";
-            $params[] = $access_assigned_to;
+            $conditions .= " AND {$alias}.assigned_to = %d";
+            $extra[]     = $access_assigned_to;
+        }
+
+        if (preg_match('/\s(GROUP BY|ORDER BY)\s[^()%]*$/', $sql, $match, PREG_OFFSET_CAPTURE)) {
+            $offset = (int) $match[0][1];
+            $sql    = substr($sql, 0, $offset) . $conditions . substr($sql, $offset);
+        } else {
+            $sql .= $conditions;
+        }
+
+        foreach ($extra as $value) {
+            $params[] = $value;
         }
     }
 

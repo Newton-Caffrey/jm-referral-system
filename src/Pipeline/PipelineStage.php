@@ -28,6 +28,8 @@ class PipelineStage
     public const CHANGE_CREATED = 'created';
     public const CHANGE_TRANSITION = 'transition';
     public const CHANGE_OVERRIDE = 'override';
+    /** Phase 5F.1: placed directly at Care Started when registering an existing resident. */
+    public const CHANGE_EXISTING_RESIDENT = 'existing_resident';
 
     public const FILTER_LEGACY = 'legacy';
 

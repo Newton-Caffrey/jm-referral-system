@@ -993,6 +993,60 @@ class Plugin
         $controller->set_occupancy_service($occupancy_service);
         $controller->set_service_location_resolver($service_location_resolver);
 
+        // Phase 5F.1: register clients who already receive care (single form + bulk import),
+        // without generating referral, assessment, costing or Local Authority decision history.
+        $funding_repository      = new \JMReferral\Residents\FundingArrangementRepository();
+        $local_authority_repo    = new LocalAuthorityRepository();
+        $existing_validator      = new \JMReferral\Residents\ExistingResidentValidator(
+            $repository,
+            $bedroom_repository,
+            $home_repository,
+            $occupancy_repository,
+            $this->service_type_service,
+            $this->user_provider,
+            $local_authority_repo
+        );
+        $existing_registration   = new \JMReferral\Residents\ExistingResidentRegistrationService(
+            $existing_validator,
+            $repository,
+            new ReferralNumberGenerator($repository),
+            new \JMReferral\Referral\ReferralNumberLock(),
+            $pipeline_service,
+            new \JMReferral\Pipeline\ReferralStageHistoryRepository(),
+            $activity_repository,
+            $occupancy_repository,
+            $bedroom_repository,
+            $home_repository,
+            $funding_repository,
+            $this->service_type_service,
+            $this->user_provider,
+            new \JMReferral\Database\TransactionEngineGuard()
+        );
+        $controller->set_existing_resident_handler(
+            new \JMReferral\Portal\Residents\ExistingResidentHandler(
+                $controller,
+                $existing_registration,
+                new \JMReferral\Residents\Import\ResidentImportService(
+                    new \JMReferral\Residents\Import\SpreadsheetReader(),
+                    new \JMReferral\Residents\Import\ResidentImportParser(
+                        $home_repository,
+                        $bedroom_repository,
+                        $local_authority_repo,
+                        $this->service_type_service,
+                        $this->user_provider
+                    ),
+                    $existing_validator,
+                    $existing_registration
+                ),
+                $home_service,
+                $occupancy_service,
+                $this->service_type_service,
+                $this->user_provider,
+                $local_authority_repo
+            )
+        );
+        $controller->set_funding_repository($funding_repository);
+
         $meeting_repository_for_ops = new \JMReferral\Meeting\ReferralMeetingRepository();
         $operational_read = new \JMReferral\Pipeline\ManagementOperationalReadService(
             $repository,

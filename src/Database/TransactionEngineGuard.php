@@ -32,6 +32,22 @@ class TransactionEngineGuard
     }
 
     /**
+     * Whether every given table can roll back (Phase 5F.1 existing resident registration).
+     *
+     * @param array<int, string> $tables Prefixed table names.
+     */
+    public function tables_are_transactional(array $tables): bool
+    {
+        foreach ($tables as $table) {
+            if ('InnoDB' !== $this->engine((string) $table)) {
+                return false;
+            }
+        }
+
+        return [] !== $tables;
+    }
+
+    /**
      * @return array<string, string> Unprefixed logical name => live engine, or empty when unknown.
      */
     public function critical_engines(): array

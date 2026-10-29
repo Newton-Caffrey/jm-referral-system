@@ -270,6 +270,26 @@ class PortalUrls
         );
     }
 
+    public static function residents_existing(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/residents/existing/');
+    }
+
+    public static function resident_existing_new(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/residents/existing/new/');
+    }
+
+    public static function resident_import(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/residents/existing/import/');
+    }
+
+    public static function resident_import_template(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/residents/existing/import/template/');
+    }
+
     public static function occupancy(): string
     {
         return home_url('/' . PortalSettings::base_path() . '/occupancy/');
