@@ -119,6 +119,12 @@ $document_title        = $page_title !== '' ? $page_title . ' — ' . $portal_na
 				<?php if ( null !== $jmrs_nav_last_section ) : ?>
 					</ul>
 				<?php endif; ?>
+				<?php
+				// The page's view model is extracted below with EXTR_SKIP, so a loop
+				// variable left set here would hide a view value of the same name
+				// (the Referral Inbox passes its row as `item`).
+				unset( $item, $item_section, $item_url, $item_label, $item_icon, $is_current, $section_label );
+				?>
 			</nav>
 
 			<?php if ( '' !== $support_email || '' !== $support_phone ) : ?>

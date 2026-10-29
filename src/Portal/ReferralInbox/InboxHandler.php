@@ -28,6 +28,8 @@ use JMReferral\Users\UserProvider;
  *
  * GET is strictly read-only. Mutations go through ReferralInboxService only.
  * Does not create referrals, download attachments, or connect mailboxes.
+ *
+ * Phase 5E.1: the `referral_inbox_upload` route is delegated to UploadHandler.
  */
 class InboxHandler
 {
@@ -40,6 +42,7 @@ class InboxHandler
         'referral_inbox',
         'referral_inbox_item',
         'referral_inbox_prepare',
+        'referral_inbox_upload',
     ];
 
     public function __construct(
@@ -52,7 +55,8 @@ class InboxHandler
         private AccessPolicy $access_policy,
         private UserProvider $user_provider,
         private LocalAuthoritySenderMatcher $sender_matcher,
-        private PrepareHandler $prepare_handler
+        private PrepareHandler $prepare_handler,
+        private ?UploadHandler $upload_handler = null
     ) {
     }
 
@@ -67,6 +71,9 @@ class InboxHandler
             'referral_inbox'          => $this->render_list(),
             'referral_inbox_item'     => $this->render_detail(),
             'referral_inbox_prepare'  => $this->prepare_handler->dispatch(),
+            'referral_inbox_upload'   => $this->upload_handler instanceof UploadHandler
+                ? $this->upload_handler->dispatch()
+                : $this->view_host->render_portal_error('404', __('Not Found', 'jm-referral-system'), 404),
             default                   => $this->view_host->render_portal_error(
                 '404',
                 __('Not Found', 'jm-referral-system'),
@@ -186,6 +193,10 @@ class InboxHandler
             'has_active_filter'=> 'all' !== $status || '' !== $search,
             'referral_label'   => TerminologySettings::referral_singular(),
             'la_label'         => TerminologySettings::local_authority_singular(),
+            'upload_url'       => ($this->upload_handler instanceof UploadHandler
+                && $this->access_policy->can_prepare_referral_from_inbox())
+                ? PortalUrls::referral_inbox_upload()
+                : '',
         ];
 
         $this->view_host->render_portal_page(
@@ -1060,7 +1071,7 @@ class InboxHandler
     {
         return match ($provider) {
             ReferralInboxSource::FIXTURE         => __('Test Fixture', 'jm-referral-system'),
-            ReferralInboxSource::MANUAL          => __('Manual', 'jm-referral-system'),
+            ReferralInboxSource::MANUAL          => __('Uploaded form', 'jm-referral-system'),
             ReferralInboxSource::MICROSOFT_GRAPH => __('Microsoft 365', 'jm-referral-system'),
             ReferralInboxSource::GMAIL           => __('Gmail', 'jm-referral-system'),
             default                              => '' !== $provider ? $provider : '—',

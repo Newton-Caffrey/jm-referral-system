@@ -206,6 +206,12 @@ Operational modules: [`MODULE_SETTINGS.md`](MODULE_SETTINGS.md).
 - **Docs:** [`REFERRAL_INBOX_CONVERSION.md`](REFERRAL_INBOX_CONVERSION.md)
 - **Notes:** Product **1.5.0**; DB **2.33.0**; rewrite **1.2.9**. No new route and no schema change. Critical write tables must be InnoDB or conversion fails closed. The referral-number advisory lock is held until commit or rollback. Assignment email runs only after commit. `submission_channel` stays `admin`. Local Authority id stays on the Inbox row.
 
+### `ReferralInboxDocumentService` / referral form upload (Phase 5E.1)
+- **Purpose:** Let staff upload a Word or PDF referral form into the Inbox, read advisory field suggestions from it, and attach it to the referral after conversion.
+- **Deps:** `ReferralInboxIngestionService`, `ReferralInboxService::addStoredAttachment()` / `markAttachmentPromoted()`, `PrivateDocumentStorage`, `DocumentTextReader` (`DocxTextReader`, `PdfTextReader`), `ReferralFormFieldExtractor`, `ReferralFormLabels`, `ReferralDocumentService::attach_private_file()`
+- **Docs:** [`REFERRAL_INBOX_DOCUMENT_UPLOAD.md`](REFERRAL_INBOX_DOCUMENT_UPLOAD.md)
+- **Notes:** Product **1.5.0**; DB **2.33.0** (no schema change); rewrite **1.2.10** (`referral_inbox_upload`). Same access rule as Prepare Referral. Suggestions are read from the stored file on each request and never saved. No AI, no external service, no text recognition. Bundles smalot/pdfparser under `lib/`.
+
 ### `MicrosoftConnectionService` / secret vault (Phase 5C.1)
 - **Purpose:** Persist one active Microsoft Graph mailbox connection (application auth) with encrypted client secret; admin Settings UI only.
 - **Deps:** `MailboxConnectionRepository`, `MailboxConnectionSecretService` (`SecretCipher` + `SecretKeyProvider`), `MailboxConnectionSecretRepository`

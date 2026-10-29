@@ -131,4 +131,33 @@ class ReferralInboxAttachmentRepository
 
         return (int) $wpdb->insert_id;
     }
+
+    /**
+     * Compare-and-set storage status (Phase 5E.1).
+     *
+     * @return int Rows affected (0 = already changed or missing).
+     */
+    public function transition_storage_status(int $id, string $expected_status, string $new_status, string $updated_at): int
+    {
+        global $wpdb;
+
+        if ($id <= 0) {
+            return 0;
+        }
+
+        $table = Tables::referral_inbox_attachments_table();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table trusted.
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table} SET storage_status = %s, updated_at = %s WHERE id = %d AND storage_status = %s",
+                $new_status,
+                $updated_at,
+                $id,
+                $expected_status
+            )
+        );
+
+        return (int) $wpdb->rows_affected;
+    }
 }

@@ -11,6 +11,7 @@ use JMReferral\Portal\PortalUrls;
 use JMReferral\Referral\ReferralDependencyRepository;
 use JMReferral\Settings\ModuleSettings;
 use JMReferral\Settings\OrganisationSettings;
+use JMReferral\ReferralInbox\Document\ReferralFormLabels;
 use JMReferral\Settings\TerminologySettings;
 
 class SettingsPage
@@ -32,6 +33,7 @@ class SettingsPage
         $this->maybe_save_module_settings();
         $this->maybe_save_public_referral_settings();
         $this->maybe_save_staff_portal_settings();
+        $this->maybe_save_referral_form_labels();
         $this->maybe_save_pipeline_internal_targets();
 
         $counts = [
@@ -61,6 +63,7 @@ class SettingsPage
         $this->render_service_catalogue_link();
         $this->render_public_referral_settings();
         $this->render_staff_portal_settings();
+        $this->render_referral_form_labels();
         $this->render_pipeline_internal_targets();
 
         echo '<h2>' . esc_html__('Private Document Migration', 'jm-referral-system') . '</h2>';
@@ -857,6 +860,137 @@ class SettingsPage
             false
         );
         echo '</form>';
+    }
+
+    /**
+     * Phase 5E.1: wording recognised on uploaded referral forms.
+     */
+    private function maybe_save_referral_form_labels(): void
+    {
+        $saving    = isset($_POST['jmrs_save_referral_form_labels']);
+        $resetting = isset($_POST['jmrs_reset_referral_form_labels']);
+
+        if (! $saving && ! $resetting) {
+            return;
+        }
+
+        check_admin_referer('jmrs_save_referral_form_labels', 'jmrs_referral_form_labels_nonce');
+
+        if (! Capabilities::current_user_can(Capabilities::MANAGE_SETTINGS)) {
+            wp_die(esc_html__('You do not have permission to manage settings.', 'jm-referral-system'));
+        }
+
+        $labels = new ReferralFormLabels();
+
+        if ($resetting) {
+            $labels->reset();
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html__('Referral form labels were reset to the built-in lists.', 'jm-referral-system');
+            echo '</p></div>';
+
+            return;
+        }
+
+        $input = [];
+        foreach (array_keys(ReferralFormLabels::defaults()) as $group) {
+            $field = 'jmrs_form_labels_' . $group;
+            if (isset($_POST[$field]) && is_string($_POST[$field])) {
+                $input[$group] = wp_unslash($_POST[$field]);
+            }
+        }
+
+        $result = $labels->update($input);
+
+        if (! empty($result['ok'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo esc_html__('Referral form labels saved. They apply the next time a form is opened in Prepare Referral.', 'jm-referral-system');
+            echo '</p></div>';
+
+            return;
+        }
+
+        $errors       = is_array($result['errors'] ?? null) ? $result['errors'] : [];
+        $descriptions = ReferralFormLabels::group_descriptions();
+        echo '<div class="notice notice-error" role="alert"><p>';
+        echo esc_html__('Referral form labels could not be saved. No changes were made.', 'jm-referral-system');
+        echo '</p>';
+        if ([] !== $errors) {
+            echo '<ul>';
+            foreach ($errors as $group => $message) {
+                $name = (string) ($descriptions[(string) $group]['label'] ?? $group);
+                echo '<li>' . esc_html($name . ': ' . (string) $message) . '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '</div>';
+    }
+
+    private function render_referral_form_labels(): void
+    {
+        $labels       = new ReferralFormLabels();
+        $groups       = $labels->all();
+        $descriptions = ReferralFormLabels::group_descriptions();
+
+        echo '<div class="jmrs-settings-referral-form-labels">';
+        echo '<h2>' . esc_html__('Referral Form Upload: Field Labels', 'jm-referral-system') . '</h2>';
+        echo '<p>';
+        echo esc_html__(
+            'When staff upload a Word or PDF referral form to the Referral Inbox, the details are found by the label printed beside each one. List the wording your forms use, one label per line. Capital letters, numbering, a trailing colon and a bracketed note are ignored, so "3. Date of Birth (dd/mm/yyyy):" matches "date of birth".',
+            'jm-referral-system'
+        );
+        echo '</p>';
+        echo '<p>';
+        echo esc_html__(
+            'Plain labels such as Name, Telephone, Email, Address and Postcode are recognised automatically and assigned to the client or the referrer by the section heading above them. Forms are read on this server. Nothing is sent to an outside service, and staff always review the details before a referral is created.',
+            'jm-referral-system'
+        );
+        echo '</p>';
+        if (! $labels->is_customised()) {
+            echo '<p><em>' . esc_html__('These are the built-in lists. They have not been changed.', 'jm-referral-system') . '</em></p>';
+        }
+
+        echo '<form method="post" action="' . esc_url(admin_url('admin.php?page=jm-referrals-settings')) . '">';
+        wp_nonce_field('jmrs_save_referral_form_labels', 'jmrs_referral_form_labels_nonce');
+
+        echo '<table class="form-table" role="presentation"><tbody>';
+        foreach ($groups as $group => $list) {
+            $id    = 'jmrs_form_labels_' . $group;
+            $label = (string) ($descriptions[$group]['label'] ?? $group);
+            $help  = (string) ($descriptions[$group]['help'] ?? '');
+            $rows  = (string) max(4, min(10, count($list) + 1));
+
+            echo '<tr><th scope="row"><label for="' . esc_attr($id) . '">' . esc_html($label) . '</label></th><td>';
+            echo '<textarea class="large-text code" rows="' . esc_attr($rows) . '" name="' . esc_attr($id) . '" id="' . esc_attr($id) . '"'
+                . ('' !== $help ? ' aria-describedby="' . esc_attr($id . '_help') . '"' : '') . '>';
+            echo esc_textarea(implode("\n", $list));
+            echo '</textarea>';
+            if ('' !== $help) {
+                echo '<p class="description" id="' . esc_attr($id . '_help') . '">' . esc_html($help) . '</p>';
+            }
+            echo '</td></tr>';
+        }
+        echo '</tbody></table>';
+
+        echo '<p class="submit">';
+        submit_button(
+            __('Save Form Labels', 'jm-referral-system'),
+            'primary',
+            'jmrs_save_referral_form_labels',
+            false
+        );
+        echo ' ';
+        submit_button(
+            __('Reset to Built-in Lists', 'jm-referral-system'),
+            'secondary',
+            'jmrs_reset_referral_form_labels',
+            false,
+            [
+                'onclick' => "return confirm('" . esc_js(__('Replace every list with the built-in labels?', 'jm-referral-system')) . "');",
+            ]
+        );
+        echo '</p>';
+        echo '</form>';
+        echo '</div>';
     }
 
     private function maybe_save_pipeline_internal_targets(): void

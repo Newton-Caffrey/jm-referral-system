@@ -192,7 +192,8 @@ class PrepareHandler
     private function redirect_detail(int $inbox_id, ReferralInboxConversionResult $result): void
     {
         $created = ReferralInboxConversionResult::SUCCESS === $result->outcome();
-        $warning = ReferralInboxConversionResult::WARNING_ASSIGNMENT_EMAIL === $result->warning();
+        $warning = $result->has_warning(ReferralInboxConversionResult::WARNING_ASSIGNMENT_EMAIL);
+        $document_warning = $result->has_warning(ReferralInboxConversionResult::WARNING_DOCUMENT_ATTACH);
         $number  = $result->referral_number();
         if ('' === $number) {
             $number = '#' . $result->referral_id();
@@ -207,7 +208,10 @@ class PrepareHandler
             if ($warning) {
                 $message .= ' ' . __('Referral created successfully, but the assignment email could not be sent.', 'jm-referral-system');
             }
-            $type = $warning ? 'warning' : 'success';
+            if ($document_warning) {
+                $message .= ' ' . __('The uploaded form could not be added to the referral\'s documents. Upload it again from the referral.', 'jm-referral-system');
+            }
+            $type = ($warning || $document_warning) ? 'warning' : 'success';
         } else {
             $message = sprintf(
                 /* translators: %s: referral number */
@@ -301,6 +305,15 @@ class PrepareHandler
             'jmrs_prepare_assigned_to',
             'jmrs_prepare_notes',
             'jmrs_prepare_confirm',
+            'jmrs_prepare_client_date_of_birth',
+            'jmrs_prepare_address_line_1',
+            'jmrs_prepare_address_line_2',
+            'jmrs_prepare_city',
+            'jmrs_prepare_postcode',
+            'jmrs_prepare_referrer_phone',
+            'jmrs_prepare_relationship_to_client',
+            'jmrs_prepare_care_requirements',
+            'jmrs_prepare_care_start_date',
         ];
     }
 
@@ -357,6 +370,7 @@ class PrepareHandler
             'warnings'            => is_array($payload['warnings'] ?? null) ? $payload['warnings'] : [],
             'alternatives'        => is_array($payload['alternatives'] ?? null) ? $payload['alternatives'] : [],
             'field_notes'         => is_array($payload['field_notes'] ?? null) ? $payload['field_notes'] : [],
+            'document'            => is_array($payload['document'] ?? null) ? $payload['document'] : [],
             'service_hint'        => (string) ($payload['service_hint'] ?? ''),
             'priority_hint'       => (string) ($payload['priority_hint'] ?? ''),
             'authority_note'      => (string) ($payload['authority_note'] ?? ''),

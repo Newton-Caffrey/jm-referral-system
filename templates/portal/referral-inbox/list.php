@@ -21,6 +21,7 @@ $form_action       = (string) ( $form_action ?? '' );
 $list_notice       = is_array( $list_notice ?? null ) ? $list_notice : null;
 $has_active_filter = ! empty( $has_active_filter );
 $la_label          = (string) ( $la_label ?? __( 'Local Authority', 'jm-referral-system' ) );
+$upload_url        = (string) ( $upload_url ?? '' );
 
 $search = (string) ( $filters['search'] ?? '' );
 ?>
@@ -39,6 +40,13 @@ $search = (string) ( $filters['search'] ?? '' );
 	$section_id      = 'jmrs-inbox-heading';
 	$section_badge   = '';
 	$section_actions = array();
+	if ( '' !== $upload_url ) {
+		$section_actions[] = array(
+			__( 'Upload Referral Form', 'jm-referral-system' ),
+			$upload_url,
+			'jmrs-button jmrs-button--primary',
+		);
+	}
 	include JMRS_PLUGIN_PATH . 'templates/portal/partials/section-header.php';
 	?>
 	<?php if ( '' !== $intro ) : ?>
@@ -100,8 +108,17 @@ $search = (string) ( $filters['search'] ?? '' );
 			: __( 'No referral opportunities are currently waiting in the Inbox.', 'jm-referral-system' );
 		$empty_message = $has_active_filter
 			? __( 'Try a different status tab or search term.', 'jm-referral-system' )
-			: __( 'Incoming opportunities will appear here when a configured intake source adds them.', 'jm-referral-system' );
+			: ( '' !== $upload_url
+				? __( 'Upload a referral form to add one, or wait for a configured intake source to add them.', 'jm-referral-system' )
+				: __( 'Incoming opportunities will appear here when a configured intake source adds them.', 'jm-referral-system' ) );
 		$empty_actions = array();
+		if ( '' !== $upload_url && ! $has_active_filter ) {
+			$empty_actions[] = array(
+				__( 'Upload Referral Form', 'jm-referral-system' ),
+				$upload_url,
+				'jmrs-button jmrs-button--primary',
+			);
+		}
 		include JMRS_PLUGIN_PATH . 'templates/portal/partials/empty-state.php';
 		?>
 	<?php else : ?>
@@ -149,7 +166,7 @@ $search = (string) ( $filters['search'] ?? '' );
 							</td>
 							<td data-label="<?php echo esc_attr__( 'Sender', 'jm-referral-system' ); ?>">
 								<?php echo esc_html( (string) ( $row['sender_display'] ?? '—' ) ); ?>
-								<?php if ( 'fixture' === (string) ( $row['source_key'] ?? '' ) ) : ?>
+								<?php if ( in_array( (string) ( $row['source_key'] ?? '' ), array( 'fixture', 'manual' ), true ) ) : ?>
 									<span class="jmrs-inbox-badge jmrs-inbox-badge--fixture"><?php echo esc_html( (string) ( $row['source_label'] ?? '' ) ); ?></span>
 								<?php endif; ?>
 							</td>

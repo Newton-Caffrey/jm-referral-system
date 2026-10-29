@@ -125,12 +125,19 @@ $override_options = is_array( $pipeline_panel['override_options'] ?? null )
 					<input type="text" class="regular-text" name="jmrs_pipeline_override_reason" id="jmrs_pipeline_override_reason" maxlength="255" required />
 				</p>
 				<?php
-				submit_button(
-					__( 'Override Pipeline Stage', 'jm-referral-system' ),
-					'secondary',
-					'jmrs_override_pipeline_stage',
-					false
-				);
+				// submit_button() exists only in wp-admin. The Staff Portal renders its own button.
+				if ( 'portal' === $context ) {
+					echo '<button type="submit" name="jmrs_override_pipeline_stage" value="1" class="jmrs-button jmrs-button--secondary">';
+					echo esc_html__( 'Override Pipeline Stage', 'jm-referral-system' );
+					echo '</button>';
+				} else {
+					submit_button(
+						__( 'Override Pipeline Stage', 'jm-referral-system' ),
+						'secondary',
+						'jmrs_override_pipeline_stage',
+						false
+					);
+				}
 				?>
 			</form>
 		</details>

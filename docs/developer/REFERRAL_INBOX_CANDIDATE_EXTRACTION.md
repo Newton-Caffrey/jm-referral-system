@@ -74,6 +74,10 @@ The result objects have no string cast. Candidate values are not written into ex
 
 Phase **5D.4** reads `extract()` when an authorised user opens `/referral-inbox/{id}/prepare/`. That screen copies only `single` values into the form. The extractor itself is unchanged: it still does not write, and it still does not choose a service type or priority.
 
+## Uploaded referral forms (Phase 5E.1)
+
+This extractor is unchanged and still never opens a file. Reading an uploaded Word or PDF referral form is a separate class, `ReferralFormFieldExtractor`, which also suggests date of birth, address, and care requirements for forms that staff upload. See [`REFERRAL_INBOX_DOCUMENT_UPLOAD.md`](REFERRAL_INBOX_DOCUMENT_UPLOAD.md).
+
 ## Boundaries
 
 No schema change. No AI or external API. No Graph, OAuth, webhook, delta, or mailbox polling. No `ReferralService::create()`. The preparation route is documented in [`REFERRAL_INBOX_PREPARATION.md`](REFERRAL_INBOX_PREPARATION.md).

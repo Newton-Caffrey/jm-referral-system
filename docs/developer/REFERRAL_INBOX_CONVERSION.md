@@ -59,6 +59,10 @@ Activity is the ordinary `created` row, plus `pipeline_started` and `assigned` w
 
 If the assignment email fails after commit, the referral and the accepted Inbox link remain. The Inbox detail shows a non-blocking warning. Another attempt does not create a second referral.
 
+## Uploaded referral forms (Phase 5E.1)
+
+After commit, a referral form that staff uploaded to the Inbox item is added to the new referral's documents. A failure there is reported as a warning beside the success message, like the assignment email, and does not undo the referral. The reviewed date of birth, address, referrer phone, relationship, care start date, and care requirements are copied to the referral. See [`REFERRAL_INBOX_DOCUMENT_UPLOAD.md`](REFERRAL_INBOX_DOCUMENT_UPLOAD.md).
+
 ## Access
 
 Create Referral uses the same prepare capability: Inbox management and `CREATE_REFERRALS`. Users without `ASSIGN_REFERRALS` cannot set `assigned_to`.

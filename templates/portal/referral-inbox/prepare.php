@@ -27,6 +27,12 @@ $errors                 = is_array( $errors ?? null ) ? $errors : array();
 $warnings               = is_array( $warnings ?? null ) ? $warnings : array();
 $alternatives           = is_array( $alternatives ?? null ) ? $alternatives : array();
 $field_notes            = is_array( $field_notes ?? null ) ? $field_notes : array();
+$document               = is_array( $document ?? null ) ? $document : array();
+$has_document           = ! empty( $document['has_document'] );
+$document_filename      = (string) ( $document['filename'] ?? '' );
+$document_message       = (string) ( $document['message'] ?? '' );
+$document_message_type  = (string) ( $document['message_type'] ?? '' );
+$document_text          = (string) ( $document['text'] ?? '' );
 $service_hint           = (string) ( $service_hint ?? '' );
 $priority_hint          = (string) ( $priority_hint ?? '' );
 $authority_note         = (string) ( $authority_note ?? '' );
@@ -154,6 +160,32 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 		<?php endif; ?>
 	</div>
 
+	<?php if ( $has_document && $show_form ) : ?>
+		<div class="jmrs-inbox-detail__panel jmrs-prepare-document">
+			<h3><?php echo esc_html__( 'Uploaded form', 'jm-referral-system' ); ?></h3>
+			<?php if ( '' !== $document_filename ) : ?>
+				<p class="jmrs-prepare-document__file"><?php echo esc_html( $document_filename ); ?></p>
+			<?php endif; ?>
+			<?php if ( '' !== $document_message ) : ?>
+				<div
+					class="jmrs-portal-notice jmrs-portal-notice--<?php echo 'warning' === $document_message_type ? 'warning' : 'info'; ?>"
+					role="status"
+				>
+					<p><?php echo esc_html( $document_message ); ?></p>
+				</div>
+			<?php endif; ?>
+			<?php if ( '' !== $document_text ) : ?>
+				<details class="jmrs-prepare-document__text">
+					<summary><?php echo esc_html__( 'Show the text read from the form', 'jm-referral-system' ); ?></summary>
+					<p class="jmrs-prepare-hint">
+						<?php echo esc_html__( 'Shown for checking and copying only. This text is not saved with the referral.', 'jm-referral-system' ); ?>
+					</p>
+					<pre class="jmrs-inbox-body-preview" tabindex="0"><?php echo esc_html( $document_text ); ?></pre>
+				</details>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
+
 	<?php if ( ! $show_form ) : ?>
 		<div class="jmrs-inbox-detail__panel" role="status">
 			<p><?php echo esc_html( $blocked_message ); ?></p>
@@ -198,8 +230,13 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 					<?php
 					$client_fields = array(
 						'client_name'  => array( 'label' => __( 'Client Name', 'jm-referral-system' ), 'type' => 'text', 'required' => true ),
+						'client_date_of_birth' => array( 'label' => __( 'Date of Birth', 'jm-referral-system' ), 'type' => 'date', 'required' => false ),
 						'client_email' => array( 'label' => __( 'Client Email', 'jm-referral-system' ), 'type' => 'text', 'required' => false ),
 						'client_phone' => array( 'label' => __( 'Client Phone', 'jm-referral-system' ), 'type' => 'tel', 'required' => false ),
+						'address_line_1' => array( 'label' => __( 'Address Line 1', 'jm-referral-system' ), 'type' => 'text', 'required' => false ),
+						'address_line_2' => array( 'label' => __( 'Address Line 2', 'jm-referral-system' ), 'type' => 'text', 'required' => false ),
+						'city'         => array( 'label' => __( 'Town / City', 'jm-referral-system' ), 'type' => 'text', 'required' => false ),
+						'postcode'     => array( 'label' => __( 'Postcode', 'jm-referral-system' ), 'type' => 'text', 'required' => false ),
 					);
 					foreach ( $client_fields as $key => $field ) :
 						$field_id = 'jmrs_prepare_' . $key;
@@ -237,7 +274,8 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 											match ( $key ) {
 												'client_email' => __( 'Possible client emails found:', 'jm-referral-system' ),
 												'client_phone' => __( 'Possible client phones found:', 'jm-referral-system' ),
-												default        => __( 'Possible client names found:', 'jm-referral-system' ),
+												'client_name'  => __( 'Possible client names found:', 'jm-referral-system' ),
+												default        => __( 'Possible values found:', 'jm-referral-system' ),
 											}
 										);
 										?>
@@ -264,7 +302,9 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 					$referrer_fields = array(
 						'referrer_name'         => array( 'label' => __( 'Referrer Name', 'jm-referral-system' ), 'type' => 'text' ),
 						'referrer_email'        => array( 'label' => __( 'Referrer Email', 'jm-referral-system' ), 'type' => 'text' ),
+						'referrer_phone'        => array( 'label' => __( 'Referrer Phone', 'jm-referral-system' ), 'type' => 'tel' ),
 						'referrer_organisation' => array( 'label' => __( 'Referrer Organisation', 'jm-referral-system' ), 'type' => 'text' ),
+						'relationship_to_client' => array( 'label' => __( 'Relationship to Client', 'jm-referral-system' ), 'type' => 'text' ),
 					);
 					foreach ( $referrer_fields as $key => $field ) :
 						$field_id = 'jmrs_prepare_' . $key;
@@ -290,6 +330,16 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 							<?php endif; ?>
 							<?php if ( isset( $warnings[ $key ] ) ) : ?>
 								<p class="jmrs-prepare-hint" id="jmrs-prepare-warning-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( (string) $warnings[ $key ] ); ?></p>
+							<?php endif; ?>
+							<?php if ( isset( $alternatives[ $key ] ) && is_array( $alternatives[ $key ] ) && ! empty( $alternatives[ $key ] ) ) : ?>
+								<div class="jmrs-prepare-alternatives">
+									<p><?php echo esc_html__( 'Possible values found:', 'jm-referral-system' ); ?></p>
+									<ul>
+										<?php foreach ( $alternatives[ $key ] as $alternative ) : ?>
+											<li><?php echo esc_html( (string) $alternative ); ?></li>
+										<?php endforeach; ?>
+									</ul>
+								</div>
 							<?php endif; ?>
 							<?php if ( isset( $errors[ $key ] ) ) : ?>
 								<p class="jmrs-portal-field-error" id="jmrs-prepare-error-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( (string) $errors[ $key ] ); ?></p>
@@ -450,6 +500,60 @@ $described_by = static function ( string $key, array $errors, array $warnings, a
 							<?php endif; ?>
 						</div>
 					<?php endif; ?>
+
+					<div class="jmrs-portal-field">
+						<label for="jmrs_prepare_care_start_date"><?php echo esc_html__( 'Care Start Date', 'jm-referral-system' ); ?></label>
+						<input
+							type="date"
+							name="jmrs_prepare_care_start_date"
+							id="jmrs_prepare_care_start_date"
+							value="<?php echo esc_attr( $val( $values, 'care_start_date' ) ); ?>"
+							<?php echo isset( $errors['care_start_date'] ) ? 'aria-invalid="true"' : ''; ?>
+							<?php
+							$start_desc = $described_by( 'care_start_date', $errors, $warnings, $field_notes );
+							echo '' !== $start_desc ? 'aria-describedby="' . esc_attr( $start_desc ) . '"' : '';
+							?>
+						/>
+						<?php if ( isset( $field_notes['care_start_date'] ) ) : ?>
+							<p class="jmrs-prepare-hint" id="jmrs-prepare-note-care_start_date"><?php echo esc_html( (string) $field_notes['care_start_date'] ); ?></p>
+						<?php endif; ?>
+						<?php if ( isset( $warnings['care_start_date'] ) ) : ?>
+							<p class="jmrs-prepare-hint" id="jmrs-prepare-warning-care_start_date"><?php echo esc_html( (string) $warnings['care_start_date'] ); ?></p>
+						<?php endif; ?>
+						<?php if ( isset( $alternatives['care_start_date'] ) && is_array( $alternatives['care_start_date'] ) && ! empty( $alternatives['care_start_date'] ) ) : ?>
+							<div class="jmrs-prepare-alternatives">
+								<p><?php echo esc_html__( 'Possible values found:', 'jm-referral-system' ); ?></p>
+								<ul>
+									<?php foreach ( $alternatives['care_start_date'] as $alternative ) : ?>
+										<li><?php echo esc_html( (string) $alternative ); ?></li>
+									<?php endforeach; ?>
+								</ul>
+							</div>
+						<?php endif; ?>
+						<?php if ( isset( $errors['care_start_date'] ) ) : ?>
+							<p class="jmrs-portal-field-error" id="jmrs-prepare-error-care_start_date"><?php echo esc_html( (string) $errors['care_start_date'] ); ?></p>
+						<?php endif; ?>
+					</div>
+
+					<div class="jmrs-portal-field jmrs-portal-field--full">
+						<label for="jmrs_prepare_care_requirements"><?php echo esc_html__( 'Care Requirements', 'jm-referral-system' ); ?></label>
+						<textarea
+							name="jmrs_prepare_care_requirements"
+							id="jmrs_prepare_care_requirements"
+							rows="6"
+							<?php echo isset( $errors['care_requirements'] ) ? 'aria-invalid="true"' : ''; ?>
+							<?php
+							$care_desc = $described_by( 'care_requirements', $errors, $warnings, $field_notes );
+							echo '' !== $care_desc ? 'aria-describedby="' . esc_attr( $care_desc ) . '"' : '';
+							?>
+						><?php echo esc_textarea( $val( $values, 'care_requirements' ) ); ?></textarea>
+						<?php if ( isset( $field_notes['care_requirements'] ) ) : ?>
+							<p class="jmrs-prepare-hint" id="jmrs-prepare-note-care_requirements"><?php echo esc_html( (string) $field_notes['care_requirements'] ); ?></p>
+						<?php endif; ?>
+						<?php if ( isset( $errors['care_requirements'] ) ) : ?>
+							<p class="jmrs-portal-field-error" id="jmrs-prepare-error-care_requirements"><?php echo esc_html( (string) $errors['care_requirements'] ); ?></p>
+						<?php endif; ?>
+					</div>
 
 					<div class="jmrs-portal-field jmrs-portal-field--full">
 						<label for="jmrs_prepare_notes"><?php echo esc_html__( 'Notes', 'jm-referral-system' ); ?></label>

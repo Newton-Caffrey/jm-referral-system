@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 5E.1 — Referral form upload.** Staff with Inbox management and create-referral access can upload a completed referral form (Word `.docx` or PDF, up to 10 MB) from the Staff Portal Referral Inbox. The details are read from the form on the server and offered on Prepare Referral for review. No referral is created until staff validate the details and confirm. See `docs/developer/REFERRAL_INBOX_DOCUMENT_UPLOAD.md`.
+- Prepare Referral fields: Date of Birth, Address Line 1 and 2, Town / City, Postcode, Referrer Phone, Relationship to Client, Care Start Date, Care Requirements. All optional.
+- The uploaded form is kept in private storage and added to the referral's documents when the referral is created.
+- **Settings → Referral Form Upload: Field Labels.** Editable lists of the wording each field uses on a care provider's own forms.
+- Bundled library `lib/smalot-pdfparser/` (smalot/pdfparser v2.12.5, LGPL-3.0) for reading PDF text. Loaded only when a PDF is read.
+
+### Changed
+
+- Portal rewrite `1.2.9` → `1.2.10` for the new `/referral-inbox/upload/` route (version-gated flush).
+- Inbox items from the `manual` source are labelled “Uploaded form” in the Inbox list.
+
+### Fixed
+
+- Staff Portal referral view no longer stops rendering for users who can override the pipeline stage (Referral Manager, administrator). The shared pipeline panel called `submit_button()`, which exists only in wp-admin; in the portal it now renders its own button, like the other shared panels.
+- Referral Inbox detail and Prepare Referral now show the item's Subject, Sender, and message preview. The portal layout left its navigation loop variable `$item` set, which hid the Inbox row passed to those pages.
+
+### Database
+
+- No schema change. Database remains `2.33.0`. New option `jmrs_referral_form_labels` is created only when the label lists are saved.
+
+### Known limitations (summary)
+
+- Reading is rule-based and depends on the form's labels and layout. Scanned or handwritten forms cannot be read; the file is stored and staff enter the details by hand.
+- PDFs lose table structure and read less reliably than Word files.
+- The built-in labels were tuned against made-up forms. They have not yet been checked against a real care-provider form.
+- Development verification only. Staging UAT on MySQL is still required. See `docs/uat/UAT_PHASE_5E_1_REFERRAL_FORM_UPLOAD.md`.
+
 ## [1.5.0] - 2026-08-27
 
 Feature release for production upgrade from **v1.4.0**. Product `1.5.0`. Database schema `2.29.0` (additive migration from production `2.28.0`). Portal rewrite `1.2.7`.

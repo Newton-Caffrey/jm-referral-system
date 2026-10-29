@@ -70,6 +70,10 @@ When the draft passes, the screen says:
 
 If another field fails, the response keeps the values the staff member submitted. Extractor suggestions do not replace them. Nothing is stored in the database, `wp_options`, a transient, a session, or a cookie.
 
+## Uploaded referral forms (Phase 5E.1)
+
+When the Inbox item holds an uploaded referral form, suggestions read from that file are merged into this screen under the same rules: one clear value prefills, an ambiguous one is listed and left blank. The form also gains optional fields for date of birth, address, referrer phone, relationship, care start date, and care requirements. See [`REFERRAL_INBOX_DOCUMENT_UPLOAD.md`](REFERRAL_INBOX_DOCUMENT_UPLOAD.md).
+
 ## Boundaries
 
 This phase does not call `ReferralService::create()` or `ReferralInboxService::markAccepted()`. It does not generate a referral number, write referral activity, send a notification, change detection, or confirm or clear a Local Authority. Authority corrections stay on the Inbox detail screen via **Review Local Authority**.

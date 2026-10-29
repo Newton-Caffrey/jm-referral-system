@@ -905,6 +905,28 @@ class Plugin
         );
         $controller->set_homes_handler($homes_handler);
 
+        // Phase 5E.1: staff upload of a Word/PDF referral form into the Inbox.
+        // Text is read on the server; no external service is called.
+        $inbox_document_service = null;
+        if ($this->referral_inbox_service instanceof \JMReferral\ReferralInbox\ReferralInboxService
+            && $this->referral_inbox_ingestion_service instanceof \JMReferral\ReferralInbox\ReferralInboxIngestionService
+            && $this->document_service instanceof ReferralDocumentService
+        ) {
+            $inbox_document_service = new \JMReferral\ReferralInbox\Document\ReferralInboxDocumentService(
+                $this->referral_inbox_service,
+                $this->referral_inbox_ingestion_service,
+                new PrivateDocumentStorage(),
+                new \JMReferral\ReferralInbox\Document\DocumentTextReader(
+                    new \JMReferral\ReferralInbox\Document\DocxTextReader(),
+                    new \JMReferral\ReferralInbox\Document\PdfTextReader()
+                ),
+                new \JMReferral\ReferralInbox\Document\ReferralFormFieldExtractor(
+                    new \JMReferral\ReferralInbox\Document\ReferralFormLabels()
+                ),
+                $this->document_service
+            );
+        }
+
         $preparation_service = new \JMReferral\ReferralInbox\ReferralInboxPreparationService(
             $this->referral_inbox_service,
             new \JMReferral\ReferralInbox\ReferralInboxCandidateExtractor(
@@ -917,7 +939,8 @@ class Plugin
                 $this->workflow_stage_service
             ),
             $this->service_type_service,
-            $this->user_provider
+            $this->user_provider,
+            $inbox_document_service
         );
         $prepare_handler = new \JMReferral\Portal\ReferralInbox\PrepareHandler(
             $controller,
@@ -930,9 +953,17 @@ class Plugin
                 $this->service,
                 $repository,
                 new \JMReferral\Referral\ReferralNumberLock(),
-                new \JMReferral\Database\TransactionEngineGuard()
+                new \JMReferral\Database\TransactionEngineGuard(),
+                $inbox_document_service
             )
         );
+        $upload_handler = null !== $inbox_document_service
+            ? new \JMReferral\Portal\ReferralInbox\UploadHandler(
+                $controller,
+                $this->access_policy,
+                $inbox_document_service
+            )
+            : null;
         $inbox_handler = new \JMReferral\Portal\ReferralInbox\InboxHandler(
             $controller,
             $this->referral_inbox_service,
@@ -946,7 +977,8 @@ class Plugin
                 new LocalAuthorityRepository(),
                 new SenderRuleRepository()
             ),
-            $prepare_handler
+            $prepare_handler,
+            $upload_handler
         );
         $controller->set_inbox_handler($inbox_handler);
 

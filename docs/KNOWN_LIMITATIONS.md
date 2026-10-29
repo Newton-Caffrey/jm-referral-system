@@ -52,6 +52,11 @@ Genuine remaining limitations for the **1.5.0** release candidate. Do not treat 
 | No timed retention purge | Archive is manual; no automatic purge by age (legal/compliance sign-off required first) |
 | No cascading clinical delete | By design — archive-first; permanent delete only when no blocking dependents |
 | Document list unbounded on View | Documents/schedules/medication lists on Referral View are not paginated |
+| Uploaded referral forms are read by rules, not AI | Phase 5E.1 recognises fixed and administrator-configured labels. Accuracy depends on the form's wording and layout; unrecognised details are left blank for staff to enter |
+| Scanned or handwritten referral forms cannot be read | No text recognition. The file is stored and staff enter the details by hand |
+| PDF referral forms read less reliably than Word | PDF text loses table structure; columns can run together and long values can wrap |
+| Built-in form labels not yet checked against a real form | Tuned against made-up forms only. Review with a real care-provider form and adjust Settings → Referral Form Upload: Field Labels |
+| Unconverted uploaded forms are kept | A form that is uploaded and then ignored stays in private storage. No purge, in line with the retention policy |
 | Uninstall wipe is not production retention | Default uninstall **preserves** operational data; opt-in `JMRS_DELETE_DATA_ON_UNINSTALL` is administrative/development and is **not** the supported production retention workflow; complete purge coverage should be reviewed separately before relying on it |
 
 ---

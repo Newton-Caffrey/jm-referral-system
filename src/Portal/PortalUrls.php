@@ -48,6 +48,11 @@ class PortalUrls
         return add_query_arg($args, self::referral_inbox());
     }
 
+    public static function referral_inbox_upload(): string
+    {
+        return home_url('/' . PortalSettings::base_path() . '/referral-inbox/upload/');
+    }
+
     public static function referral_inbox_item(int $inbox_id): string
     {
         return home_url(

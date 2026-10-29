@@ -25,6 +25,9 @@ final class ReferralInboxConversionResult
 
     public const WARNING_ASSIGNMENT_EMAIL = 'assignment_email_failed';
 
+    /** The referral was created, but the uploaded form could not be added to its documents (Phase 5E.1). */
+    public const WARNING_DOCUMENT_ATTACH = 'document_attach_failed';
+
     /**
      * @param array<string, string> $errors
      * @param array<string, string> $values
@@ -69,9 +72,17 @@ final class ReferralInboxConversionResult
         return $this->referral_number;
     }
 
+    /**
+     * Warning code, or several codes joined by commas.
+     */
     public function warning(): string
     {
         return $this->warning;
+    }
+
+    public function has_warning(string $code): bool
+    {
+        return '' !== $code && in_array($code, explode(',', $this->warning), true);
     }
 
     /**
